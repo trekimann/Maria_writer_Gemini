@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, LifeEventType } from '../types';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import { normalizeDDMMYYYYHHMMSS } from '../utils/date';
+import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEventDelete } from '../utils/eventSync';
 
 // Initial State
 export const initialState: AppState = {
@@ -147,11 +148,15 @@ export const reducer = (state: AppState, action: Action): AppState => {
       return { ...state, characters: nextCharacters, events: nextEvents };
     }
     case 'UPDATE_CHARACTER': {
+      const previousCharacter = state.characters.find(c => c.id === action.payload.id) || null;
       const updatedCharacters = state.characters.map(c => c.id === action.payload.id ? action.payload : c);
       
-      // Process life events and create corresponding timeline events
+      // Sync character life fields (dob, deathDate) to timeline events
+      const syncResult = syncCharacterToEvents(action.payload, previousCharacter, state.events);
+      let nextEvents = syncResult.events;
+      
+      // Process life events (marriage, birth-of-child, friendship) and create corresponding timeline events
       const lifeEvents = action.payload.lifeEvents || [];
-      let nextEvents = [...state.events];
       
       const LIFE_EVENT_LABELS: Record<LifeEventType, string> = {
         'birth-of-child': 'Had a Child',
@@ -199,10 +204,22 @@ export const reducer = (state: AppState, action: Action): AppState => {
       return { ...state, characters: state.characters.filter(c => c.id !== action.payload) };
     case 'ADD_EVENT':
       return { ...state, events: [...state.events, action.payload] };
-    case 'UPDATE_EVENT':
-      return { ...state, events: state.events.map(e => e.id === action.payload.id ? action.payload : e) };
-    case 'DELETE_EVENT':
-      return { ...state, events: state.events.filter(e => e.id !== action.payload) };
+    case 'UPDATE_EVENT': {
+      const previousEvent = state.events.find(e => e.id === action.payload.id) || null;
+      const updatedEvents = state.events.map(e => e.id === action.payload.id ? action.payload : e);
+      // Sync event changes back to character fields (dob, deathDate)
+      const updatedCharacters = syncEventToCharacters(action.payload, previousEvent, state.characters);
+      return { ...state, events: updatedEvents, characters: updatedCharacters };
+    }
+    case 'DELETE_EVENT': {
+      const eventToDelete = state.events.find(e => e.id === action.payload);
+      const filteredEvents = state.events.filter(e => e.id !== action.payload);
+      // Clear corresponding character fields if a life event is deleted
+      const updatedCharacters = eventToDelete 
+        ? clearCharacterFieldsOnEventDelete(eventToDelete, state.characters)
+        : state.characters;
+      return { ...state, events: filteredEvents, characters: updatedCharacters };
+    }
     case 'SET_VIEW_MODE':
       return { ...state, viewMode: action.payload };
     case 'SET_CONTEXT_MODE':

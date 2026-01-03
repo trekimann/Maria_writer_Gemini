@@ -126,4 +126,165 @@ describe('StoreContext Reducer', () => {
     const newState = reducer(initialState, { type: 'ADD_EVENT', payload: evt });
     expect(newState.events).toContainEqual(evt);
   });
+
+  // === Tests for bi-directional sync between characters and events ===
+
+  describe('UPDATE_CHARACTER syncing to events', () => {
+    it('should create Born event when dob is added to existing character', () => {
+      uuidSeq.reset();
+      const stateWithChar = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '', deathDate: '' }],
+        events: [],
+      };
+
+      const updatedChar = { id: 'c1', name: 'Maria', dob: '15/06/1990', deathDate: '' };
+      const newState = reducer(stateWithChar as any, { type: 'UPDATE_CHARACTER', payload: updatedChar as any });
+
+      expect(newState.events).toHaveLength(1);
+      expect(newState.events[0].title).toBe('Maria Born');
+      expect(newState.events[0].date).toBe('15/06/1990 00:00:00');
+    });
+
+    it('should update existing Born event when dob changes', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Born', date: '01/01/1990 00:00:00', description: 'Maria Born', characters: ['c1'] }
+        ],
+      };
+
+      const updatedChar = { id: 'c1', name: 'Maria', dob: '15/06/1990' };
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'UPDATE_CHARACTER', payload: updatedChar as any });
+
+      expect(newState.events).toHaveLength(1);
+      expect(newState.events[0].date).toBe('15/06/1990 00:00:00');
+    });
+
+    it('should delete Born event when dob is cleared', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Born', date: '01/01/1990 00:00:00', description: 'Maria Born', characters: ['c1'] }
+        ],
+      };
+
+      const updatedChar = { id: 'c1', name: 'Maria', dob: '' };
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'UPDATE_CHARACTER', payload: updatedChar as any });
+
+      expect(newState.events).toHaveLength(0);
+    });
+
+    it('should update event title when character name changes', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Born', date: '01/01/1990 00:00:00', description: 'Maria Born', characters: ['c1'] }
+        ],
+      };
+
+      const updatedChar = { id: 'c1', name: 'Mary', dob: '01/01/1990 00:00:00' };
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'UPDATE_CHARACTER', payload: updatedChar as any });
+
+      expect(newState.events).toHaveLength(1);
+      expect(newState.events[0].title).toBe('Mary Born');
+    });
+  });
+
+  describe('UPDATE_EVENT syncing to characters', () => {
+    it('should update character dob when Born event date changes', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Born', date: '01/01/1990 00:00:00', characters: ['c1'] }
+        ],
+      };
+
+      const updatedEvent = { id: 'e1', title: 'Maria Born', date: '15/06/1990 00:00:00', characters: ['c1'] };
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'UPDATE_EVENT', payload: updatedEvent });
+
+      expect(newState.characters[0].dob).toBe('15/06/1990 00:00:00');
+    });
+
+    it('should update character deathDate when Died event date changes', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', deathDate: '01/01/2050 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Died', date: '01/01/2050 00:00:00', characters: ['c1'] }
+        ],
+      };
+
+      const updatedEvent = { id: 'e1', title: 'Maria Died', date: '15/06/2050 00:00:00', characters: ['c1'] };
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'UPDATE_EVENT', payload: updatedEvent });
+
+      expect(newState.characters[0].deathDate).toBe('15/06/2050 00:00:00');
+    });
+
+    it('should not modify character when non-life event is updated', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Battle', date: '01/01/1815 00:00:00', characters: ['c1'] }
+        ],
+      };
+
+      const updatedEvent = { id: 'e1', title: 'Battle', date: '18/06/1815 00:00:00', characters: ['c1'] };
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'UPDATE_EVENT', payload: updatedEvent });
+
+      expect(newState.characters[0].dob).toBe('01/01/1990 00:00:00');
+    });
+  });
+
+  describe('DELETE_EVENT syncing to characters', () => {
+    it('should clear character dob when Born event is deleted', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Born', date: '01/01/1990 00:00:00', characters: ['c1'] }
+        ],
+      };
+
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'DELETE_EVENT', payload: 'e1' });
+
+      expect(newState.events).toHaveLength(0);
+      expect(newState.characters[0].dob).toBe('');
+    });
+
+    it('should clear character deathDate when Died event is deleted', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', deathDate: '01/01/2050 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Maria Died', date: '01/01/2050 00:00:00', characters: ['c1'] }
+        ],
+      };
+
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'DELETE_EVENT', payload: 'e1' });
+
+      expect(newState.events).toHaveLength(0);
+      expect(newState.characters[0].deathDate).toBe('');
+    });
+
+    it('should not modify character when non-life event is deleted', () => {
+      const stateWithCharAndEvent = {
+        ...initialState,
+        characters: [{ id: 'c1', name: 'Maria', dob: '01/01/1990 00:00:00' }],
+        events: [
+          { id: 'e1', title: 'Battle', date: '01/01/1815 00:00:00', characters: ['c1'] }
+        ],
+      };
+
+      const newState = reducer(stateWithCharAndEvent as any, { type: 'DELETE_EVENT', payload: 'e1' });
+
+      expect(newState.events).toHaveLength(0);
+      expect(newState.characters[0].dob).toBe('01/01/1990 00:00:00');
+    });
+  });
 });
