@@ -60,6 +60,7 @@ export interface TimelineEdge {
 
 export interface Timeline {
   edges: TimelineEdge[];
+  characterLaneOrder?: string[]; // Order of character IDs in timeline view
 }
 
 export type ViewMode = 'edit' | 'preview';

@@ -287,4 +287,29 @@ describe('StoreContext Reducer', () => {
       expect(newState.characters[0].dob).toBe('01/01/1990 00:00:00');
     });
   });
+
+  describe('Timeline Lane Ordering', () => {
+    it('should handle REORDER_TIMELINE_LANES', () => {
+      const newOrder = ['char3', 'char1', 'char2'];
+      const newState = reducer(initialState, { type: 'REORDER_TIMELINE_LANES', payload: newOrder });
+      
+      expect(newState.timeline.characterLaneOrder).toEqual(newOrder);
+    });
+
+    it('should preserve other timeline properties when reordering lanes', () => {
+      const stateWithEdges = {
+        ...initialState,
+        timeline: {
+          edges: [{ id: 'e1', from: 'a', to: 'b' }],
+          characterLaneOrder: ['old1', 'old2'],
+        },
+      };
+
+      const newOrder = ['char1', 'char2'];
+      const newState = reducer(stateWithEdges as any, { type: 'REORDER_TIMELINE_LANES', payload: newOrder });
+      
+      expect(newState.timeline.characterLaneOrder).toEqual(newOrder);
+      expect(newState.timeline.edges).toEqual([{ id: 'e1', from: 'a', to: 'b' }]);
+    });
+  });
 });

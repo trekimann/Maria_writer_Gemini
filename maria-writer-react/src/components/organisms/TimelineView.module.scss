@@ -4,24 +4,427 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background-color: #fafafa;
 }
 
 .toolbar {
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
   background-color: #f3f4f6;
   border-bottom: 1px solid var(--color-border);
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   font-size: 0.875rem;
   color: var(--color-text-muted);
 }
 
-.network {
+.toolbarLabel {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.dateRangeControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--color-border);
+}
+
+.dateInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  
+  label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+}
+
+.dateInput {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  width: 130px;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary, #3b82f6);
+  }
+}
+
+.toolBtn {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-text);
+  
+  &:hover {
+    background: #e5e7eb;
+  }
+}
+
+.quickRanges {
+  display: flex;
+  gap: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--color-border);
+}
+
+.quickBtn {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  background: #f9fafb;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  
+  &:hover {
+    background: #e5e7eb;
+    color: var(--color-text);
+  }
+}
+
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.zoomBtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--color-text);
+  
+  &:hover {
+    background: #f3f4f6;
+  }
+  
+  &:active {
+    background: #e5e7eb;
+  }
+}
+
+.zoomLabel {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  min-width: 40px;
+}
+
+.dateRangeInfo {
+  padding: 0.35rem 1rem;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hint {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.timelineWrapper {
   flex: 1;
   min-height: 0;
-  width: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+.timeAxis {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  background: linear-gradient(180deg, #f8f9fa 0%, #f3f4f6 100%);
+  border-bottom: 2px solid #d1d5db;
+}
+
+.timeAxisSpacer {
+  width: 180px;
+  min-width: 180px;
+  background: #f3f4f6;
+  border-right: 1px solid var(--color-border);
+  position: sticky;
+  left: 0;
+  z-index: 11;
+}
+
+.timeAxisContent {
+  flex: 1;
   position: relative;
+  height: 36px;
+}
+
+.timeMarker {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  &.yearMarker .markerLabel {
+    font-weight: 600;
+    color: #374151;
+  }
+}
+
+.markerLabel {
+  font-size: 0.7rem;
+  color: #6b7280;
+  white-space: nowrap;
+  padding: 4px 2px;
+  font-weight: 500;
+}
+
+.lanesContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.lane {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  min-height: 100px;
+  
+  &:nth-child(even) {
+    background-color: #fafafa;
+  }
+  
+  &:nth-child(odd) {
+    background-color: white;
+  }
+  
+  &:hover {
+    background-color: #f0f9ff;
+  }
+}
+
+.laneHeader {
+  width: 180px;
+  min-width: 180px;
+  padding: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-right: 1px solid var(--color-border);
+  background: linear-gradient(90deg, #f9fafb 0%, #f3f4f6 100%);
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  cursor: grab;
+  
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.dragHandle {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: -2px;
+  padding: 2px 0;
+  flex-shrink: 0;
+  user-select: none;
+  
+  &:hover {
+    color: #6b7280;
+  }
+}
+
+// Sortable ghost (placeholder) styles
+.laneGhost {
+  opacity: 0.4;
+  background-color: #dbeafe !important;
+}
+
+// Sortable dragging styles
+.laneDragging {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+// Undated lane should not show drag handle
+.undatedLane {
+  .dragHandle {
+    display: none;
+  }
+  
+  .laneHeader {
+    cursor: default;
+  }
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   overflow: hidden;
-  background-color: #f9fafb;
-  border: 1px solid var(--color-border);
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarInitial {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.laneName {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventCount {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.laneContent {
+  flex: 1;
+  position: relative;
+  min-height: 100px;
+  padding: 4px 0;
+}
+
+.gridLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #e5e7eb;
+  pointer-events: none;
+  
+  &.yearGridLine {
+    background-color: #d1d5db;
+    width: 2px;
+  }
+}
+
+.eventBar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease;
+  max-width: calc(100% - 20px);
+  z-index: 1;
+  
+  &:hover {
+    background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    z-index: 2;
+  }
+}
+
+.eventDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #d97706;
+  flex-shrink: 0;
+}
+
+.eventTitle {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #92400e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.eventDate {
+  font-size: 0.65rem;
+  color: #b45309;
+  margin-left: auto;
+}
+
+.undatedContent {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  align-content: flex-start;
+}
+
+.undatedEvent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  border: 1px dashed #9ca3af;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  
+  &:hover {
+    background: #e5e7eb;
+    border-color: #6b7280;
+  }
+  
+  .eventTitle {
+    color: #4b5563;
+  }
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
 }

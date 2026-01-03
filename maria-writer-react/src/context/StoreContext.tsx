@@ -47,6 +47,7 @@ type Action =
   | { type: 'CLOSE_MODAL' }
   | { type: 'ADD_TIMELINE_EDGE'; payload: { from: string; to: string; id: string } }
   | { type: 'REMOVE_TIMELINE_EDGE'; payload: string }
+  | { type: 'REORDER_TIMELINE_LANES'; payload: string[] }
   | { type: 'ADD_COMMENT'; payload: { id: string; text: string; timestamp: number } };
 
 // Reducer
@@ -236,6 +237,8 @@ export const reducer = (state: AppState, action: Action): AppState => {
       return { ...state, timeline: { ...state.timeline, edges: [...state.timeline.edges, action.payload] } };
     case 'REMOVE_TIMELINE_EDGE':
       return { ...state, timeline: { ...state.timeline, edges: state.timeline.edges.filter(e => e.id !== action.payload) } };
+    case 'REORDER_TIMELINE_LANES':
+      return { ...state, timeline: { ...state.timeline, characterLaneOrder: action.payload } };
     case 'ADD_COMMENT':
       return { ...state, comments: { ...state.comments, [action.payload.id]: { id: action.payload.id, text: action.payload.text, timestamp: action.payload.timestamp } } };
     default:
