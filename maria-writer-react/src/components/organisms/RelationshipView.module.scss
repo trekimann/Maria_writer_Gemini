@@ -1,0 +1,88 @@
+.relationshipView {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+  }
+}
+
+.viewToggle {
+  display: flex;
+  gap: 8px;
+}
+
+.toggleButton {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--hover-bg, #f0f0f0);
+  }
+
+  &.active {
+    background: var(--primary-color, #007acc);
+    color: white;
+    border-color: var(--primary-color, #007acc);
+  }
+}
+
+.addButton {
+  padding: 10px 16px;
+  background: var(--primary-color, #007acc);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--primary-hover, #005a9e);
+  }
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.splitView {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+
+  .listSection, .graphSection {
+    overflow: auto;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    background: white;
+  }
+
+  .listSection {
+    padding: 16px;
+  }
+}

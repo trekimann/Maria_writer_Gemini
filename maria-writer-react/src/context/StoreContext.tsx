@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, LifeEventType } from '../types';
+import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, Relationship } from '../types';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
-import { normalizeDDMMYYYYHHMMSS } from '../utils/date';
-import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEventDelete } from '../utils/eventSync';
+import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEventDelete, syncCharacterLifeEventsToTimeline, syncRelationshipToEvent } from '../utils/eventSync';
 
 // Initial State
 export const initialState: AppState = {
@@ -14,6 +13,7 @@ export const initialState: AppState = {
   activeChapterId: null,
   characters: [],
   events: [],
+  relationships: [],
   comments: {},
   timeline: { edges: [] },
   viewMode: 'preview',
@@ -38,6 +38,9 @@ type Action =
   | { type: 'DELETE_CHARACTER'; payload: string }
   | { type: 'ADD_EVENT'; payload: Event }
   | { type: 'UPDATE_EVENT'; payload: Event }
+  | { type: 'ADD_RELATIONSHIP'; payload: Relationship }
+  | { type: 'UPDATE_RELATIONSHIP'; payload: Relationship }
+  | { type: 'DELETE_RELATIONSHIP'; payload: string }
   | { type: 'DELETE_EVENT'; payload: string }
   | { type: 'SET_VIEW_MODE'; payload: ViewMode }
   | { type: 'SET_CONTEXT_MODE'; payload: ContextMode }
@@ -91,115 +94,33 @@ export const reducer = (state: AppState, action: Action): AppState => {
 
       const nextCharacters = [...state.characters, action.payload];
 
-      // Life events configuration: extensible for future events (marriage, birth of child, etc.)
-      // Each entry maps a Character field to a life event label.
-      const lifeEventFields: Array<{ field: keyof Character; label: string }> = [
-        { field: 'dob', label: 'Born' },
-        { field: 'deathDate', label: 'Died' },
-        // Future: { field: 'marriageDate', label: 'Married' },
-        // Future: { field: 'childBirthDate', label: 'Had a Child' },
-      ];
+      // Use centralized sync utility to auto-create Born/Died events
+      const syncResult = syncCharacterToEvents(action.payload, null, state.events);
 
-      const createLifeEvent = (
-        currentEvents: Event[],
-        charId: string,
-        charName: string,
-        label: string,
-        dateValue: string | null
-      ): Event[] => {
-        if (!dateValue) {
-          console.log(`Reducer: skipping life event "${label}" - no date`);
-          return currentEvents;
-        }
-
-        const title = `${charName} ${label}`;
-        const description = `${charName} ${label}`;
-
-        const alreadyExists = currentEvents.some(e =>
-          e.title === title &&
-          (e.date || '') === dateValue &&
-          (e.characters || []).includes(charId)
-        );
-
-        if (alreadyExists) {
-          console.log(`Reducer: skipping life event "${label}" - already exists`);
-          return currentEvents;
-        }
-
-        const newEvent: Event = {
-          id: uuidv4(),
-          title,
-          date: dateValue,
-          description,
-          characters: [charId],
-        };
-        console.log(`Reducer: creating life event "${label}"`, newEvent);
-        return [...currentEvents, newEvent];
-      };
-
-      let nextEvents = state.events;
-      for (const { field, label } of lifeEventFields) {
-        const rawValue = action.payload[field];
-        const normalized = rawValue ? normalizeDDMMYYYYHHMMSS(rawValue as string) : null;
-        console.log(`Reducer: life event field=${field} raw=${rawValue} normalized=${normalized}`);
-        nextEvents = createLifeEvent(nextEvents, action.payload.id, action.payload.name, label, normalized);
-      }
-
-      console.log('Reducer ADD_CHARACTER result: characters=', nextCharacters.length, 'events=', nextEvents.length);
-      return { ...state, characters: nextCharacters, events: nextEvents };
+      console.log('Reducer ADD_CHARACTER result: characters=', nextCharacters.length, 'events=', syncResult.events.length);
+      return { ...state, characters: nextCharacters, events: syncResult.events };
     }
     case 'UPDATE_CHARACTER': {
       const previousCharacter = state.characters.find(c => c.id === action.payload.id) || null;
       const updatedCharacters = state.characters.map(c => c.id === action.payload.id ? action.payload : c);
       
       // Sync character life fields (dob, deathDate) to timeline events
-      const syncResult = syncCharacterToEvents(action.payload, previousCharacter, state.events);
-      let nextEvents = syncResult.events;
+      const dobDeathSyncResult = syncCharacterToEvents(action.payload, previousCharacter, state.events);
       
-      // Process life events (marriage, birth-of-child, friendship) and create corresponding timeline events
-      const lifeEvents = action.payload.lifeEvents || [];
+      // Sync life events (marriage, friendship, birth-of-child) to timeline and relationships
+      const lifeEventsSyncResult = syncCharacterLifeEventsToTimeline(
+        action.payload,
+        dobDeathSyncResult.events,
+        state.relationships,
+        updatedCharacters
+      );
       
-      const LIFE_EVENT_LABELS: Record<LifeEventType, string> = {
-        'birth-of-child': 'Had a Child',
-        'marriage': 'Marriage/Partnership',
-        'friendship': 'Friendship',
+      return { 
+        ...state, 
+        characters: lifeEventsSyncResult.characters,
+        events: lifeEventsSyncResult.events,
+        relationships: lifeEventsSyncResult.relationships
       };
-
-      for (const lifeEvent of lifeEvents) {
-        // Check if a timeline event already exists for this life event
-        const eventTitle = `${action.payload.name} - ${LIFE_EVENT_LABELS[lifeEvent.type]}`;
-        const alreadyExists = nextEvents.some(e => 
-          e.title === eventTitle && 
-          e.date === lifeEvent.date &&
-          (e.characters || []).includes(action.payload.id)
-        );
-        
-        if (!alreadyExists) {
-          let description = LIFE_EVENT_LABELS[lifeEvent.type];
-          
-          if (lifeEvent.type === 'birth-of-child' && lifeEvent.childId) {
-            const child = state.characters.find(c => c.id === lifeEvent.childId);
-            description = `Birth of ${child?.name || 'child'}`;
-          } else if (lifeEvent.type === 'marriage' || lifeEvent.type === 'friendship') {
-            const otherCharIds = lifeEvent.characters.filter(id => id !== action.payload.id);
-            const otherNames = otherCharIds
-              .map(id => state.characters.find(c => c.id === id)?.name || 'Unknown')
-              .join(', ');
-            description = `${LIFE_EVENT_LABELS[lifeEvent.type]} with ${otherNames}`;
-          }
-          
-          const newTimelineEvent: Event = {
-            id: uuidv4(),
-            title: eventTitle,
-            date: lifeEvent.date,
-            description,
-            characters: lifeEvent.characters,
-          };
-          nextEvents.push(newTimelineEvent);
-        }
-      }
-      
-      return { ...state, characters: updatedCharacters, events: nextEvents };
     }
     case 'DELETE_CHARACTER':
       return { ...state, characters: state.characters.filter(c => c.id !== action.payload) };
@@ -221,6 +142,22 @@ export const reducer = (state: AppState, action: Action): AppState => {
         : state.characters;
       return { ...state, events: filteredEvents, characters: updatedCharacters };
     }
+    case 'ADD_RELATIONSHIP': {
+      const newRelationships = [...state.relationships, action.payload];
+      
+      // Sync relationship to create a corresponding timeline event
+      const syncResult = syncRelationshipToEvent(action.payload, state.events, state.characters);
+      
+      return { 
+        ...state, 
+        relationships: newRelationships,
+        events: syncResult.events 
+      };
+    }
+    case 'UPDATE_RELATIONSHIP':
+      return { ...state, relationships: state.relationships.map(r => r.id === action.payload.id ? action.payload : r) };
+    case 'DELETE_RELATIONSHIP':
+      return { ...state, relationships: state.relationships.filter(r => r.id !== action.payload) };
     case 'SET_VIEW_MODE':
       return { ...state, viewMode: action.payload };
     case 'SET_CONTEXT_MODE':

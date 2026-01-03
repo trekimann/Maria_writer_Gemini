@@ -3,12 +3,10 @@ import { useStore } from '../../context/StoreContext';
 import { Modal } from '../molecules/Modal';
 import { TagInput } from '../molecules/TagInput';
 import { DateTimeInput } from '../molecules/DateTimeInput';
-import { LifeEventForm } from '../molecules/LifeEventForm';
 import { Button } from '../atoms/Button';
 import { User } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { normalizeDDMMYYYYHHMMSS } from '../../utils/date';
-import { LifeEvent } from '../../types';
 import styles from './CharacterModal.module.scss';
 
 export const CharacterModal: React.FC = () => {
@@ -21,7 +19,7 @@ export const CharacterModal: React.FC = () => {
   const [description, setDescription] = useState('');
   const [picture, setPicture] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [lifeEvents, setLifeEvents] = useState<LifeEvent[]>([]);
+  const [selectedParentIds, setSelectedParentIds] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,7 +39,6 @@ export const CharacterModal: React.FC = () => {
           setDescription(char.description || '');
           setPicture(char.picture || '');
           setTags(char.tags || []);
-          setLifeEvents(char.lifeEvents || []);
         }
       } else {
         // Reset for new character
@@ -53,7 +50,7 @@ export const CharacterModal: React.FC = () => {
         setDescription('');
         setPicture('');
         setTags([]);
-        setLifeEvents([]);
+        setSelectedParentIds([]);
       }
     }
   }, [isOpen, isEditing, state.editingItemId, state.characters]);
@@ -82,8 +79,7 @@ export const CharacterModal: React.FC = () => {
       gender,
       description,
       picture,
-      tags,
-      lifeEvents
+      tags
     };
 
     console.log('CharacterModal: handleSave charData=', charData);
@@ -92,42 +88,25 @@ export const CharacterModal: React.FC = () => {
       dispatch({ type: 'UPDATE_CHARACTER', payload: charData });
     } else {
       dispatch({ type: 'ADD_CHARACTER', payload: charData });
+      
+      // Create parent-child relationships if parents were selected
+      if (selectedParentIds.length > 0) {
+        selectedParentIds.forEach(parentId => {
+          const relationship = {
+            id: uuidv4(),
+            type: 'parent-child' as const,
+            characterIds: [parentId, characterId],
+            description: 'Parent-child relationship',
+            startDate: normalizedDob || undefined,
+          };
+          dispatch({ type: 'ADD_RELATIONSHIP', payload: relationship });
+        });
+      }
     }
     handleClose();
   };
 
-  // Handle child character creation from life event form
-  const handleCreateChildCharacter = (childName: string, birthDate: string, parentIds: string[]) => {
-    const childId = uuidv4();
-    const normalizedDate = normalizeDDMMYYYYHHMMSS(birthDate);
-    
-    // Create the child character
-    const childCharacter = {
-      id: childId,
-      name: childName,
-      dob: normalizedDate || birthDate,
-      age: '',
-      gender: '',
-      description: `Child of ${name}`,
-      picture: '',
-      tags: [],
-      lifeEvents: []
-    };
 
-    // Add birth event to current character's life events
-    const birthEvent: LifeEvent = {
-      id: uuidv4(),
-      type: 'birth-of-child',
-      date: normalizedDate || birthDate,
-      characters: parentIds,
-      childId: childId,
-    };
-
-    setLifeEvents(prev => [...prev, birthEvent]);
-
-    // Dispatch to create the child character
-    dispatch({ type: 'ADD_CHARACTER', payload: childCharacter });
-  };
 
   const handleDelete = () => {
     if (isEditing && confirm('Delete this character?')) {
@@ -264,16 +243,34 @@ export const CharacterModal: React.FC = () => {
         />
       </div>
 
-      {/* Life Events Section - only show when editing */}
-      {isEditing && (
-        <div className={styles.lifeEventsSection}>
-          <LifeEventForm
-            characterId={state.editingItemId!}
-            characters={state.characters}
-            lifeEvents={lifeEvents}
-            onChange={setLifeEvents}
-            onCreateChildCharacter={handleCreateChildCharacter}
-          />
+      {/* Parent Selection - only show when creating new character */}
+      {!isEditing && state.characters.length > 0 && (
+        <div className={styles.field}>
+          <label>Parents (optional)</label>
+          <div className={styles.parentSelection}>
+            {state.characters.map(char => (
+              <div key={char.id} className={styles.parentOption}>
+                <input
+                  type="checkbox"
+                  id={`parent-${char.id}`}
+                  checked={selectedParentIds.includes(char.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedParentIds(prev => [...prev, char.id]);
+                    } else {
+                      setSelectedParentIds(prev => prev.filter(id => id !== char.id));
+                    }
+                  }}
+                />
+                <label htmlFor={`parent-${char.id}`}>{char.name}</label>
+              </div>
+            ))}
+          </div>
+          {selectedParentIds.length > 0 && (
+            <div className={styles.selectedParentsInfo}>
+              {selectedParentIds.length} parent(s) selected
+            </div>
+          )}
         </div>
       )}
     </Modal>

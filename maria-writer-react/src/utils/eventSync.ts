@@ -1,4 +1,4 @@
-import { Character, Event } from '../types';
+import { Character, Event, Relationship, LifeEventType, LifeEvent } from '../types';
 import { normalizeDDMMYYYYHHMMSS } from './date';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -42,6 +42,17 @@ export interface SyncResult {
   createdCount: number;
   updatedCount: number;
   deletedCount: number;
+}
+
+/**
+ * Extended sync result that includes relationships
+ */
+export interface ExtendedSyncResult extends SyncResult {
+  relationships: Relationship[];
+  characters: Character[];
+  relationshipsCreated: number;
+  relationshipsUpdated: number;
+  relationshipsDeleted: number;
 }
 
 /**
@@ -243,4 +254,408 @@ export const clearCharacterFieldsOnEventDelete = (
   }
 
   return characters;
+};
+
+/**
+ * Syncs a life event (marriage, friendship, birth-of-child) to create appropriate relationships
+ * and update character records.
+ * 
+ * @param lifeEventType - Type of life event (marriage, friendship, birth-of-child)
+ * @param eventData - The timeline event data
+ * @param currentRelationships - Current list of relationships
+ * @param currentCharacters - Current list of characters
+ * @returns Extended sync result with updated relationships and characters
+ */
+export const syncLifeEventToRelationships = (
+  lifeEventType: LifeEventType,
+  eventData: Event,
+  currentRelationships: Relationship[],
+  currentCharacters: Character[]
+): ExtendedSyncResult => {
+  let relationships = [...currentRelationships];
+  let characters = [...currentCharacters];
+  let relationshipsCreated = 0;
+  let relationshipsUpdated = 0;
+  
+  const characterIds = eventData.characters || [];
+  
+  if (lifeEventType === 'marriage' && characterIds.length === 2) {
+    // Check if spouse relationship already exists
+    const existingRel = relationships.find(r => 
+      r.type === 'spouse' &&
+      r.characterIds.length === 2 &&
+      r.characterIds.includes(characterIds[0]) &&
+      r.characterIds.includes(characterIds[1])
+    );
+    
+    if (!existingRel) {
+      // Create spouse relationship
+      const newRelationship: Relationship = {
+        id: uuidv4(),
+        type: 'spouse',
+        characterIds,
+        description: `Married on ${eventData.date}`,
+        startDate: eventData.date,
+      };
+      relationships.push(newRelationship);
+      relationshipsCreated++;
+    }
+    
+    // Update characters with marriage life event
+    characterIds.forEach(charId => {
+      const character = characters.find(c => c.id === charId);
+      if (character) {
+        const lifeEvent: LifeEvent = {
+          id: uuidv4(),
+          type: 'marriage',
+          date: eventData.date || '',
+          characters: characterIds,
+          notes: eventData.description,
+        };
+        
+        // Check if life event already exists
+        const hasLifeEvent = character.lifeEvents?.some(le => 
+          le.type === 'marriage' &&
+          le.date === eventData.date &&
+          le.characters.length === characterIds.length &&
+          le.characters.every(id => characterIds.includes(id))
+        );
+        
+        if (!hasLifeEvent) {
+          characters = characters.map(c =>
+            c.id === charId
+              ? { ...c, lifeEvents: [...(c.lifeEvents || []), lifeEvent] }
+              : c
+          );
+        }
+      }
+    });
+  } else if (lifeEventType === 'friendship' && characterIds.length >= 2) {
+    // Create friend relationship (handles group friendships)
+    const existingRel = relationships.find(r =>
+      r.type === 'friend' &&
+      r.characterIds.length === characterIds.length &&
+      r.characterIds.every(id => characterIds.includes(id))
+    );
+    
+    if (!existingRel) {
+      const newRelationship: Relationship = {
+        id: uuidv4(),
+        type: 'friend',
+        characterIds,
+        description: `Became friends on ${eventData.date}`,
+        startDate: eventData.date,
+      };
+      relationships.push(newRelationship);
+      relationshipsCreated++;
+    }
+    
+    // Update characters with friendship life event
+    characterIds.forEach(charId => {
+      const character = characters.find(c => c.id === charId);
+      if (character) {
+        const lifeEvent: LifeEvent = {
+          id: uuidv4(),
+          type: 'friendship',
+          date: eventData.date || '',
+          characters: characterIds,
+          notes: eventData.description,
+        };
+        
+        const hasLifeEvent = character.lifeEvents?.some(le =>
+          le.type === 'friendship' &&
+          le.date === eventData.date &&
+          le.characters.length === characterIds.length &&
+          le.characters.every(id => characterIds.includes(id))
+        );
+        
+        if (!hasLifeEvent) {
+          characters = characters.map(c =>
+            c.id === charId
+              ? { ...c, lifeEvents: [...(c.lifeEvents || []), lifeEvent] }
+              : c
+          );
+        }
+      }
+    });
+  } else if (lifeEventType === 'birth-of-child' && characterIds.length >= 2) {
+    // First character is child, rest are parents
+    const childId = characterIds[0];
+    const parentIds = characterIds.slice(1);
+    
+    // Create parent-child relationships
+    parentIds.forEach(parentId => {
+      const existingRel = relationships.find(r =>
+        r.type === 'parent-child' &&
+        r.characterIds.length === 2 &&
+        r.characterIds[0] === parentId &&
+        r.characterIds[1] === childId
+      );
+      
+      if (!existingRel) {
+        const newRelationship: Relationship = {
+          id: uuidv4(),
+          type: 'parent-child',
+          characterIds: [parentId, childId],
+          description: 'Parent-child relationship',
+          startDate: eventData.date,
+        };
+        relationships.push(newRelationship);
+        relationshipsCreated++;
+      }
+    });
+    
+    // Update all characters with birth life event
+    characterIds.forEach(charId => {
+      const character = characters.find(c => c.id === charId);
+      if (character) {
+        const lifeEvent: LifeEvent = {
+          id: uuidv4(),
+          type: 'birth-of-child',
+          date: eventData.date || '',
+          characters: characterIds,
+          childId: childId,
+          notes: eventData.description,
+        };
+        
+        const hasLifeEvent = character.lifeEvents?.some(le =>
+          le.type === 'birth-of-child' &&
+          le.date === eventData.date &&
+          le.childId === childId
+        );
+        
+        if (!hasLifeEvent) {
+          characters = characters.map(c =>
+            c.id === charId
+              ? { ...c, lifeEvents: [...(c.lifeEvents || []), lifeEvent] }
+              : c
+          );
+        }
+      }
+    });
+  }
+  
+  return {
+    events: [eventData],
+    relationships,
+    characters,
+    createdCount: 0,
+    updatedCount: 0,
+    deletedCount: 0,
+    relationshipsCreated,
+    relationshipsUpdated,
+    relationshipsDeleted: 0,
+  };
+};
+
+/**
+ * Detects if an event is a life event based on its properties
+ * 
+ * @param event - The event to check
+ * @returns Life event type if detected, null otherwise
+ */
+export const detectLifeEventType = (event: Event): LifeEventType | null => {
+  const title = event.title.toLowerCase();
+  
+  if (title.includes('marriage') || title.includes('married') || title === 'marriage') {
+    return 'marriage';
+  }
+  if (title.includes('friendship') || title.includes('friend')) {
+    return 'friendship';
+  }
+  if (title.includes('birth') || title.includes('child')) {
+    return 'birth-of-child';
+  }
+  
+  return null;
+};
+
+/**
+ * Syncs life events from character records to relationships and timeline events
+ * This ensures consistency when characters are updated with life events
+ * 
+ * @param character - The updated character
+ * @param currentEvents - Current list of events
+ * @param currentRelationships - Current list of relationships
+ * @param allCharacters - All characters (for name lookup)
+ * @returns Extended sync result
+ */
+export const syncCharacterLifeEventsToTimeline = (
+  character: Character,
+  currentEvents: Event[],
+  currentRelationships: Relationship[],
+  allCharacters: Character[]
+): ExtendedSyncResult => {
+  let events = [...currentEvents];
+  let relationships = [...currentRelationships];
+  let characters = [...allCharacters];
+  let createdCount = 0;
+  let relationshipsCreated = 0;
+  
+  const lifeEvents = character.lifeEvents || [];
+  
+  for (const lifeEvent of lifeEvents) {
+    // Check if timeline event exists for this life event
+    const eventExists = events.some(e =>
+      e.date === lifeEvent.date &&
+      e.characters?.includes(character.id) &&
+      detectLifeEventType(e) === lifeEvent.type
+    );
+    
+    if (!eventExists) {
+      // Create timeline event
+      let title = '';
+      if (lifeEvent.type === 'marriage') {
+        title = 'Marriage';
+      } else if (lifeEvent.type === 'friendship') {
+        title = 'Friendship Formed';
+      } else if (lifeEvent.type === 'birth-of-child') {
+        title = 'Birth of Child';
+      }
+      
+      const newEvent: Event = {
+        id: uuidv4(),
+        title,
+        date: lifeEvent.date,
+        description: lifeEvent.notes || title,
+        characters: lifeEvent.characters,
+      };
+      
+      events.push(newEvent);
+      createdCount++;
+      
+      // Also create relationship
+      const syncResult = syncLifeEventToRelationships(
+        lifeEvent.type,
+        newEvent,
+        relationships,
+        characters
+      );
+      
+      relationships = syncResult.relationships;
+      characters = syncResult.characters;
+      relationshipsCreated += syncResult.relationshipsCreated;
+    }
+  }
+  
+  return {
+    events,
+    relationships,
+    characters,
+    createdCount,
+    updatedCount: 0,
+    deletedCount: 0,
+    relationshipsCreated,
+    relationshipsUpdated: 0,
+    relationshipsDeleted: 0,
+  };
+};
+
+/**
+ * Syncs a relationship to create a corresponding timeline event.
+ * When adding a relationship, this creates an event marking when it started.
+ * 
+ * @param relationship - The relationship being added
+ * @param currentEvents - Current list of events
+ * @param allCharacters - All characters (for name lookup)
+ * @returns Updated events array and count of changes
+ */
+export const syncRelationshipToEvent = (
+  relationship: Relationship,
+  currentEvents: Event[],
+  allCharacters: Character[]
+): SyncResult => {
+  let events = [...currentEvents];
+  let createdCount = 0;
+  
+  // Only create an event if the relationship has a start date
+  if (!relationship.startDate || relationship.characterIds.length < 2) {
+    return { events, createdCount, updatedCount: 0, deletedCount: 0 };
+  }
+  
+  // Get character names for the event title
+  const characterNames = relationship.characterIds
+    .map(id => allCharacters.find(c => c.id === id)?.name)
+    .filter(name => name !== undefined) as string[];
+  
+  if (characterNames.length < 2) {
+    return { events, createdCount, updatedCount: 0, deletedCount: 0 };
+  }
+  
+  // Create event title based on relationship type
+  let title = '';
+  let description = relationship.description || '';
+  
+  switch (relationship.type) {
+    case 'spouse':
+      title = `${characterNames.join(' & ')} - Marriage`;
+      description = description || `${characterNames.join(' and ')} got married`;
+      break;
+    case 'parent-child':
+      title = `${characterNames[1]} Born`;
+      description = description || `${characterNames[1]} born to ${characterNames[0]}`;
+      break;
+    case 'friend':
+      title = `${characterNames.join(' & ')} - Friendship`;
+      description = description || `${characterNames.join(' and ')} became friends`;
+      break;
+    case 'romantic':
+      title = `${characterNames.join(' & ')} - Relationship`;
+      description = description || `${characterNames.join(' and ')} started dating`;
+      break;
+    case 'sibling':
+      title = `${characterNames.join(' & ')} - Siblings`;
+      description = description || `${characterNames.join(' and ')} are siblings`;
+      break;
+    case 'colleague':
+      title = `${characterNames.join(' & ')} - Colleagues`;
+      description = description || `${characterNames.join(' and ')} became colleagues`;
+      break;
+    case 'mentor-student':
+      title = `${characterNames[0]} mentors ${characterNames[1]}`;
+      description = description || `${characterNames[0]} became ${characterNames[1]}'s mentor`;
+      break;
+    case 'rival':
+      title = `${characterNames.join(' vs ')} - Rivalry`;
+      description = description || `${characterNames.join(' and ')} became rivals`;
+      break;
+    case 'enemy':
+      title = `${characterNames.join(' vs ')} - Enmity`;
+      description = description || `${characterNames.join(' and ')} became enemies`;
+      break;
+    case 'family':
+      title = `${characterNames.join(' & ')} - Family Connection`;
+      description = description || `${characterNames.join(' and ')} are family`;
+      break;
+    case 'acquaintance':
+      title = `${characterNames.join(' & ')} - Met`;
+      description = description || `${characterNames.join(' and ')} met`;
+      break;
+    default:
+      title = `${characterNames.join(' & ')} - ${relationship.type}`;
+      description = description || `${characterNames.join(' and ')} relationship: ${relationship.type}`;
+  }
+  
+  // Check if an event already exists for this relationship
+  const eventExists = events.some(e =>
+    e.title === title &&
+    e.date === relationship.startDate &&
+    e.characters?.length === relationship.characterIds.length &&
+    e.characters?.every(id => relationship.characterIds.includes(id))
+  );
+  
+  if (!eventExists) {
+    const newEvent: Event = {
+      id: uuidv4(),
+      title,
+      date: relationship.startDate,
+      description,
+      characters: relationship.characterIds,
+    };
+    
+    events.push(newEvent);
+    createdCount++;
+  }
+  
+  return { events, createdCount, updatedCount: 0, deletedCount: 0 };
 };

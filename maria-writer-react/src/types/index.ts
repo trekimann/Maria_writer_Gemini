@@ -63,10 +63,34 @@ export interface Timeline {
   characterLaneOrder?: string[]; // Order of character IDs in timeline view
 }
 
+export type RelationshipType = 
+  | 'family' 
+  | 'parent-child' 
+  | 'sibling' 
+  | 'spouse' 
+  | 'romantic' 
+  | 'friend' 
+  | 'colleague' 
+  | 'mentor-student' 
+  | 'rival' 
+  | 'enemy' 
+  | 'acquaintance'
+  | 'other';
+
+export interface Relationship {
+  id: string;
+  type: RelationshipType;
+  characterIds: string[]; // Can have 2+ characters for group relationships
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  tags?: string[];
+}
+
 export type ViewMode = 'edit' | 'preview';
 export type ContextMode = 'writer' | 'codex';
-export type CodexTab = 'timeline' | 'characters' | 'events';
-export type ModalType = 'none' | 'save' | 'metadata' | 'character' | 'event';
+export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
+export type ModalType = 'none' | 'save' | 'metadata' | 'character' | 'event' | 'relationship';
 
 export interface AppState {
   meta: BookMetadata;
@@ -74,6 +98,7 @@ export interface AppState {
   activeChapterId: string | null;
   characters: Character[];
   events: Event[];
+  relationships: Relationship[];
   comments: Record<string, Comment>;
   timeline: Timeline;
   viewMode: ViewMode;

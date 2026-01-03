@@ -34,6 +34,85 @@
   }
 }
 
+.lifeEventToggle {
+  margin-bottom: 12px;
+}
+
+.toggleButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: white;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--color-text);
+
+  &:hover {
+    background: var(--color-bg-hover, #f9f9f9);
+    border-color: #f59e0b;
+  }
+
+  &.active {
+    background: #f59e0b;
+    color: white;
+    border-color: #f59e0b;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.lifeEventSection {
+  padding: 16px;
+  background: var(--color-bg-secondary, #f9f9f9);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  margin-top: 12px;
+
+  label {
+    margin-bottom: 8px;
+    display: block;
+  }
+}
+
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1);
+  }
+}
+
+.lifeEventHelp {
+  margin-top: 12px;
+  padding: 12px;
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  border-radius: 4px;
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #1976d2;
+    line-height: 1.5;
+  }
+}
+
 .input, .textarea {
   width: 100%;
   border: 1px solid var(--color-border);

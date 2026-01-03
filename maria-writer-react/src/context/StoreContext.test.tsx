@@ -312,4 +312,136 @@ describe('StoreContext Reducer', () => {
       expect(newState.timeline.edges).toEqual([{ id: 'e1', from: 'a', to: 'b' }]);
     });
   });
+
+  describe('ADD_RELATIONSHIP syncing to events', () => {
+    it('should create timeline event when adding relationship with start date', () => {
+      uuidSeq.reset();
+      const stateWithCharacters = {
+        ...initialState,
+        characters: [
+          { id: 'c1', name: 'Alice', tags: [] },
+          { id: 'c2', name: 'Bob', tags: [] },
+        ],
+      };
+
+      const relationship = {
+        id: 'r1',
+        type: 'spouse' as const,
+        characterIds: ['c1', 'c2'],
+        startDate: '01/06/2020 14:00:00',
+        description: 'Wedding day',
+      };
+
+      const newState = reducer(stateWithCharacters as any, { type: 'ADD_RELATIONSHIP', payload: relationship });
+
+      expect(newState.relationships).toHaveLength(1);
+      expect(newState.relationships[0]).toEqual(relationship);
+
+      // Should create corresponding event
+      expect(newState.events).toHaveLength(1);
+      expect(newState.events[0].title).toBe('Alice & Bob - Marriage');
+      expect(newState.events[0].date).toBe('01/06/2020 14:00:00');
+      expect(newState.events[0].description).toBe('Wedding day');
+      expect(newState.events[0].characters).toEqual(['c1', 'c2']);
+    });
+
+    it('should not create event when relationship has no start date', () => {
+      const stateWithCharacters = {
+        ...initialState,
+        characters: [
+          { id: 'c1', name: 'Alice', tags: [] },
+          { id: 'c2', name: 'Bob', tags: [] },
+        ],
+      };
+
+      const relationship = {
+        id: 'r1',
+        type: 'friend' as const,
+        characterIds: ['c1', 'c2'],
+      };
+
+      const newState = reducer(stateWithCharacters as any, { type: 'ADD_RELATIONSHIP', payload: relationship });
+
+      expect(newState.relationships).toHaveLength(1);
+      expect(newState.events).toHaveLength(0);
+    });
+
+    it('should create event for friend relationship', () => {
+      uuidSeq.reset();
+      const stateWithCharacters = {
+        ...initialState,
+        characters: [
+          { id: 'c1', name: 'Alice', tags: [] },
+          { id: 'c2', name: 'Bob', tags: [] },
+        ],
+      };
+
+      const relationship = {
+        id: 'r1',
+        type: 'friend' as const,
+        characterIds: ['c1', 'c2'],
+        startDate: '15/03/2019 10:00:00',
+      };
+
+      const newState = reducer(stateWithCharacters as any, { type: 'ADD_RELATIONSHIP', payload: relationship });
+
+      expect(newState.events).toHaveLength(1);
+      expect(newState.events[0].title).toBe('Alice & Bob - Friendship');
+      expect(newState.events[0].description).toBe('Alice and Bob became friends');
+    });
+
+    it('should create event for parent-child relationship', () => {
+      uuidSeq.reset();
+      const stateWithCharacters = {
+        ...initialState,
+        characters: [
+          { id: 'c1', name: 'Alice', tags: [] },
+          { id: 'c2', name: 'Charlie', tags: [] },
+        ],
+      };
+
+      const relationship = {
+        id: 'r1',
+        type: 'parent-child' as const,
+        characterIds: ['c1', 'c2'],
+        startDate: '20/05/2022 08:30:00',
+      };
+
+      const newState = reducer(stateWithCharacters as any, { type: 'ADD_RELATIONSHIP', payload: relationship });
+
+      expect(newState.events).toHaveLength(1);
+      expect(newState.events[0].title).toBe('Charlie Born');
+      expect(newState.events[0].description).toBe('Charlie born to Alice');
+    });
+
+    it('should not duplicate existing event', () => {
+      const stateWithCharacters = {
+        ...initialState,
+        characters: [
+          { id: 'c1', name: 'Alice', tags: [] },
+          { id: 'c2', name: 'Bob', tags: [] },
+        ],
+        events: [
+          {
+            id: 'e1',
+            title: 'Alice & Bob - Marriage',
+            date: '01/06/2020 14:00:00',
+            characters: ['c1', 'c2'],
+          }
+        ],
+      };
+
+      const relationship = {
+        id: 'r1',
+        type: 'spouse' as const,
+        characterIds: ['c1', 'c2'],
+        startDate: '01/06/2020 14:00:00',
+      };
+
+      const newState = reducer(stateWithCharacters as any, { type: 'ADD_RELATIONSHIP', payload: relationship });
+
+      expect(newState.relationships).toHaveLength(1);
+      expect(newState.events).toHaveLength(1); // No duplicate created
+    });
+  });
 });

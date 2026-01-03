@@ -1,0 +1,148 @@
+.relationshipList {
+  padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+  }
+}
+
+.addButton {
+  padding: 10px 16px;
+  background: var(--primary-color, #007acc);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--primary-hover, #005a9e);
+  }
+}
+
+.relationships {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.relationshipCard {
+  padding: 16px;
+  background: white;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+}
+
+.relationshipHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.relationshipType {
+  font-weight: bold;
+  font-size: 16px;
+  text-transform: capitalize;
+}
+
+.relationshipBadge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: white;
+  text-transform: capitalize;
+}
+
+.characters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.characterTag {
+  padding: 4px 8px;
+  background: var(--bg-secondary, #f0f0f0);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.description {
+  color: var(--text-secondary, #666);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.dates {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary, #666);
+
+  svg {
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  p {
+    margin: 8px 0;
+    font-size: 16px;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButton {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--hover-bg, #f0f0f0);
+  }
+
+  &.delete {
+    color: var(--danger-color, #d32f2f);
+    border-color: var(--danger-color, #d32f2f);
+
+    &:hover {
+      background: var(--danger-color, #d32f2f);
+      color: white;
+    }
+  }
+}

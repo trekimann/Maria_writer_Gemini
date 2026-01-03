@@ -38,6 +38,22 @@ export const DateTimeInput: React.FC<Props> = ({ value, onChange, className, pla
         next.setSeconds(0, 0);
         onChange(formatDDMMYYYYHHMMSSFromDate(next));
       }}
+      onChangeRaw={(event) => {
+        if (!event) return;
+        const target = event.target as HTMLInputElement;
+        const input = target.value;
+        if (!input) {
+          onChange('');
+          return;
+        }
+        
+        // Parse manually typed dates in dd/mm/yyyy format
+        const parsed = parseDDMMYYYYHHMMSS(input);
+        if (parsed) {
+          onChange(formatDDMMYYYYHHMMSSFromDate(parsed));
+          event.preventDefault(); // Prevent default parsing
+        }
+      }}
       showTimeSelect
       timeIntervals={1}
       dateFormat="dd/MM/yyyy HH:mm:ss"

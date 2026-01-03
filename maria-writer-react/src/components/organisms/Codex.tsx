@@ -5,6 +5,7 @@ import { CharacterDetail } from './CharacterDetail';
 import { EventList } from './EventList';
 import { EventDetail } from './EventDetail';
 import { TimelineView } from './TimelineView';
+import { RelationshipView } from './RelationshipView';
 import styles from './Codex.module.scss';
 
 export const Codex: React.FC = () => {
@@ -13,7 +14,8 @@ export const Codex: React.FC = () => {
   const tabs = [
     { id: 'timeline', label: 'Timeline' },
     { id: 'characters', label: 'Characters' },
-    { id: 'events', label: 'Events' }
+    { id: 'events', label: 'Events' },
+    { id: 'relationships', label: 'Relationships' }
   ] as const;
 
   return (
@@ -39,6 +41,9 @@ export const Codex: React.FC = () => {
         )}
         {state.activeCodexTab === 'events' && (
           state.viewingItemId ? <EventDetail /> : <EventList />
+        )}
+        {state.activeCodexTab === 'relationships' && (
+          <RelationshipView />
         )}
       </div>
     </div>
