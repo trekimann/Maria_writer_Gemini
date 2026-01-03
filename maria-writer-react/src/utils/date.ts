@@ -126,3 +126,59 @@ export const formatDateTimeOrEmpty = (value?: string | null): string => {
   if (!value) return '';
   return normalizeDDMMYYYYHHMMSS(value) ?? value;
 };
+
+/**
+ * Calculate age from date of birth to a reference date (default: today)
+ * Works with both dd/MM/yyyy and dd/MM/yyyy HH:mm:ss formats
+ * Returns age in years as a number, or null if dob is invalid
+ */
+export const calculateAge = (dob: string, referenceDate: Date = new Date()): number | null => {
+  if (!dob) return null;
+  
+  const parsedDate = parseDDMMYYYYHHMMSS(dob);
+  if (!parsedDate) return null;
+  
+  let age = referenceDate.getFullYear() - parsedDate.getFullYear();
+  const monthDiff = referenceDate.getMonth() - parsedDate.getMonth();
+  
+  // Adjust if birthday hasn't occurred yet this year
+  if (monthDiff < 0 || (monthDiff === 0 && referenceDate.getDate() < parsedDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
+/**
+ * Get display age: returns the stored age if available, otherwise calculates from dob
+ * Returns null if neither age nor dob is available
+ * 
+ * @param storedAge - The manually entered age (if any)
+ * @param dob - The date of birth
+ * @param storyCurrentDate - The story's "current date" (optional, defaults to today)
+ */
+export const getDisplayAge = (
+  storedAge: string | undefined, 
+  dob: string | undefined,
+  storyCurrentDate?: string
+): number | null => {
+  if (storedAge && storedAge.trim()) {
+    const parsed = parseInt(storedAge, 10);
+    return isNaN(parsed) ? null : parsed;
+  }
+  
+  if (dob) {
+    // Use story's current date if provided, otherwise use today
+    let referenceDate: Date;
+    if (storyCurrentDate) {
+      const parsedStoryDate = parseDDMMYYYYHHMMSS(storyCurrentDate);
+      referenceDate = parsedStoryDate || new Date();
+    } else {
+      referenceDate = new Date();
+    }
+    
+    return calculateAge(dob, referenceDate);
+  }
+  
+  return null;
+};

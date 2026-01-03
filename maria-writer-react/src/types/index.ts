@@ -3,6 +3,7 @@ export interface BookMetadata {
   author: string;
   description: string;
   tags: string[];
+  currentDate?: string; // Story's current date (dd/MM/yyyy HH:mm:ss) - used for age calculations
 }
 
 export interface Chapter {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Modal } from '../molecules/Modal';
 import { TagInput } from '../molecules/TagInput';
+import { DateTimeInput } from '../molecules/DateTimeInput';
 import { Button } from '../atoms/Button';
 import { Check } from 'lucide-react';
 import styles from './MetadataModal.module.scss';
@@ -12,6 +13,7 @@ export const MetadataModal: React.FC = () => {
   const [author, setAuthor] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [currentDate, setCurrentDate] = useState('');
 
   const isOpen = state.activeModal === 'metadata';
 
@@ -21,6 +23,7 @@ export const MetadataModal: React.FC = () => {
       setAuthor(state.meta.author);
       setDescription(state.meta.description);
       setTags(state.meta.tags);
+      setCurrentDate(state.meta.currentDate || '');
     }
   }, [isOpen, state.meta]);
 
@@ -31,7 +34,7 @@ export const MetadataModal: React.FC = () => {
   const handleSave = () => {
     dispatch({
       type: 'SET_META',
-      payload: { title, author, description, tags }
+      payload: { title, author, description, tags, currentDate: currentDate || undefined }
     });
     handleClose();
   };
@@ -85,6 +88,18 @@ export const MetadataModal: React.FC = () => {
       <div className={styles.field}>
         <label>Tags</label>
         <TagInput tags={tags} onChange={setTags} color="emerald" />
+      </div>
+      <div className={styles.field}>
+        <label>Current Story Date (optional)</label>
+        <DateTimeInput 
+          value={currentDate} 
+          onChange={setCurrentDate} 
+          className={styles.input} 
+          placeholder="dd/MM/yyyy HH:mm:ss"
+        />
+        <span className={styles.hint}>
+          Set the "current" date in your story world. Used for calculating character ages.
+        </span>
       </div>
     </Modal>
   );

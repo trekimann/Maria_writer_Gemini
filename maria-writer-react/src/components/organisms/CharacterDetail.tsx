@@ -2,7 +2,7 @@ import React from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
 import { ArrowLeft, Edit, Calendar } from 'lucide-react';
-import { formatDateTimeOrEmpty } from '../../utils/date';
+import { formatDateTimeOrEmpty, getDisplayAge } from '../../utils/date';
 import styles from './CharacterDetail.module.scss';
 
 export const CharacterDetail: React.FC = () => {
@@ -60,7 +60,10 @@ export const CharacterDetail: React.FC = () => {
           <div className={styles.info}>
             <h2 className={styles.name}>{char.name}</h2>
             <div className={styles.meta}>
-              <span>{char.age ? `${char.age} years old` : 'Age unknown'}</span>
+              <span>{(() => {
+                const displayAge = getDisplayAge(char.age, char.dob, state.meta.currentDate);
+                return displayAge !== null ? `${displayAge} years old` : 'Age unknown';
+              })()}</span>
               {char.gender && <span> • {char.gender}</span>}
               {char.deathDate && <span className={styles.deceased}> • Deceased</span>}
             </div>

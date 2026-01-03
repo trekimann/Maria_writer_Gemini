@@ -1,6 +1,8 @@
 import React from 'react';
 import { Character } from '../../types';
 import { User } from 'lucide-react';
+import { getDisplayAge } from '../../utils/date';
+import { useStore } from '../../context/StoreContext';
 import styles from './CharacterCard.module.scss';
 
 interface CharacterCardProps {
@@ -9,6 +11,8 @@ interface CharacterCardProps {
 }
 
 export const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick }) => {
+  const { state } = useStore();
+  
   return (
     <div className={styles.card} onClick={onClick}>
       <div className={styles.imageWrapper}>
@@ -23,7 +27,10 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick
       <div className={styles.content}>
         <h4 className={styles.name}>{character.name}</h4>
         <div className={styles.meta}>
-          {character.age && <span>{character.age} yrs</span>}
+          {(() => {
+            const displayAge = getDisplayAge(character.age, character.dob, state.meta.currentDate);
+            return displayAge !== null && <span>{displayAge} yrs</span>;
+          })()}
           {character.gender && <span>{character.gender}</span>}
         </div>
         <div className={styles.tags}>
