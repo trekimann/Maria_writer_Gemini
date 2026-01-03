@@ -1,11 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
-import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather } from 'lucide-react';
+import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
 import styles from './TopBar.module.scss';
 
 export const TopBar: React.FC = () => {
   const { state, dispatch } = useStore();
+  const [showHeadingMenu, setShowHeadingMenu] = useState(false);
+  const headingMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (headingMenuRef.current && !headingMenuRef.current.contains(event.target as Node)) {
+        setShowHeadingMenu(false);
+      }
+    };
+
+    if (showHeadingMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showHeadingMenu]);
 
   const handleSave = () => {
     dispatch({ type: 'OPEN_MODAL', payload: { type: 'save' } });
@@ -37,12 +55,29 @@ export const TopBar: React.FC = () => {
   };
 
   const toggleViewMode = () => {
-    dispatch({ type: 'SET_VIEW_MODE', payload: state.viewMode === 'edit' ? 'preview' : 'edit' });
+    // Cycle through: write -> source -> preview -> write
+    const modes = ['write', 'source', 'preview'] as const;
+    const currentIndex = modes.indexOf(state.viewMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    dispatch({ type: 'SET_VIEW_MODE', payload: nextMode });
   };
 
   const handleFormat = (format: string) => {
     window.dispatchEvent(new CustomEvent('maria-editor-format', { detail: { format } }));
   };
+
+  const getViewModeButton = () => {
+    switch (state.viewMode) {
+      case 'write':
+        return { icon: Code, label: 'Source' };
+      case 'source':
+        return { icon: Eye, label: 'Preview' };
+      case 'preview':
+        return { icon: PenLine, label: 'Write' };
+    }
+  };
+
+  const viewModeButton = getViewModeButton();
 
   return (
     <header className={styles.topbar}>
@@ -67,6 +102,31 @@ export const TopBar: React.FC = () => {
         <div className={styles.divider}></div>
 
         <div className={styles.formatting}>
+          <div className={styles.headingDropdown} ref={headingMenuRef}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              icon={Heading1} 
+              title="Headings"
+              onClick={() => setShowHeadingMenu(!showHeadingMenu)}
+            />
+            {showHeadingMenu && (
+              <div className={styles.dropdownMenu}>
+                <button onClick={() => { handleFormat('paragraph'); setShowHeadingMenu(false); }}>
+                  Paragraph
+                </button>
+                <button onClick={() => { handleFormat('heading1'); setShowHeadingMenu(false); }}>
+                  <Heading1 size={16} /> Heading 1
+                </button>
+                <button onClick={() => { handleFormat('heading2'); setShowHeadingMenu(false); }}>
+                  <Heading2 size={16} /> Heading 2
+                </button>
+                <button onClick={() => { handleFormat('heading3'); setShowHeadingMenu(false); }}>
+                  <Heading3 size={16} /> Heading 3
+                </button>
+              </div>
+            )}
+          </div>
           <Button variant="ghost" size="sm" icon={Bold} title="Bold" onClick={() => handleFormat('bold')} />
           <Button variant="ghost" size="sm" icon={Italic} title="Italic" onClick={() => handleFormat('italic')} />
           <Button variant="ghost" size="sm" icon={Underline} title="Underline" onClick={() => handleFormat('underline')} />
@@ -79,8 +139,8 @@ export const TopBar: React.FC = () => {
         <Button 
           variant="secondary" 
           size="sm" 
-          icon={state.viewMode === 'edit' ? Eye : PenLine} 
-          label={state.viewMode === 'edit' ? 'Preview' : 'Edit'} 
+          icon={viewModeButton.icon} 
+          label={viewModeButton.label} 
           onClick={toggleViewMode}
         />
       </div>

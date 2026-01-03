@@ -16,7 +16,7 @@ export const initialState: AppState = {
   relationships: [],
   comments: {},
   timeline: { edges: [] },
-  viewMode: 'preview',
+  viewMode: 'write',
   context: 'writer',
   activeCodexTab: 'timeline',
   activeModal: 'none',

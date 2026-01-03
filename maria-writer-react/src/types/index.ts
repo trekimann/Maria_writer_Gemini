@@ -88,7 +88,7 @@ export interface Relationship {
   tags?: string[];
 }
 
-export type ViewMode = 'edit' | 'preview';
+export type ViewMode = 'write' | 'source' | 'preview';
 export type ContextMode = 'writer' | 'codex';
 export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
 export type ModalType = 'none' | 'save' | 'metadata' | 'character' | 'event' | 'relationship';
