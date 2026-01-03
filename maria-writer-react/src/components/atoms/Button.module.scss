@@ -1,0 +1,76 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: 1px solid transparent;
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.primary {
+  background-color: var(--color-primary);
+  color: white;
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+}
+
+.secondary {
+  background-color: white;
+  border-color: var(--color-border);
+  color: var(--color-text);
+  &:hover:not(:disabled) {
+    background-color: var(--color-bg);
+  }
+}
+
+.danger {
+  color: #dc2626;
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--color-text-muted);
+  &:hover:not(:disabled) {
+    background-color: rgba(0,0,0,0.05);
+    color: var(--color-text);
+  }
+}
+
+
+.sm {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.md {
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+.lg {
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}

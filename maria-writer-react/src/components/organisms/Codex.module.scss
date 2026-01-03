@@ -1,0 +1,52 @@
+.codex {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f8fafc;
+}
+
+.tabs {
+  background-color: white;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 1rem;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.tab {
+  padding: 0.75rem 0.25rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  &.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+  }
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.placeholder {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  
+  h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-text);
+  }
+}

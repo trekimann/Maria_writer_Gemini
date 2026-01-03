@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maria Writer</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- DOMPurify -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.3/dist/purify.min.js"></script>
+    
+    <!-- SortableJS for Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <!-- Vis.js for Timeline Graph -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    
+    <!-- Turndown for HTML to Markdown -->
+    <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            overflow: hidden; /* App-like feel */
+        }
+
+        .editor-font {
+            font-family: 'Merriweather', serif;
+            line-height: 1.8;
+        }
+
+        .mono-font {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* Comment Highlight */
+        .maria-comment {
+            border-bottom: 2px solid #9333ea; /* Purple underline */
+            background-color: rgba(147, 51, 234, 0.1);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .maria-comment:hover {
+            background-color: rgba(147, 51, 234, 0.2);
+        }
+
+        /* Editor Styles */
+        #editor-preview h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: #111827; }
+        #editor-preview h2 { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #374151; }
+        #editor-preview p { margin-bottom: 1em; color: #374151; }
+        #editor-preview blockquote { border-left: 4px solid #e5e7eb; padding-left: 1em; color: #6b7280; font-style: italic; }
+
+        .active-tab {
+            border-bottom: 2px solid #2563eb;
+            color: #2563eb;
+        }
+        
+        .chapter-item.active {
+            background-color: #e0e7ff;
+            color: #1e40af;
+            border-left: 3px solid #2563eb;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-sm text-gray-800">
+
+    <!-- TOP RIBBON TOOLBAR -->
+    <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm z-10">
+        <div class="flex items-center space-x-4">
+            <div class="font-bold text-lg text-indigo-600 flex items-center gap-2">
+                <i data-lucide="feather"></i> Maria Writer
+            </div>
+            <div class="h-6 w-px bg-gray-300 mx-2"></div>
+            
+            <!-- File Operations -->
+            <button onclick="app.openSaveModal()" class="p-2 hover:bg-gray-100 rounded text-gray-600 flex flex-col items-center gap-0.5" title="Save .Maria File">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span class="text-[10px]">Save</span>
+            </button>
+            <button onclick="document.getElementById('file-input').click()" class="p-2 hover:bg-gray-100 rounded text-gray-600 flex flex-col items-center gap-0.5" title="Open .Maria File">
+                <i data-lucide="folder-open" class="w-4 h-4"></i>
+                <span class="text-[10px]">Open</span>
+            </button>
+            <button onclick="app.openMetadataModal()" class="p-2 hover:bg-gray-100 rounded text-gray-600 flex flex-col items-center gap-0.5" title="Edit Book Metadata">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+                <span class="text-[10px]">Info</span>
+            </button>
+            <input type="file" id="file-input" class="hidden" accept=".maria,.json" onchange="app.loadFile(this)">
+
+            <div class="h-6 w-px bg-gray-300 mx-2"></div>
+
+            <!-- Formatting (Editor Mode Only) -->
+            <div id="formatting-tools" class="flex items-center space-x-1">
+                <button onclick="app.insertFormat('**')" class="p-2 hover:bg-gray-100 rounded" title="Bold"><i data-lucide="bold" class="w-4 h-4"></i></button>
+                <button onclick="app.insertFormat('*')" class="p-2 hover:bg-gray-100 rounded" title="Italic"><i data-lucide="italic" class="w-4 h-4"></i></button>
+                <button onclick="app.insertFormat('__')" class="p-2 hover:bg-gray-100 rounded" title="Underline (Markdown usually uses HTML for this, used Bold logic for demo)"><i data-lucide="underline" class="w-4 h-4"></i></button>
+                <button onclick="app.addComment()" class="p-2 hover:bg-purple-100 text-purple-600 rounded" title="Add Comment"><i data-lucide="message-square-plus" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+             <span id="save-status" class="text-xs text-gray-400 italic">Saved locally</span>
+             <button onclick="app.toggleViewMode()" id="view-toggle-btn" class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 text-xs font-medium">
+                 <i data-lucide="eye"></i>
+                 <span id="view-mode-text">Preview</span>
+             </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- LEFT SIDEBAR -->
+        <aside class="w-64 bg-gray-50 border-r border-gray-200 flex flex-col z-0">
+            
+            <!-- Chapter Header -->
+            <div class="p-3 border-b border-gray-200 flex justify-between items-center bg-gray-100">
+                <span class="font-semibold text-gray-600 uppercase text-xs tracking-wider">Chapters</span>
+                <button onclick="app.addChapter()" class="p-1 hover:bg-white rounded border border-transparent hover:border-gray-300 shadow-sm"><i data-lucide="plus" class="w-4 h-4 text-green-600"></i></button>
+            </div>
+
+            <!-- Chapter List -->
+            <div class="flex-1 overflow-y-auto p-2" id="chapter-list-container">
+                <ul id="chapter-list" class="space-y-1">
+                    <!-- Chapters injected here -->
+                </ul>
+            </div>
+
+            <!-- Codex Nav -->
+            <div class="mt-auto border-t border-gray-200 bg-white">
+                <div onclick="app.switchContext('writer')" class="cursor-pointer p-3 hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 transition-colors" id="nav-writer">
+                    <i data-lucide="pen-tool" class="w-4 h-4 text-indigo-500"></i>
+                    <span class="font-medium">Manuscript</span>
+                </div>
+                <div onclick="app.switchContext('codex')" class="cursor-pointer p-3 hover:bg-gray-50 flex items-center gap-3 bg-gray-50 transition-colors" id="nav-codex">
+                    <i data-lucide="book" class="w-4 h-4 text-amber-600"></i>
+                    <span class="font-medium">Codex</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL (Writer or Codex) -->
+        <main class="flex-1 relative bg-white overflow-hidden flex flex-col" id="main-area">
+            
+            <!-- WRITER VIEW -->
+            <div id="writer-view" class="absolute inset-0 flex flex-col">
+                <div class="flex-1 relative overflow-hidden">
+                    <!-- Raw Markdown Editor -->
+                    <textarea id="editor-raw" class="w-full h-full p-8 editor-font text-gray-800 resize-none outline-none hidden" spellcheck="false" placeholder="Start writing your masterpiece..."></textarea>
+                    
+                    <!-- Markdown Preview (contenteditable for live typing) -->
+                    <div id="editor-preview" class="w-full h-full p-8 editor-font overflow-y-auto outline-none" contenteditable="true"></div>
+                </div>
+                
+                <!-- Comment Panel (Bottom Overlay if active) -->
+                <div id="comment-panel" class="hidden absolute bottom-0 left-0 right-0 bg-white border-t border-purple-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 max-h-48 overflow-y-auto">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-purple-600 uppercase tracking-wide">Comments on selected text</span>
+                        <button onclick="document.getElementById('comment-panel').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <div id="active-comments-list" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- CODEX VIEW -->
+            <div id="codex-view" class="absolute inset-0 flex flex-col hidden bg-slate-50">
+                <!-- Codex Tabs -->
+                <div class="bg-white border-b border-gray-200 px-4 flex items-center gap-6">
+                    <button onclick="app.codexTab('timeline')" id="tab-timeline" class="py-3 px-1 font-medium text-gray-500 hover:text-gray-700 active-tab">Timeline</button>
+                    <button onclick="app.codexTab('characters')" id="tab-characters" class="py-3 px-1 font-medium text-gray-500 hover:text-gray-700">Characters</button>
+                    <button onclick="app.codexTab('events')" id="tab-events" class="py-3 px-1 font-medium text-gray-500 hover:text-gray-700">Events</button>
+                </div>
+
+                <!-- Timeline Content -->
+                <div id="codex-timeline" class="flex-1 relative bg-gray-100">
+                    <div id="timeline-network" class="w-full h-full"></div>
+                    <div class="absolute top-4 left-4 bg-white/90 p-2 rounded shadow backdrop-blur-sm border border-gray-200">
+                        <p class="text-xs text-gray-500 mb-2">Double click to add event node</p>
+                        <button onclick="app.fitTimeline()" class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs border border-indigo-200">Fit Graph</button>
+                    </div>
+                </div>
+
+                <!-- Characters Content -->
+                <div id="codex-characters" class="flex-1 hidden overflow-y-auto p-8">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">Characters</h2>
+                            <button onclick="app.addCharacter()" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 flex items-center gap-2">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Add Character
+                            </button>
+                        </div>
+                        <div id="character-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </div>
+                </div>
+
+                <!-- Events Content -->
+                <div id="codex-events" class="flex-1 hidden overflow-y-auto p-8">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">Event Log</h2>
+                            <div class="flex gap-2">
+                                <input type="text" id="event-search" placeholder="Search events..." class="border rounded px-3 py-2 text-sm w-64" onkeyup="app.renderEvents()">
+                                <button onclick="app.addEvent()" class="bg-amber-600 text-white px-4 py-2 rounded shadow hover:bg-amber-700 flex items-center gap-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> Add Event
+                                </button>
+                            </div>
+                        </div>
+                        <div id="events-list" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- Character Detail View -->
+                <div id="codex-char-detail" class="flex-1 hidden overflow-y-auto p-8">
+                    <div class="max-w-4xl mx-auto">
+                        <nav class="flex items-center gap-2 text-sm mb-6" id="char-breadcrumb">
+                            <button onclick="app.codexTab('characters')" class="text-indigo-600 hover:underline">Characters</button>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
+                            <span class="text-gray-600" id="char-detail-name-crumb">Character</span>
+                        </nav>
+                        <div class="bg-white rounded-lg shadow-sm border p-6">
+                            <div class="flex items-start gap-6 mb-6">
+                                <div class="w-32 h-32 rounded-xl bg-indigo-100 flex items-center justify-center text-4xl font-bold text-indigo-600 overflow-hidden" id="char-detail-avatar"></div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-start">
+                                        <h1 class="text-3xl font-bold text-gray-900" id="char-detail-name"></h1>
+                                        <button onclick="app.editCharacterFromDetail()" class="px-3 py-1.5 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200 text-sm flex items-center gap-1">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
+                                        </button>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 mt-2" id="char-detail-tags"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                                <div><span class="text-xs text-gray-500 uppercase">Age</span><p class="font-medium" id="char-detail-age">—</p></div>
+                                <div><span class="text-xs text-gray-500 uppercase">Gender</span><p class="font-medium" id="char-detail-gender">—</p></div>
+                                <div><span class="text-xs text-gray-500 uppercase">Born</span><p class="font-medium" id="char-detail-dob">—</p></div>
+                                <div><span class="text-xs text-gray-500 uppercase">Died</span><p class="font-medium" id="char-detail-death">—</p></div>
+                            </div>
+                            <div class="mb-6">
+                                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Biography</h3>
+                                <p class="text-gray-700 whitespace-pre-wrap" id="char-detail-desc">No description provided.</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Events Involving This Character</h3>
+                                <div id="char-detail-events" class="space-y-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Detail View -->
+                <div id="codex-event-detail" class="flex-1 hidden overflow-y-auto p-8">
+                    <div class="max-w-4xl mx-auto">
+                        <nav class="flex items-center gap-2 text-sm mb-6" id="event-breadcrumb">
+                            <button onclick="app.codexTab('events')" class="text-amber-600 hover:underline">Events</button>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
+                            <span class="text-gray-600" id="event-detail-name-crumb">Event</span>
+                        </nav>
+                        <div class="bg-white rounded-lg shadow-sm border p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h1 class="text-3xl font-bold text-gray-900" id="event-detail-title"></h1>
+                                    <p class="text-amber-600 font-medium mt-1" id="event-detail-date"></p>
+                                </div>
+                                <button onclick="app.editEventFromDetail()" class="px-3 py-1.5 bg-amber-100 text-amber-600 rounded hover:bg-amber-200 text-sm flex items-center gap-1">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
+                                </button>
+                            </div>
+                            <div class="mb-6">
+                                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Description</h3>
+                                <p class="text-gray-700 whitespace-pre-wrap" id="event-detail-desc">No description provided.</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Characters Involved</h3>
+                                <div id="event-detail-chars" class="flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    
+    <!-- Character Modal -->
+    <div id="char-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">Edit Character</h3>
+                <button onclick="app.closeModal('char-modal')"><i data-lucide="x" class="w-5 h-5 text-gray-400"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="char-id">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
+                    <input type="text" id="char-name" class="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="flex-shrink-0">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Profile Picture</label>
+                        <div class="relative w-24 h-24 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer hover:border-indigo-400" onclick="document.getElementById('char-pic-input').click()">
+                            <img id="char-pic-preview" src="" class="w-full h-full object-cover hidden">
+                            <i data-lucide="user" class="w-8 h-8 text-gray-400" id="char-pic-placeholder"></i>
+                        </div>
+                        <input type="file" id="char-pic-input" class="hidden" accept="image/*" onchange="app.handleCharPicUpload(this)">
+                        <button onclick="app.clearCharPic()" class="text-xs text-red-500 hover:underline mt-1">Clear</button>
+                    </div>
+                    <div class="flex-1 grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Age</label>
+                            <input type="text" id="char-age" class="w-full border rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">DOB</label>
+                            <input type="date" id="char-dob" class="w-full border rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Death Date</label>
+                            <input type="date" id="char-death" class="w-full border rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Gender</label>
+                            <input type="text" id="char-gender" class="w-full border rounded p-2" placeholder="e.g. Male, Female">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tags</label>
+                    <div class="flex flex-wrap gap-1 mb-2" id="char-tags-display"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="char-tag-input" class="flex-1 border rounded p-2 text-sm" placeholder="Add tag..." onkeydown="if(event.key==='Enter'){event.preventDefault();app.addCharTag()}">
+                        <button onclick="app.addCharTag()" class="px-3 py-2 bg-gray-100 border rounded hover:bg-gray-200 text-sm">Add</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description / Bio</label>
+                    <textarea id="char-desc" rows="4" class="w-full border rounded p-2 text-sm"></textarea>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end gap-2">
+                <button onclick="app.deleteCharacter()" class="text-red-600 px-4 py-2 text-sm hover:underline mr-auto">Delete</button>
+                <button onclick="app.closeModal('char-modal')" class="px-4 py-2 border rounded text-sm bg-white hover:bg-gray-100">Cancel</button>
+                <button onclick="app.saveCharacter()" class="px-4 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700">Save Character</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">Edit Event</h3>
+                <button onclick="app.closeModal('event-modal')"><i data-lucide="x" class="w-5 h-5 text-gray-400"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="event-id">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Event Title</label>
+                    <input type="text" id="event-title" class="w-full border rounded p-2 focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Date/Time</label>
+                    <input type="text" id="event-date" placeholder="e.g. Year 2055, or 2023-12-01" class="w-full border rounded p-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
+                    <textarea id="event-desc" rows="3" class="w-full border rounded p-2 text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Characters involved</label>
+                    <div id="event-char-select" class="flex flex-wrap gap-2 border p-2 rounded max-h-32 overflow-y-auto">
+                        <!-- Checkboxes generated via JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end gap-2">
+                <button onclick="app.deleteEvent()" class="text-red-600 px-4 py-2 text-sm hover:underline mr-auto">Delete</button>
+                <button onclick="app.closeModal('event-modal')" class="px-4 py-2 border rounded text-sm bg-white hover:bg-gray-100">Cancel</button>
+                <button onclick="app.saveEvent()" class="px-4 py-2 rounded text-sm bg-amber-600 text-white hover:bg-amber-700">Save Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Modal -->
+    <div id="save-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div class="p-4 border-b bg-gradient-to-r from-indigo-500 to-purple-500 flex justify-between items-center">
+                <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="save" class="w-5 h-5"></i> Save Project</h3>
+                <button onclick="app.closeModal('save-modal')" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">File Name</label>
+                    <input type="text" id="save-filename" class="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="My Novel">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Author</label>
+                    <input type="text" id="save-author" class="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Your name">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Short Description <span id="save-desc-count" class="font-normal text-gray-400">(0/500)</span></label>
+                    <textarea id="save-description" rows="2" maxlength="500" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="A brief summary of your novel..." oninput="app.updateCharCount('save-description', 'save-desc-count', 500)"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tags</label>
+                    <div class="flex flex-wrap gap-1 mb-2" id="save-tags-display"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="save-tag-input" class="flex-1 border rounded p-2 text-sm" placeholder="Add tag (e.g., fantasy, romance)" onkeydown="if(event.key==='Enter'){event.preventDefault();app.addSaveTag()}">
+                        <button onclick="app.addSaveTag()" class="px-3 py-2 bg-gray-100 border rounded hover:bg-gray-200 text-sm">Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end gap-2">
+                <button onclick="app.closeModal('save-modal')" class="px-4 py-2 border rounded text-sm bg-white hover:bg-gray-100">Cancel</button>
+                <button onclick="app.confirmSave()" class="px-4 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Export .Maria
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metadata Modal -->
+    <div id="metadata-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div class="p-4 border-b bg-gradient-to-r from-emerald-500 to-teal-500 flex justify-between items-center">
+                <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="book-open" class="w-5 h-5"></i> Book Metadata</h3>
+                <button onclick="app.closeModal('metadata-modal')" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Book Title</label>
+                    <input type="text" id="meta-title" class="w-full border rounded p-2 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="My Novel">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Author</label>
+                    <input type="text" id="meta-author" class="w-full border rounded p-2 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Your name">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description <span id="meta-desc-count" class="font-normal text-gray-400">(0/500)</span></label>
+                    <textarea id="meta-description" rows="3" maxlength="500" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="A brief summary of your novel..." oninput="app.updateCharCount('meta-description', 'meta-desc-count', 500)"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tags</label>
+                    <div class="flex flex-wrap gap-1 mb-2" id="meta-tags-display"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="meta-tag-input" class="flex-1 border rounded p-2 text-sm" placeholder="Add tag (e.g., fantasy, romance)" onkeydown="if(event.key==='Enter'){event.preventDefault();app.addMetaTag()}">
+                        <button onclick="app.addMetaTag()" class="px-3 py-2 bg-gray-100 border rounded hover:bg-gray-200 text-sm">Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end gap-2">
+                <button onclick="app.closeModal('metadata-modal')" class="px-4 py-2 border rounded text-sm bg-white hover:bg-gray-100">Cancel</button>
+                <button onclick="app.saveMetadata()" class="px-4 py-2 rounded text-sm bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i> Save Metadata
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // --- UTILS ---
+        const uuid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
+        // --- DATA STORE ---
+        class Store {
+            constructor() {
+                this.state = {
+                    meta: { title: "New Novel", author: "Anonymous", description: "", tags: [] },
+                    chapters: [
+                        { id: uuid(), title: "Chapter 1", content: "# Chapter 1\n\nIt was a dark and stormy night...", order: 0 }
+                    ],
+                    activeChapterId: null,
+                    characters: [],
+                    events: [],
+                    comments: {}, // { "uuid": { text: "", timestamp: 0 } }
+                    timeline: { edges: [] }, // Visjs edges
+                    viewMode: 'preview', // 'edit' or 'preview'
+                    context: 'writer' // 'writer' or 'codex'
+                };
+                
+                this.state.activeChapterId = this.state.chapters[0].id;
+                this.loadFromLocal();
+                this.setupAutoSave();
+            }
+
+            saveToLocal() {
+                localStorage.setItem('maria_autosave', JSON.stringify(this.state));
+                const status = document.getElementById('save-status');
+                status.textContent = 'Saved locally ' + new Date().toLocaleTimeString();
+                setTimeout(() => status.textContent = 'Saved locally', 2000);
+            }
+
+            loadFromLocal() {
+                const saved = localStorage.getItem('maria_autosave');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        // Merge strategies could go here, but strictly overwriting for now
+                        this.state = { ...this.state, ...parsed };
+                    } catch (e) {
+                        console.error("Failed to load save", e);
+                    }
+                }
+            }
+
+            setupAutoSave() {
+                setInterval(() => this.saveToLocal(), 5000);
+            }
+
+            exportFile() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.state, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", (this.state.meta.title || "novel") + ".maria");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            }
+
+            async importFile(file) {
+                const text = await file.text();
+                try {
+                    this.state = JSON.parse(text);
+                    this.saveToLocal();
+                    location.reload(); // Simplest way to re-render everything cleanly
+                } catch (e) {
+                    alert("Invalid .Maria file");
+                }
+            }
+        }
+
+        // --- APP CONTROLLER ---
+        const store = new Store();
+
+        const app = {
+            // -- INIT --
+            init() {
+                this.renderChapters();
+                this.setupDragDrop();
+                this.setupEditor();
+                this.setupTimeline();
+                this.updateViewModeUI();
+                lucide.createIcons();
+                this.switchContext(store.state.context);
+            },
+
+            // -- FILE OPS --
+            openSaveModal() {
+                const modal = document.getElementById('save-modal');
+                document.getElementById('save-filename').value = store.state.meta.title || 'My Novel';
+                document.getElementById('save-author').value = store.state.meta.author || '';
+                document.getElementById('save-description').value = store.state.meta.description || '';
+                this._tempSaveTags = [...(store.state.meta.tags || [])];
+                this.renderSaveTags();
+                this.updateCharCount('save-description', 'save-desc-count', 500);
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            },
+
+            addSaveTag() {
+                const input = document.getElementById('save-tag-input');
+                const tag = input.value.trim();
+                if (tag && !this._tempSaveTags.includes(tag)) {
+                    this._tempSaveTags.push(tag);
+                    this.renderSaveTags();
+                }
+                input.value = '';
+            },
+
+            removeSaveTag(tag) {
+                this._tempSaveTags = this._tempSaveTags.filter(t => t !== tag);
+                this.renderSaveTags();
+            },
+
+            renderSaveTags() {
+                const container = document.getElementById('save-tags-display');
+                container.innerHTML = this._tempSaveTags.map(tag => 
+                    `<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs">
+                        ${tag}
+                        <button onclick="app.removeSaveTag('${tag}')" class="hover:text-red-600">&times;</button>
+                    </span>`
+                ).join('');
+            },
+
+            confirmSave() {
+                store.state.meta.title = document.getElementById('save-filename').value || 'Untitled';
+                store.state.meta.author = document.getElementById('save-author').value || 'Anonymous';
+                store.state.meta.description = document.getElementById('save-description').value || '';
+                store.state.meta.tags = this._tempSaveTags || [];
+                store.saveToLocal();
+                store.exportFile();
+                this.closeModal('save-modal');
+            },
+
+            // -- METADATA MODAL --
+            openMetadataModal() {
+                const modal = document.getElementById('metadata-modal');
+                document.getElementById('meta-title').value = store.state.meta.title || '';
+                document.getElementById('meta-author').value = store.state.meta.author || '';
+                document.getElementById('meta-description').value = store.state.meta.description || '';
+                this._tempMetaTags = [...(store.state.meta.tags || [])];
+                this.renderMetaTags();
+                this.updateCharCount('meta-description', 'meta-desc-count', 500);
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            },
+
+            addMetaTag() {
+                const input = document.getElementById('meta-tag-input');
+                const tag = input.value.trim();
+                if (tag && !this._tempMetaTags.includes(tag)) {
+                    this._tempMetaTags.push(tag);
+                    this.renderMetaTags();
+                }
+                input.value = '';
+            },
+
+            removeMetaTag(tag) {
+                this._tempMetaTags = this._tempMetaTags.filter(t => t !== tag);
+                this.renderMetaTags();
+            },
+
+            renderMetaTags() {
+                const container = document.getElementById('meta-tags-display');
+                container.innerHTML = this._tempMetaTags.map(tag => 
+                    `<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs">
+                        ${tag}
+                        <button onclick="app.removeMetaTag('${tag}')" class="hover:text-red-600">&times;</button>
+                    </span>`
+                ).join('');
+            },
+
+            saveMetadata() {
+                store.state.meta.title = document.getElementById('meta-title').value || 'Untitled';
+                store.state.meta.author = document.getElementById('meta-author').value || 'Anonymous';
+                store.state.meta.description = document.getElementById('meta-description').value || '';
+                store.state.meta.tags = this._tempMetaTags || [];
+                store.saveToLocal();
+                this.closeModal('metadata-modal');
+            },
+
+            updateCharCount(textareaId, counterId, max) {
+                const len = document.getElementById(textareaId).value.length;
+                const counter = document.getElementById(counterId);
+                counter.textContent = `(${len}/${max})`;
+                counter.classList.toggle('text-red-500', len >= max);
+            },
+
+            loadFile(input) { if(input.files[0]) store.importFile(input.files[0]); },
+
+            // -- CHAPTERS --
+            renderChapters() {
+                const list = document.getElementById('chapter-list');
+                list.innerHTML = '';
+                
+                // Sort chapters by order
+                store.state.chapters.sort((a, b) => a.order - b.order);
+
+                store.state.chapters.forEach(chap => {
+                    const li = document.createElement('li');
+                    li.className = `chapter-item group flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-200 ${chap.id === store.state.activeChapterId ? 'active' : ''}`;
+                    li.dataset.id = chap.id;
+                    li.onclick = () => app.selectChapter(chap.id);
+                    li.innerHTML = `
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <i data-lucide="grip-vertical" class="w-4 h-4 text-gray-400 cursor-move handle opacity-0 group-hover:opacity-100"></i>
+                            <span class="truncate text-sm font-medium">${chap.title}</span>
+                        </div>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100">
+                             <button onclick="event.stopPropagation(); app.renameChapter('${chap.id}')" class="p-1 hover:text-blue-600"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+                             <button onclick="event.stopPropagation(); app.deleteChapter('${chap.id}')" class="p-1 hover:text-red-600"><i data-lucide="trash" class="w-3 h-3"></i></button>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+                lucide.createIcons();
+            },
+
+            addChapter() {
+                const newChap = {
+                    id: uuid(),
+                    title: "New Chapter",
+                    content: "",
+                    order: store.state.chapters.length
+                };
+                store.state.chapters.push(newChap);
+                this.selectChapter(newChap.id);
+                this.renderChapters();
+            },
+
+            deleteChapter(id) {
+                if (store.state.chapters.length <= 1) return alert("Cannot delete the last chapter.");
+                if (!confirm("Delete this chapter?")) return;
+                store.state.chapters = store.state.chapters.filter(c => c.id !== id);
+                if (store.state.activeChapterId === id) {
+                    this.selectChapter(store.state.chapters[0].id);
+                } else {
+                    this.renderChapters();
+                }
+            },
+
+            renameChapter(id) {
+                const chap = store.state.chapters.find(c => c.id === id);
+                const newName = prompt("Chapter Title:", chap.title);
+                if (newName) {
+                    chap.title = newName;
+                    this.renderChapters();
+                }
+            },
+
+            selectChapter(id) {
+                // Save current content before switching (only if switching to different chapter)
+                if (store.state.activeChapterId && store.state.activeChapterId !== id) {
+                    this.saveCurrentEditorContent();
+                }
+                
+                store.state.activeChapterId = id;
+                this.renderChapters();
+                
+                const chap = store.state.chapters.find(c => c.id === id);
+                const textArea = document.getElementById('editor-raw');
+                textArea.value = chap.content || "";
+                
+                this.renderMarkdownPreview();
+            },
+
+            setupDragDrop() {
+                const el = document.getElementById('chapter-list');
+                new Sortable(el, {
+                    handle: '.handle',
+                    animation: 150,
+                    onEnd: function (evt) {
+                        const items = [...el.children];
+                        items.forEach((item, index) => {
+                            const id = item.dataset.id;
+                            const chap = store.state.chapters.find(c => c.id === id);
+                            if(chap) chap.order = index;
+                        });
+                        store.saveToLocal();
+                    }
+                });
+            },
+
+            // -- EDITOR --
+            setupEditor() {
+                const textarea = document.getElementById('editor-raw');
+                const preview = document.getElementById('editor-preview');
+                
+                // Initialize Turndown for HTML to Markdown conversion
+                this.turndownService = new TurndownService({
+                    headingStyle: 'atx',
+                    codeBlockStyle: 'fenced'
+                });
+                
+                // Real-time markdown update for raw mode
+                textarea.addEventListener('input', () => {
+                    this.saveCurrentEditorContent();
+                });
+
+                // Handle typing in preview mode - sync back to markdown
+                preview.addEventListener('input', () => {
+                    this.syncPreviewToMarkdown();
+                });
+                
+                // Handle keyboard shortcuts in preview mode
+                preview.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        if (e.key === 'b') {
+                            e.preventDefault();
+                            document.execCommand('bold');
+                        } else if (e.key === 'i') {
+                            e.preventDefault();
+                            document.execCommand('italic');
+                        } else if (e.key === 'u') {
+                            e.preventDefault();
+                            document.execCommand('underline');
+                        }
+                    }
+                });
+
+                // Handle comment clicks in preview
+                preview.addEventListener('click', (e) => {
+                    const commentSpan = e.target.closest('.maria-comment');
+                    if (commentSpan) {
+                        const cid = commentSpan.dataset.commentId;
+                        this.showComment(cid);
+                    }
+                });
+            },
+            
+            syncPreviewToMarkdown() {
+                const preview = document.getElementById('editor-preview');
+                const textarea = document.getElementById('editor-raw');
+                
+                // Convert HTML back to Markdown
+                const markdown = this.turndownService.turndown(preview.innerHTML);
+                textarea.value = markdown;
+                this.saveCurrentEditorContent();
+            },
+
+            saveCurrentEditorContent() {
+                const chap = store.state.chapters.find(c => c.id === store.state.activeChapterId);
+                if(chap) {
+                    const val = document.getElementById('editor-raw').value;
+                    chap.content = val;
+                }
+            },
+
+            renderMarkdownPreview() {
+                const chap = store.state.chapters.find(c => c.id === store.state.activeChapterId);
+                if (!chap) return;
+
+                const raw = chap.content;
+                // Allow specific spans for comments through purifier
+                const html = DOMPurify.sanitize(marked.parse(raw), {
+                    ADD_TAGS: ['span'],
+                    ADD_ATTR: ['class', 'data-comment-id']
+                });
+                document.getElementById('editor-preview').innerHTML = html;
+            },
+
+            toggleViewMode() {
+                const mode = store.state.viewMode === 'edit' ? 'preview' : 'edit';
+                store.state.viewMode = mode;
+                this.updateViewModeUI();
+            },
+
+            updateViewModeUI() {
+                const raw = document.getElementById('editor-raw');
+                const prev = document.getElementById('editor-preview');
+                const btnText = document.getElementById('view-mode-text');
+                const icon = document.querySelector('#view-toggle-btn i');
+                const tools = document.getElementById('formatting-tools');
+
+                if (store.state.viewMode === 'edit') {
+                    raw.classList.remove('hidden');
+                    prev.classList.add('hidden');
+                    btnText.innerText = 'Preview';
+                    icon.setAttribute('data-lucide', 'eye');
+                } else {
+                    this.renderMarkdownPreview();
+                    raw.classList.add('hidden');
+                    prev.classList.remove('hidden');
+                    btnText.innerText = 'Edit';
+                    icon.setAttribute('data-lucide', 'pen-line');
+                }
+                // Enable formatting tools in both modes
+                tools.classList.remove('opacity-50', 'pointer-events-none');
+                lucide.createIcons();
+            },
+
+            insertFormat(symbol) {
+                if (store.state.viewMode === 'preview') {
+                    // Use execCommand for preview mode
+                    const commandMap = { '**': 'bold', '*': 'italic', '__': 'underline' };
+                    const command = commandMap[symbol];
+                    if (command) {
+                        document.execCommand(command);
+                        this.syncPreviewToMarkdown();
+                    }
+                    return;
+                }
+                const textarea = document.getElementById('editor-raw');
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+                const before = text.substring(0, start);
+                const selected = text.substring(start, end);
+                const after = text.substring(end);
+
+                textarea.value = `${before}${symbol}${selected}${symbol}${after}`;
+                this.saveCurrentEditorContent();
+            },
+
+            addComment() {
+                // Comments work by injecting a span into the RAW markdown
+                // This is a bit tricky but ensures persistence.
+                
+                const textarea = document.getElementById('editor-raw');
+                
+                if (store.state.viewMode !== 'edit') {
+                     alert("Please add comments in Edit mode by selecting text.");
+                     return;
+                }
+                
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                
+                if (start === end) return alert("Select text to comment on.");
+                
+                const commentText = prompt("Enter comment:");
+                if (!commentText) return;
+                
+                const cid = uuid();
+                store.state.comments[cid] = {
+                    text: commentText,
+                    timestamp: Date.now()
+                };
+
+                const text = textarea.value;
+                const selected = text.substring(start, end);
+                
+                // Inject HTML into Markdown
+                const injection = `<span class="maria-comment" data-comment-id="${cid}">${selected}</span>`;
+                
+                textarea.value = text.substring(0, start) + injection + text.substring(end);
+                this.saveCurrentEditorContent();
+            },
+
+            showComment(cid) {
+                const data = store.state.comments[cid];
+                if (!data) return;
+                
+                const panel = document.getElementById('comment-panel');
+                const list = document.getElementById('active-comments-list');
+                
+                panel.classList.remove('hidden');
+                list.innerHTML = `
+                    <div class="bg-purple-50 p-3 rounded border border-purple-100">
+                        <p class="text-sm text-gray-800">${data.text}</p>
+                        <p class="text-xs text-purple-400 mt-1">${new Date(data.timestamp).toLocaleString()}</p>
+                    </div>
+                `;
+            },
+
+            // -- CODEX NAVIGATION --
+            switchContext(ctx) {
+                store.state.context = ctx;
+                const writer = document.getElementById('writer-view');
+                const codex = document.getElementById('codex-view');
+                const navWriter = document.getElementById('nav-writer');
+                const navCodex = document.getElementById('nav-codex');
+
+                if (ctx === 'writer') {
+                    writer.classList.remove('hidden');
+                    codex.classList.add('hidden');
+                    navWriter.classList.add('bg-gray-100');
+                    navCodex.classList.remove('bg-gray-100');
+                    // Reset to active chapter
+                    this.selectChapter(store.state.activeChapterId);
+                } else {
+                    writer.classList.add('hidden');
+                    codex.classList.remove('hidden');
+                    navWriter.classList.remove('bg-gray-100');
+                    navCodex.classList.add('bg-gray-100');
+                    this.codexTab('timeline'); // Default tab
+                }
+            },
+
+            codexTab(tabName) {
+                // UI Toggle - also hide detail views
+                ['timeline', 'characters', 'events', 'char-detail', 'event-detail'].forEach(t => {
+                    const el = document.getElementById(`codex-${t}`);
+                    if (el) el.classList.add('hidden');
+                });
+                ['timeline', 'characters', 'events'].forEach(t => {
+                    document.getElementById(`tab-${t}`).classList.remove('active-tab');
+                });
+                document.getElementById(`codex-${tabName}`).classList.remove('hidden');
+                document.getElementById(`tab-${tabName}`).classList.add('active-tab');
+
+                // Render Logic
+                if (tabName === 'timeline') this.renderTimeline();
+                if (tabName === 'characters') this.renderCharacters();
+                if (tabName === 'events') this.renderEvents();
+            },
+
+            // -- CHARACTERS --
+            renderCharacters() {
+                const grid = document.getElementById('character-grid');
+                grid.innerHTML = '';
+                store.state.characters.forEach(char => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-4 rounded shadow border border-gray-100 hover:shadow-md transition-shadow cursor-pointer";
+                    card.onclick = () => app.viewCharacterDetail(char.id);
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold overflow-hidden">
+                                ${char.picture ? `<img src="${char.picture}" class="w-full h-full object-cover">` : char.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800">${char.name}</h4>
+                                <p class="text-xs text-gray-500">${char.age || '?'} y/o ${char.deathDate ? '(deceased)' : ''}</p>
+                        ${char.tags && char.tags.length ? `<div class="flex flex-wrap gap-1 mt-1">${char.tags.slice(0,3).map(t => `<span class="text-[10px] bg-gray-100 px-1 rounded">${t}</span>`).join('')}</div>` : ''}
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 line-clamp-3">${char.description || 'No description.'}</p>
+                    `;
+                    grid.appendChild(card);
+                });
+            },
+
+            addCharacter() {
+                this.openCharacterModal(null);
+            },
+
+            openCharacterModal(id) {
+                const modal = document.getElementById('char-modal');
+                const char = id ? store.state.characters.find(c => c.id === id) : { id: '', name: '', age: '', dob: '', deathDate: '', gender: '', description: '', picture: '', tags: [] };
+                
+                document.getElementById('char-id').value = id || '';
+                document.getElementById('char-name').value = char.name;
+                document.getElementById('char-age').value = char.age || '';
+                document.getElementById('char-dob').value = char.dob || '';
+                document.getElementById('char-death').value = char.deathDate || '';
+                document.getElementById('char-gender').value = char.gender || '';
+                document.getElementById('char-desc').value = char.description || '';
+                
+                // Picture
+                const picPreview = document.getElementById('char-pic-preview');
+                const picPlaceholder = document.getElementById('char-pic-placeholder');
+                if (char.picture) {
+                    picPreview.src = char.picture;
+                    picPreview.classList.remove('hidden');
+                    picPlaceholder.classList.add('hidden');
+                } else {
+                    picPreview.src = '';
+                    picPreview.classList.add('hidden');
+                    picPlaceholder.classList.remove('hidden');
+                }
+                this._tempCharPic = char.picture || '';
+                
+                // Tags
+                this._tempCharTags = [...(char.tags || [])];
+                this.renderCharTags();
+                
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            },
+            
+            handleCharPicUpload(input) {
+                const file = input.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Resize to fit 256x256
+                        const canvas = document.createElement('canvas');
+                        const maxSize = 256;
+                        let w = img.width, h = img.height;
+                        if (w > h) {
+                            if (w > maxSize) { h = h * maxSize / w; w = maxSize; }
+                        } else {
+                            if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                        
+                        this._tempCharPic = base64;
+                        const preview = document.getElementById('char-pic-preview');
+                        const placeholder = document.getElementById('char-pic-placeholder');
+                        preview.src = base64;
+                        preview.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            },
+            
+            clearCharPic() {
+                this._tempCharPic = '';
+                const preview = document.getElementById('char-pic-preview');
+                const placeholder = document.getElementById('char-pic-placeholder');
+                preview.src = '';
+                preview.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                lucide.createIcons();
+            },
+            
+            addCharTag() {
+                const input = document.getElementById('char-tag-input');
+                const tag = input.value.trim();
+                if (tag && !this._tempCharTags.includes(tag)) {
+                    this._tempCharTags.push(tag);
+                    this.renderCharTags();
+                }
+                input.value = '';
+            },
+            
+            removeCharTag(tag) {
+                this._tempCharTags = this._tempCharTags.filter(t => t !== tag);
+                this.renderCharTags();
+            },
+            
+            renderCharTags() {
+                const container = document.getElementById('char-tags-display');
+                container.innerHTML = this._tempCharTags.map(tag => 
+                    `<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs">
+                        ${tag}
+                        <button onclick="app.removeCharTag('${tag}')" class="hover:text-red-600">&times;</button>
+                    </span>`
+                ).join('');
+            },
+
+            // -- CHARACTER DETAIL VIEW --
+            viewCharacterDetail(id) {
+                this._viewingCharId = id;
+                const char = store.state.characters.find(c => c.id === id);
+                if (!char) return;
+
+                // Hide other codex tabs, show detail
+                ['timeline', 'characters', 'events', 'event-detail'].forEach(t => {
+                    const el = document.getElementById(`codex-${t}`);
+                    if (el) el.classList.add('hidden');
+                });
+                document.getElementById('codex-char-detail').classList.remove('hidden');
+                
+                // Update tabs to show none active
+                ['timeline', 'characters', 'events'].forEach(t => {
+                    document.getElementById(`tab-${t}`).classList.remove('active-tab');
+                });
+
+                // Populate data
+                document.getElementById('char-detail-name-crumb').textContent = char.name;
+                document.getElementById('char-detail-name').textContent = char.name;
+                document.getElementById('char-detail-age').textContent = char.age || '—';
+                document.getElementById('char-detail-gender').textContent = char.gender || '—';
+                document.getElementById('char-detail-dob').textContent = char.dob || '—';
+                document.getElementById('char-detail-death').textContent = char.deathDate || '—';
+                document.getElementById('char-detail-desc').textContent = char.description || 'No description provided.';
+
+                // Avatar
+                const avatar = document.getElementById('char-detail-avatar');
+                if (char.picture) {
+                    avatar.innerHTML = `<img src="${char.picture}" class="w-full h-full object-cover">`;
+                } else {
+                    avatar.innerHTML = char.name.charAt(0).toUpperCase();
+                }
+
+                // Tags
+                const tagsContainer = document.getElementById('char-detail-tags');
+                tagsContainer.innerHTML = (char.tags || []).map(t => 
+                    `<span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-sm">${t}</span>`
+                ).join('');
+
+                // Events involving this character
+                const eventsContainer = document.getElementById('char-detail-events');
+                const relatedEvents = store.state.events.filter(e => (e.characters || []).includes(id));
+                if (relatedEvents.length === 0) {
+                    eventsContainer.innerHTML = '<p class="text-gray-400 text-sm italic">No events linked to this character.</p>';
+                } else {
+                    eventsContainer.innerHTML = relatedEvents.map(evt => `
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded cursor-pointer hover:bg-amber-100 transition-colors" onclick="app.viewEventDetail('${evt.id}')">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-gray-800">${evt.title}</span>
+                                <span class="text-xs text-amber-600">${evt.date || 'No date'}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1 line-clamp-1">${evt.description || ''}</p>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            },
+
+            editCharacterFromDetail() {
+                this.openCharacterModal(this._viewingCharId);
+            },
+
+            // -- EVENT DETAIL VIEW --
+            viewEventDetail(id) {
+                this._viewingEventId = id;
+                const evt = store.state.events.find(e => e.id === id);
+                if (!evt) return;
+
+                // Hide other codex tabs, show detail
+                ['timeline', 'characters', 'events', 'char-detail'].forEach(t => {
+                    const el = document.getElementById(`codex-${t}`);
+                    if (el) el.classList.add('hidden');
+                });
+                document.getElementById('codex-event-detail').classList.remove('hidden');
+                
+                // Update tabs to show none active
+                ['timeline', 'characters', 'events'].forEach(t => {
+                    document.getElementById(`tab-${t}`).classList.remove('active-tab');
+                });
+
+                // Populate data
+                document.getElementById('event-detail-name-crumb').textContent = evt.title;
+                document.getElementById('event-detail-title').textContent = evt.title;
+                document.getElementById('event-detail-date').textContent = evt.date || 'No date specified';
+                document.getElementById('event-detail-desc').textContent = evt.description || 'No description provided.';
+
+                // Characters involved
+                const charsContainer = document.getElementById('event-detail-chars');
+                const involvedChars = (evt.characters || []).map(cid => store.state.characters.find(c => c.id === cid)).filter(Boolean);
+                if (involvedChars.length === 0) {
+                    charsContainer.innerHTML = '<p class="text-gray-400 text-sm italic">No characters linked to this event.</p>';
+                } else {
+                    charsContainer.innerHTML = involvedChars.map(char => `
+                        <div class="flex items-center gap-2 p-2 bg-indigo-50 border border-indigo-200 rounded cursor-pointer hover:bg-indigo-100 transition-colors" onclick="app.viewCharacterDetail('${char.id}')">
+                            <div class="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold overflow-hidden">
+                                ${char.picture ? `<img src="${char.picture}" class="w-full h-full object-cover">` : char.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span class="font-medium text-gray-800">${char.name}</span>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            },
+
+            editEventFromDetail() {
+                this.openEventModal(this._viewingEventId);
+            },
+
+            saveCharacter() {
+                const id = document.getElementById('char-id').value;
+                const name = document.getElementById('char-name').value;
+                if (!name) return alert("Name required");
+
+                const data = {
+                    id: id || uuid(),
+                    name: name,
+                    age: document.getElementById('char-age').value,
+                    dob: document.getElementById('char-dob').value,
+                    deathDate: document.getElementById('char-death').value,
+                    gender: document.getElementById('char-gender').value,
+                    description: document.getElementById('char-desc').value,
+                    picture: this._tempCharPic || '',
+                    tags: this._tempCharTags || []
+                };
+
+                if (id) {
+                    const idx = store.state.characters.findIndex(c => c.id === id);
+                    store.state.characters[idx] = data;
+                } else {
+                    store.state.characters.push(data);
+                }
+                
+                store.saveToLocal();
+                this.closeModal('char-modal');
+                this.renderCharacters();
+                // Update timeline nodes if name changed
+                this.renderTimeline();
+                // Refresh detail view if open
+                if (this._viewingCharId === data.id && !document.getElementById('codex-char-detail').classList.contains('hidden')) {
+                    this.viewCharacterDetail(data.id);
+                }
+            },
+
+            deleteCharacter() {
+                const id = document.getElementById('char-id').value;
+                if(id && confirm("Delete character?")) {
+                    store.state.characters = store.state.characters.filter(c => c.id !== id);
+                    store.saveToLocal();
+                    this.closeModal('char-modal');
+                    this.renderCharacters();
+                    // Go back to characters list if viewing deleted character
+                    if (this._viewingCharId === id) {
+                        this.codexTab('characters');
+                    }
+                }
+            },
+
+            // -- EVENTS --
+            renderEvents() {
+                const list = document.getElementById('events-list');
+                const search = document.getElementById('event-search').value.toLowerCase();
+                
+                list.innerHTML = '';
+                
+                const filtered = store.state.events.filter(e => 
+                    e.title.toLowerCase().includes(search) || 
+                    (e.description && e.description.toLowerCase().includes(search))
+                );
+
+                filtered.forEach(evt => {
+                    const div = document.createElement('div');
+                    div.className = "bg-white p-4 rounded border border-gray-200 hover:border-amber-300 cursor-pointer";
+                    div.onclick = () => app.viewEventDetail(evt.id);
+                    
+                    // Resolve character names
+                    const charNames = (evt.characters || []).map(cid => {
+                        const c = store.state.characters.find(x => x.id === cid);
+                        return c ? `<span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] mr-1">${c.name}</span>` : '';
+                    }).join('');
+
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-bold text-gray-800">${evt.title}</h4>
+                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">${evt.date || 'No Date'}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">${evt.description || ''}</p>
+                        <div class="mt-2">${charNames}</div>
+                    `;
+                    list.appendChild(div);
+                });
+            },
+
+            addEvent() {
+                this.openEventModal(null);
+            },
+
+            openEventModal(id) {
+                const modal = document.getElementById('event-modal');
+                const evt = id ? store.state.events.find(e => e.id === id) : { id: '', title: '', date: '', description: '', characters: [] };
+                
+                document.getElementById('event-id').value = id || '';
+                document.getElementById('event-title').value = evt.title;
+                document.getElementById('event-date').value = evt.date || '';
+                document.getElementById('event-desc').value = evt.description || '';
+                
+                // Render Char Checkboxes
+                const charSelect = document.getElementById('event-char-select');
+                charSelect.innerHTML = '';
+                store.state.characters.forEach(c => {
+                    const isChecked = (evt.characters || []).includes(c.id) ? 'checked' : '';
+                    const label = document.createElement('label');
+                    label.className = "flex items-center gap-1 text-sm bg-gray-50 px-2 py-1 rounded cursor-pointer hover:bg-gray-100";
+                    label.innerHTML = `<input type="checkbox" value="${c.id}" ${isChecked} class="form-checkbox h-3 w-3 text-indigo-600 rounded"> ${c.name}`;
+                    charSelect.appendChild(label);
+                });
+
+                modal.classList.remove('hidden');
+            },
+
+            saveEvent() {
+                const id = document.getElementById('event-id').value;
+                const title = document.getElementById('event-title').value;
+                if (!title) return alert("Title required");
+
+                const selectedChars = Array.from(document.querySelectorAll('#event-char-select input:checked')).map(cb => cb.value);
+
+                const data = {
+                    id: id || uuid(),
+                    title: title,
+                    date: document.getElementById('event-date').value,
+                    description: document.getElementById('event-desc').value,
+                    characters: selectedChars
+                };
+
+                if (id) {
+                    const idx = store.state.events.findIndex(e => e.id === id);
+                    store.state.events[idx] = data;
+                } else {
+                    store.state.events.push(data);
+                }
+                
+                store.saveToLocal();
+                this.closeModal('event-modal');
+                this.renderEvents();
+                // If timeline is active, it needs refresh
+                if(this.network) this.renderTimeline();
+                // Refresh detail view if open
+                if (this._viewingEventId === data.id && !document.getElementById('codex-event-detail').classList.contains('hidden')) {
+                    this.viewEventDetail(data.id);
+                }
+            },
+
+            deleteEvent() {
+                const id = document.getElementById('event-id').value;
+                if(id && confirm("Delete event?")) {
+                    store.state.events = store.state.events.filter(e => e.id !== id);
+                    // Also remove edges connected to this event in timeline
+                    store.state.timeline.edges = store.state.timeline.edges.filter(edge => edge.from !== id && edge.to !== id);
+                    
+                    store.saveToLocal();
+                    this.closeModal('event-modal');
+                    this.renderEvents();
+                    // Go back to events list if viewing deleted event
+                    if (this._viewingEventId === id) {
+                        this.codexTab('events');
+                    }
+                }
+            },
+
+            closeModal(id) {
+                document.getElementById(id).classList.add('hidden');
+            },
+
+            // -- TIMELINE (VIS.JS) --
+            setupTimeline() {
+                // Initialize empty, render on demand
+            },
+
+            renderTimeline() {
+                const container = document.getElementById('timeline-network');
+                
+                // Nodes are Events
+                const nodes = new vis.DataSet(
+                    store.state.events.map(e => ({
+                        id: e.id,
+                        label: e.title + (e.date ? `\n(${e.date})` : ''),
+                        shape: 'box',
+                        color: { background: '#fffbeb', border: '#d97706' },
+                        font: { multi: true, size: 12 }
+                    }))
+                );
+
+                // Edges are stored in state
+                const edges = new vis.DataSet(store.state.timeline.edges);
+
+                const data = { nodes, edges };
+                const options = {
+                    physics: {
+                        enabled: true,
+                        barnesHut: { gravitationalConstant: -2000 }
+                    },
+                    manipulation: {
+                        enabled: true,
+                        addNode: (nodeData, callback) => {
+                            // Adding a node in graph creates an Event
+                            app.addEvent(); 
+                            callback(null); // Cancel visjs node creation, rely on event modal
+                        },
+                        addEdge: (edgeData, callback) => {
+                            if (edgeData.from === edgeData.to) return callback(null);
+                            store.state.timeline.edges.push({ from: edgeData.from, to: edgeData.to, id: uuid() });
+                            store.saveToLocal();
+                            callback(edgeData);
+                        },
+                        deleteEdge: (edgeData, callback) => {
+                            // Handle edge deletion
+                            const edgeId = edgeData.edges[0]; // visjs sends list of selected ids
+                            store.state.timeline.edges = store.state.timeline.edges.filter(e => e.id !== edgeId);
+                            store.saveToLocal();
+                            callback(edgeData);
+                        },
+                        deleteNode: (nodeData, callback) => {
+                            // Deleting node deletes event? Maybe too dangerous for a graph click.
+                            // Let's just alert.
+                            alert("Please delete events from the Event List to remove them safely.");
+                            callback(null);
+                        }
+                    },
+                    interaction: { hover: true }
+                };
+
+                this.network = new vis.Network(container, data, options);
+                
+                // Double click to edit event
+                this.network.on("doubleClick", function (params) {
+                    if (params.nodes.length === 1) {
+                        app.openEventModal(params.nodes[0]);
+                    } else if (params.nodes.length === 0) {
+                        // Double click on canvas -> add event
+                        app.addEvent();
+                    }
+                });
+            },
+            
+            fitTimeline() {
+                if(this.network) this.network.fit();
+            }
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>

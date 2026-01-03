@@ -1,0 +1,241 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.sectionLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.existingEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.eventList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.eventItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+}
+
+.eventIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.eventInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+
+  strong {
+    font-size: 0.875rem;
+    color: var(--color-text);
+  }
+}
+
+.eventDetails {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.eventDates {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.removeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+}
+
+.addButton {
+  align-self: flex-start;
+}
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+}
+
+.formHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cancelBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 0.25rem;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--color-text);
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+}
+
+.required {
+  color: #ef4444;
+}
+
+.select, .input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+
+  &:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  }
+}
+
+.dateFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.birthChildSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.charSelect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+
+  &:hover {
+    background: var(--color-primary-light);
+  }
+
+  input {
+    margin: 0;
+  }
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  input {
+    margin: 0;
+  }
+}
+
+.childOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.noChars {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  margin-top: 0.25rem;
+}

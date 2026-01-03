@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap');
+
+:root {
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Merriweather', serif;
+  --font-mono: 'Menlo', 'Monaco', 'Courier New', monospace;
+
+  --color-primary: #4f46e5; /* Indigo 600 */
+  --color-primary-hover: #4338ca; /* Indigo 700 */
+  --color-bg: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.editor-font {
+  font-family: var(--font-serif);
+  line-height: 1.8;
+}
+
+/* Ensure lucide icons have a sensible default size */
+.lucide {
+  width: 1.25rem;
+  height: 1.25rem;
+}

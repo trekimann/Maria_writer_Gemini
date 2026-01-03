@@ -1,0 +1,109 @@
+.editorContainer {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background-color: white;
+}
+
+.textarea {
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--color-text);
+  resize: none;
+  outline: none;
+  border: none;
+}
+
+.previewContainer {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview {
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--color-text);
+  overflow-y: auto;
+  outline: none;
+
+  h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: #111827; }
+  h2 { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #374151; }
+  p { margin-bottom: 1em; color: #374151; }
+  blockquote { border-left: 4px solid #e5e7eb; padding-left: 1em; color: #6b7280; font-style: italic; }
+
+  /* Comment highlighting */
+  :global(.maria-comment) {
+    background-color: #f3e8ff; /* purple-100 */
+    border-bottom: 2px solid #d8b4fe; /* purple-300 */
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #e9d5ff; /* purple-200 */
+    }
+  }
+}
+
+.commentPanel {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 20rem;
+  z-index: 10;
+}
+
+.commentBox {
+  background-color: #faf5ff; /* purple-50 */
+  border: 1px solid #e9d5ff; /* purple-200 */
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.commentText {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.commentDate {
+  font-size: 0.75rem;
+  color: #a855f7; /* purple-500 */
+}
+
+.closeComment {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  
+  &:hover {
+    color: #4b5563;
+  }
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
