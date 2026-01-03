@@ -39,7 +39,7 @@ export const saveToLocal = (state: AppState) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stateWithVersion));
 };
 
-export const exportFile = (state: AppState) => {
+export const exportFile = (state: AppState, fileName?: string) => {
   const exportData = {
     ...state,
     _version: STORAGE_VERSION,
@@ -48,7 +48,8 @@ export const exportFile = (state: AppState) => {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
   const downloadAnchorNode = document.createElement('a');
   downloadAnchorNode.setAttribute("href", dataStr);
-  downloadAnchorNode.setAttribute("download", (state.meta.title || "novel") + ".maria");
+  const finalFileName = (fileName || state.meta.title || "novel") + ".maria";
+  downloadAnchorNode.setAttribute("download", finalFileName);
   document.body.appendChild(downloadAnchorNode);
   downloadAnchorNode.click();
   downloadAnchorNode.remove();
