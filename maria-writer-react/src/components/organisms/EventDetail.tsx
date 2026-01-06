@@ -54,53 +54,53 @@ export const EventDetail: React.FC = () => {
         )}
         
         <div className={styles.details}>
-          <h2 className={styles.title}>{evt.title}</h2>
-          
-          <div className={styles.meta}>
-            {evt.date && (
+            <h2 className={styles.title}>{evt.title}</h2>
+            
+            <div className={styles.meta}>
+              {evt.date && (
+                <div className={styles.metaItem}>
+                  <Calendar size={16} />
+                  <span>{formatDateTimeOrEmpty(evt.date)}</span>
+                </div>
+              )}
               <div className={styles.metaItem}>
-                <Calendar size={16} />
-                <span>{formatDateTimeOrEmpty(evt.date)}</span>
+                <Users size={16} />
+                <span>{involvedCharacters.length} Characters</span>
+              </div>
+            </div>
+
+            <div className={styles.section}>
+              <h3>Description</h3>
+              <div className={styles.description}>
+                {evt.description || "No description provided."}
+              </div>
+            </div>
+
+            {involvedCharacters.length > 0 && (
+              <div className={styles.section}>
+                <h3>Involved Characters</h3>
+                <div className={styles.characterList}>
+                  {involvedCharacters.map(char => (
+                    <div 
+                      key={char.id} 
+                      className={styles.characterChip}
+                      onClick={() => handleCharacterClick(char.id)}
+                    >
+                      <div className={styles.avatar}>
+                        {char.picture ? (
+                          <img src={char.picture} alt={char.name} />
+                        ) : (
+                          <span>{char.name.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span>{char.name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            <div className={styles.metaItem}>
-              <Users size={16} />
-              <span>{involvedCharacters.length} Characters</span>
-            </div>
           </div>
-
-          <div className={styles.section}>
-            <h3>Description</h3>
-            <div className={styles.description}>
-              {evt.description || "No description provided."}
-            </div>
-          </div>
-
-          {involvedCharacters.length > 0 && (
-            <div className={styles.section}>
-              <h3>Involved Characters</h3>
-              <div className={styles.characterList}>
-                {involvedCharacters.map(char => (
-                  <div 
-                    key={char.id} 
-                    className={styles.characterChip}
-                    onClick={() => handleCharacterClick(char.id)}
-                  >
-                    <div className={styles.avatar}>
-                      {char.picture ? (
-                        <img src={char.picture} alt={char.name} />
-                      ) : (
-                        <span>{char.name.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <span>{char.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
-    </div>
   );
 };
