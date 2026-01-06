@@ -36,6 +36,7 @@ export interface Character {
   description?: string;
   picture?: string;
   tags?: string[];
+  color?: string; // Hex color for highlights
   lifeEvents?: LifeEvent[];
 }
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, Relationship, StoryComment } from '../types';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
@@ -236,25 +236,30 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [isReady, setIsReady] = useState(false);
 
   // Load from local storage on mount
   useEffect(() => {
     const loaded = loadFromLocal();
     if (loaded) {
       // Merge loaded state with initial state to ensure all fields exist
-      dispatch({ type: 'LOAD_STATE', payload: { ...initialState, ...loaded } });
+      dispatch({ type: 'LOAD_STATE', payload: { ...initialState, ...loaded } as any });
     } else {
       // Set initial active chapter if not loaded
       if (initialState.chapters.length > 0) {
         dispatch({ type: 'SET_ACTIVE_CHAPTER', payload: initialState.chapters[0].id });
       }
     }
+    // Flag as ready so we can start auto-saving
+    setIsReady(true);
   }, []);
 
   // Auto-save
   useEffect(() => {
-    saveToLocal(state);
-  }, [state]);
+    if (isReady) {
+      saveToLocal(state);
+    }
+  }, [state, isReady]);
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

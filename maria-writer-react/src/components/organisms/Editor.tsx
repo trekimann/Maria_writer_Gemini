@@ -4,6 +4,7 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import TurndownService from 'turndown';
 import { v4 as uuidv4 } from 'uuid';
+import { Character } from '../../types';
 import { CommentModal } from '../molecules/CommentModal';
 import { CommentPane } from './CommentPane';
 import styles from './Editor.module.scss';
@@ -31,6 +32,19 @@ turndownService.addRule('keep-u', {
   }
 });
 
+// Configure turndown to keep character mentions
+turndownService.addRule('character-mention', {
+  filter: (node) => {
+    return node.nodeName === 'SPAN' && (node as HTMLElement).getAttribute('data-character-id') !== null;
+  },
+  replacement: (content, node) => {
+    const el = node as HTMLElement;
+    const charId = el.getAttribute('data-character-id');
+    const charName = el.getAttribute('data-character-name');
+    return `<span data-character-id="${charId}" data-character-name="${charName}" class="character-mention">${content}</span>`;
+  }
+});
+
 export const Editor: React.FC = () => {
   const { state, dispatch } = useStore();
   const [content, setContent] = useState('');
@@ -40,6 +54,13 @@ export const Editor: React.FC = () => {
   const [selectedText, setSelectedText] = useState('');
   const [isCommentPaneOpen, setIsCommentPaneOpen] = useState(false);
   const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
+  
+  // Character tagging state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionPosition, setMentionPosition] = useState<{ x: number; y: number } | null>(null);
+  const [mentionStartIndex, setMentionStartIndex] = useState<number>(-1); // for textarea
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const activeChapter = state.chapters.find(c => c.id === state.activeChapterId);
@@ -256,6 +277,24 @@ export const Editor: React.FC = () => {
         payload: { id: activeChapter.id, updates: { content: newContent } }
       });
     }
+
+    // Handle @ mentions for source mode
+    const cursor = e.target.selectionStart;
+    const textBefore = newContent.substring(0, cursor);
+    const lastAt = textBefore.lastIndexOf('@');
+    
+    if (lastAt !== -1 && !textBefore.substring(lastAt).includes(' ')) {
+      const query = textBefore.substring(lastAt + 1);
+      setMentionQuery(query);
+      setMentionStartIndex(lastAt);
+      
+      // Approximate position for textarea (rough but works for demo)
+      const rect = e.target.getBoundingClientRect();
+      // This is a very rough approximation without a ghost div
+      setMentionPosition({ x: rect.left + 20, y: rect.top + 50 });
+    } else {
+      setMentionQuery(null);
+    }
   };
 
   const handleContentEditableInput = () => {
@@ -268,6 +307,26 @@ export const Editor: React.FC = () => {
         type: 'UPDATE_CHAPTER',
         payload: { id: activeChapter.id, updates: { content: newContent } }
       });
+
+      // Handle @ mentions for write mode
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const textBeforeContent = range.startContainer.textContent || '';
+        const offset = range.startOffset;
+        const textBeforeCursor = textBeforeContent.substring(0, offset);
+        const lastAt = textBeforeCursor.lastIndexOf('@');
+
+        if (lastAt !== -1 && !textBeforeCursor.substring(lastAt).includes(' ')) {
+          const query = textBeforeCursor.substring(lastAt + 1);
+          setMentionQuery(query);
+          
+          const rect = range.getBoundingClientRect();
+          setMentionPosition({ x: rect.left, y: rect.bottom + window.scrollY });
+        } else {
+          setMentionQuery(null);
+        }
+      }
     }
   };
 
@@ -436,12 +495,24 @@ export const Editor: React.FC = () => {
         processedContent = processedContent.replace(regex, '$1');
       }
     });
+
+    // Inject character-specific colors into spans
+    state.characters.forEach(char => {
+      if (char.color) {
+        // Find spans with this character id and inject style
+        const escapedId = char.id.replace(/"/g, '&quot;');
+        const regex = new RegExp(`(<span[^>]*data-character-id=["'](${char.id}|${escapedId})["'][^>]*>)([\\s\\S]*?)(</span>)`, 'g');
+        const colorWithAlpha = `${char.color}25`; // 15% opacity for highlight
+        const ceAttr = state.viewMode === 'write' ? ' contenteditable="false"' : '';
+        processedContent = processedContent.replace(regex, `$1<span style="background-color: ${colorWithAlpha}; color: ${char.color}; border-bottom: 2px solid ${char.color}; padding: 0 4px; border-radius: 4px; font-weight: 500;"${ceAttr}>$3</span>$4`);
+      }
+    });
     
     // Parse markdown and then sanitize. Marked handles HTML tags like <u> inside markdown.
     const rawHtml = marked.parse(processedContent) as string;
     return DOMPurify.sanitize(rawHtml, {
       ADD_TAGS: ['u', 'span'],
-      ADD_ATTR: ['class', 'data-comment-id']
+      ADD_ATTR: ['class', 'data-comment-id', 'data-character-id', 'data-character-name', 'style', 'contenteditable']
     });
   };
 
@@ -563,6 +634,104 @@ export const Editor: React.FC = () => {
     console.log('[Suggestion] Suggestion applied permanently and comment removed');
   };
 
+  const filteredCharacters = state.characters.filter(char =>
+    char.name.toLowerCase().includes((mentionQuery || '').toLowerCase())
+  );
+
+  const selectCharacter = (character: Character) => {
+    if (!activeChapter) return;
+
+    const mentionHtml = `<span data-character-id="${character.id}" data-character-name="${character.name}" class="character-mention">${character.name}</span>`;
+
+    if (state.viewMode === 'source' && textareaRef.current) {
+      const textarea = textareaRef.current;
+      const start = mentionStartIndex;
+      const end = textarea.selectionStart;
+      const text = textarea.value;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      
+      const newText = before + mentionHtml + ' ' + after;
+      setContent(newText);
+      dispatch({
+        type: 'UPDATE_CHAPTER',
+        payload: { id: activeChapter.id, updates: { content: newText } }
+      });
+      
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + mentionHtml.length + 1;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    } else if (state.viewMode === 'write' && contentEditableRef.current) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const textNode = range.startContainer;
+        const textContent = textNode.textContent || '';
+        const lastAt = textContent.substring(0, range.startOffset).lastIndexOf('@');
+        
+        if (lastAt !== -1) {
+          // Remove the '@query' part
+          range.setStart(textNode, lastAt);
+          range.deleteContents();
+          
+          // Create the mention span
+          const span = document.createElement('span');
+          span.className = 'character-mention';
+          span.setAttribute('data-character-id', character.id);
+          span.setAttribute('data-character-name', character.name);
+          span.textContent = character.name;
+          span.contentEditable = 'false'; // Make the tag itself non-editable to prevent typing inside
+          
+          // Create a space node specifically AFTER the span
+          const spaceNode = document.createTextNode('\u00A0'); // Using NBSP initially to force cursor out
+          
+          range.insertNode(span);
+          span.after(spaceNode);
+          
+          // Position cursor after the space
+          const newRange = document.createRange();
+          newRange.setStartAfter(spaceNode);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          // Also insert a trailing regular space after NBSP if needed or just replace NBSP later?
+          // Let's stick with a regular space first but ensure contentEditable="false" on the span.
+          span.contentEditable = 'false';
+          spaceNode.textContent = ' ';
+        }
+        
+        handleContentEditableInput();
+      }
+    }
+    
+    setMentionQuery(null);
+    setMentionSelectedIndex(0);
+  };
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (mentionQuery !== null && filteredCharacters.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionSelectedIndex(prev => (prev + 1) % filteredCharacters.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionSelectedIndex(prev => (prev - 1 + filteredCharacters.length) % filteredCharacters.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        if (filteredCharacters[mentionSelectedIndex]) {
+          e.preventDefault();
+          selectCharacter(filteredCharacters[mentionSelectedIndex]);
+        }
+      } else if (e.key === 'Escape') {
+        setMentionQuery(null);
+      }
+    } else if (mentionQuery !== null && e.key === 'Escape') {
+      setMentionQuery(null);
+    }
+  };
+
   if (!activeChapter) {
     return <div className={styles.emptyState}>Select a chapter to start writing.</div>;
   }
@@ -576,6 +745,7 @@ export const Editor: React.FC = () => {
             className={styles.textarea}
             value={content}
             onChange={handleChange}
+            onKeyDown={handleEditorKeyDown}
             placeholder="Start writing your masterpiece..."
             spellCheck={false}
           />
@@ -585,6 +755,7 @@ export const Editor: React.FC = () => {
             className={`${styles.preview} ${styles.editable}`}
             contentEditable={true}
             onInput={handleContentEditableInput}
+            onKeyDown={handleEditorKeyDown}
             onClick={handleWriteModeClick}
             suppressContentEditableWarning={true}
           />
@@ -596,6 +767,42 @@ export const Editor: React.FC = () => {
           />
         )}
       </div>
+
+      {mentionQuery !== null && mentionPosition && (
+        <div 
+          className={styles.mentionSuggestions}
+          style={{ 
+            position: 'fixed', 
+            left: mentionPosition.x, 
+            top: mentionPosition.y,
+            zIndex: 1000
+          }}
+        >
+          {filteredCharacters.length > 0 ? (
+            filteredCharacters.map((char, index) => (
+              <div
+                key={char.id}
+                className={`${styles.suggestionItem} ${index === mentionSelectedIndex ? styles.selected : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent focus loss
+                  selectCharacter(char);
+                }}
+              >
+                <div className={styles.suggestionContent}>
+                  {char.picture ? (
+                    <img src={char.picture} alt={char.name} className={styles.suggestionAvatar} />
+                  ) : (
+                    <div className={styles.suggestionPlaceholder}>{char.name.charAt(0)}</div>
+                  )}
+                  <span className={styles.suggestionName}>{char.name}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className={styles.noSuggestions}>No characters found</div>
+          )}
+        </div>
+      )}
 
       <CommentPane
         comments={chapterComments}

@@ -19,6 +19,7 @@ export const CharacterModal: React.FC = () => {
   const [description, setDescription] = useState('');
   const [picture, setPicture] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [color, setColor] = useState('#4f46e5'); // Default indigo
   const [selectedParentIds, setSelectedParentIds] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +40,7 @@ export const CharacterModal: React.FC = () => {
           setDescription(char.description || '');
           setPicture(char.picture || '');
           setTags(char.tags || []);
+          setColor(char.color || '#4f46e5');
         }
       } else {
         // Reset for new character
@@ -50,6 +52,7 @@ export const CharacterModal: React.FC = () => {
         setDescription('');
         setPicture('');
         setTags([]);
+        setColor('#4f46e5');
         setSelectedParentIds([]);
       }
     }
@@ -79,7 +82,8 @@ export const CharacterModal: React.FC = () => {
       gender,
       description,
       picture,
-      tags
+      tags,
+      color
     };
 
     console.log('CharacterModal: handleSave charData=', charData);
@@ -241,6 +245,31 @@ export const CharacterModal: React.FC = () => {
           onChange={(e) => setDescription(e.target.value)} 
           className={styles.textarea}
         />
+      </div>
+
+      <div className={styles.field}>
+        <label>Highlight Color</label>
+        <div className={styles.colorPickerContainer}>
+          <input 
+            type="color" 
+            value={color} 
+            onChange={(e) => setColor(e.target.value)} 
+            className={styles.colorWheel}
+          />
+          <input 
+            type="text" 
+            value={color} 
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val.startsWith('#') && val.length <= 7) {
+                setColor(val);
+              }
+            }} 
+            className={styles.hexInput}
+            placeholder="#000000"
+          />
+          <div className={styles.colorPreview} style={{ backgroundColor: color }}></div>
+        </div>
       </div>
 
       {/* Parent Selection - only show when creating new character */}

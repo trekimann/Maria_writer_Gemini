@@ -15,11 +15,11 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick
   
   return (
     <div className={styles.card} onClick={onClick}>
-      <div className={styles.imageWrapper}>
+      <div className={styles.imageWrapper} style={{ borderColor: character.color || 'transparent' }}>
         {character.picture ? (
           <img src={character.picture} alt={character.name} className={styles.image} />
         ) : (
-          <div className={styles.placeholder}>
+          <div className={styles.placeholder} style={{ color: character.color || 'var(--color-text-muted)' }}>
             <User size={48} className={styles.icon} />
           </div>
         )}
