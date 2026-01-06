@@ -1,51 +1,46 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import TurndownService from 'turndown';
 import { v4 as uuidv4 } from 'uuid';
 import { Plus } from 'lucide-react';
 import { Character } from '../../types';
 import { CommentModal } from '../molecules/CommentModal';
 import { CommentPane } from './CommentPane';
 import { extractMentionedCharacterIds } from '../../utils/mention';
+import {
+  createTurndownService,
+  htmlToMarkdown,
+  markdownToHtml,
+  extractTitleFromMarkdown
+} from '../../utils/editorMarkdown';
+import {
+  createCommentMarkup,
+  removeCommentMarkup,
+  replaceCommentText,
+  applySuggestionToContent,
+  updateCommentElementClasses,
+  hasOverlappingComments,
+  unwrapCommentElement,
+  wrapSelectionWithComment,
+  updateCommentElementId
+} from '../../utils/editorComments';
+import {
+  createMentionMarkup,
+  filterCharactersByQuery,
+  detectMentionInTextarea,
+  detectMentionInContentEditable,
+  insertMentionInTextarea,
+  insertMentionInContentEditable,
+  getTextareaMentionPosition,
+  getContentEditableMentionPosition
+} from '../../utils/editorMentions';
+import {
+  applyTextareaFormatting,
+  applyContentEditableFormatting
+} from '../../utils/editorFormatting';
 import styles from './Editor.module.scss';
 
 // Initialize Turndown once
-const turndownService = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-  emDelimiter: '*',
-  strongDelimiter: '**'
-});
-
-// Configure turndown to keep <u> tags with attributes for comments
-turndownService.addRule('keep-u', {
-  filter: ['u'],
-  replacement: (content, node) => {
-    const el = node as HTMLElement;
-    const commentId = el.getAttribute('data-comment-id');
-    const className = el.getAttribute('class');
-    const attrs = [];
-    if (commentId) attrs.push(`data-comment-id="${commentId}"`);
-    if (className) attrs.push(`class="${className}"`);
-    const attrString = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
-    return `<u${attrString}>${content}</u>`;
-  }
-});
-
-// Configure turndown to keep character mentions
-turndownService.addRule('character-mention', {
-  filter: (node) => {
-    return node.nodeName === 'SPAN' && (node as HTMLElement).getAttribute('data-character-id') !== null;
-  },
-  replacement: (content, node) => {
-    const el = node as HTMLElement;
-    const charId = el.getAttribute('data-character-id');
-    const charName = el.getAttribute('data-character-name');
-    return `<span data-character-id="${charId}" data-character-name="${charName}" class="character-mention">${content}</span>`;
-  }
-});
+const turndownService = createTurndownService();
 
 export const Editor: React.FC = () => {
   const { state, dispatch } = useStore();
@@ -111,13 +106,9 @@ export const Editor: React.FC = () => {
       const updates: any = {};
       
       // 1. Sync Title from H1
-      const lines = content.split('\n');
-      const firstLine = lines[0]?.trim() || '';
-      if (firstLine.startsWith('# ')) {
-        const h1Title = firstLine.substring(2).trim();
-        if (h1Title && h1Title !== activeChapter.title) {
-          updates.title = h1Title;
-        }
+      const h1Title = extractTitleFromMarkdown(content);
+      if (h1Title && h1Title !== activeChapter.title) {
+        updates.title = h1Title;
       }
 
       // 2. Sync Mentioned Characters from content tags
@@ -145,28 +136,7 @@ export const Editor: React.FC = () => {
 
   // Update CSS classes on comment elements based on active state and applied suggestions
   useEffect(() => {
-    const commentElements = document.querySelectorAll('u[data-comment-id]');
-    console.log('[CSS] Updating comment element classes, found:', commentElements.length, 'elements');
-    commentElements.forEach(element => {
-      const commentId = element.getAttribute('data-comment-id');
-      if (!commentId) return;
-
-      const comment = chapterComments.find(c => c.id === commentId);
-      
-      // Update active class
-      if (commentId === activeCommentId) {
-        element.classList.add('comment-active');
-      } else {
-        element.classList.remove('comment-active');
-      }
-
-      // Update suggestion-applied class
-      if (comment?.isSuggestion && comment.isPreviewing) {
-        element.classList.add('suggestion-applied');
-      } else {
-        element.classList.remove('suggestion-applied');
-      }
-    });
+    updateCommentElementClasses(chapterComments, activeCommentId);
   }, [activeCommentId, chapterComments, content]);
 
   useEffect(() => {
@@ -193,7 +163,7 @@ export const Editor: React.FC = () => {
           // Check if selection overlaps with existing comment tags
           const textContent = textareaRef.current.value;
           const selectedPortion = textContent.substring(start, end);
-          if (selectedPortion.includes('<u data-comment-id=') || selectedPortion.includes('</u>')) {
+          if (hasOverlappingComments(selectedPortion)) {
             alert("Cannot add a comment to text that is already commented. Please select text without existing comments.");
             return;
           }
@@ -220,20 +190,13 @@ export const Editor: React.FC = () => {
           
           // Wrap selection immediately to preserve position
           if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const u = document.createElement('u');
-            u.className = 'comment pending';
-            u.setAttribute('data-comment-id', tempCommentId);
-            try {
-              range.surroundContents(u);
-              console.log('[Comment] Wrapped selection immediately with temp ID:', tempCommentId);
-              setPendingCommentId(tempCommentId);
-            } catch (e) {
-              // This shouldn't happen anymore since we check for overlaps above
-              console.error('[Comment] Unexpected error wrapping selection', e);
-              alert("Could not create comment. Please try selecting different text.");
+            const wrapped = wrapSelectionWithComment(selection, tempCommentId, true);
+            if (!wrapped) {
+              alert("Cannot add a comment to text that is already commented. Please select text without existing comments.");
               return;
             }
+            console.log('[Comment] Wrapped selection immediately with temp ID:', tempCommentId);
+            setPendingCommentId(tempCommentId);
           }
         } else {
           // Preview mode
@@ -257,33 +220,13 @@ export const Editor: React.FC = () => {
 
       // Handle formatting for source mode (textarea)
       if (state.viewMode === 'source' && textareaRef.current) {
-        const textarea = textareaRef.current;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
-        const before = text.substring(0, start);
-        const selected = text.substring(start, end);
-        const after = text.substring(end);
+        const result = applyTextareaFormatting(textareaRef.current, format);
 
-        let newText = text;
-
-        if (format === 'bold') {
-          newText = `${before}**${selected}**${after}`;
-        } else if (format === 'italic') {
-          newText = `${before}*${selected}*${after}`;
-        } else if (format === 'underline') {
-          newText = `${before}__${selected}__${after}`;
-        } else if (format.startsWith('heading')) {
-          const level = format.replace('heading', '');
-          const hashes = '#'.repeat(parseInt(level));
-          newText = `${before}${hashes} ${selected}${after}`;
-        }
-
-        if (newText !== text) {
-          setContent(newText);
+        if (result.success) {
+          setContent(result.newContent);
           dispatch({
               type: 'UPDATE_CHAPTER',
-              payload: { id: activeChapter.id, updates: { content: newText } }
+              payload: { id: activeChapter.id, updates: { content: result.newContent } }
           });
           
           setTimeout(() => {
@@ -296,24 +239,10 @@ export const Editor: React.FC = () => {
 
       // Handle formatting for write mode (contenteditable)
       if (state.viewMode === 'write' && contentEditableRef.current) {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return;
-
-        if (format === 'bold') {
-          document.execCommand('bold', false);
-        } else if (format === 'italic') {
-          document.execCommand('italic', false);
-        } else if (format === 'underline') {
-          document.execCommand('underline', false);
-        } else if (format.startsWith('heading')) {
-          const level = format.replace('heading', '');
-          document.execCommand('formatBlock', false, `h${level}`);
-        } else if (format === 'paragraph') {
-          document.execCommand('formatBlock', false, 'p');
+        if (applyContentEditableFormatting(format)) {
+          // Update state after formatting
+          handleContentEditableInput();
         }
-        
-        // Update state after formatting
-        handleContentEditableInput();
       }
     };
 
@@ -334,18 +263,12 @@ export const Editor: React.FC = () => {
 
     // Handle @ mentions for source mode
     const cursor = e.target.selectionStart;
-    const textBefore = newContent.substring(0, cursor);
-    const lastAt = textBefore.lastIndexOf('@');
+    const mentionData = detectMentionInTextarea(newContent, cursor);
     
-    if (lastAt !== -1 && !textBefore.substring(lastAt).includes(' ')) {
-      const query = textBefore.substring(lastAt + 1);
-      setMentionQuery(query);
-      setMentionStartIndex(lastAt);
-      
-      // Approximate position for textarea (rough but works for demo)
-      const rect = e.target.getBoundingClientRect();
-      // This is a very rough approximation without a ghost div
-      setMentionPosition({ x: rect.left + 20, y: rect.top + 50 });
+    if (mentionData) {
+      setMentionQuery(mentionData.query);
+      setMentionStartIndex(mentionData.startIndex);
+      setMentionPosition(getTextareaMentionPosition(e.target));
     } else {
       setMentionQuery(null);
     }
@@ -355,7 +278,7 @@ export const Editor: React.FC = () => {
     if (contentEditableRef.current && activeChapter) {
       const html = contentEditableRef.current.innerHTML;
       // Convert HTML back to markdown
-      const newContent = turndownService.turndown(html);
+      const newContent = htmlToMarkdown(html, turndownService);
       setContent(newContent);
       lastStoreContent.current = newContent; // Mark as local sync
       
@@ -367,18 +290,11 @@ export const Editor: React.FC = () => {
       // Handle @ mentions for write mode
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const textBeforeContent = range.startContainer.textContent || '';
-        const offset = range.startOffset;
-        const textBeforeCursor = textBeforeContent.substring(0, offset);
-        const lastAt = textBeforeCursor.lastIndexOf('@');
-
-        if (lastAt !== -1 && !textBeforeCursor.substring(lastAt).includes(' ')) {
-          const query = textBeforeCursor.substring(lastAt + 1);
-          setMentionQuery(query);
-          
-          const rect = range.getBoundingClientRect();
-          setMentionPosition({ x: rect.left, y: rect.bottom + window.scrollY });
+        const mentionData = detectMentionInContentEditable(selection);
+        
+        if (mentionData) {
+          setMentionQuery(mentionData.query);
+          setMentionPosition(getContentEditableMentionPosition(mentionData.range));
         } else {
           setMentionQuery(null);
         }
@@ -431,7 +347,7 @@ export const Editor: React.FC = () => {
       const text = textarea.value;
       const before = text.substring(0, start);
       const after = text.substring(end);
-      const commentMarkup = `<u data-comment-id="${commentId}" class="comment">${selectedText}</u>`;
+      const commentMarkup = createCommentMarkup(commentId, selectedText);
       const newText = before + commentMarkup + after;
       console.log('[Comment] New content length:', newText.length, 'Markup:', commentMarkup);
       
@@ -447,24 +363,20 @@ export const Editor: React.FC = () => {
       if (pendingCommentId) {
         // We already wrapped it when opening modal, just update the ID
         console.log('[Comment] Found pending wrapper, updating ID from', pendingCommentId, 'to', commentId);
-        const pendingElement = contentEditableRef.current.querySelector(`u[data-comment-id="${pendingCommentId}"]`);
-        if (pendingElement) {
-          pendingElement.setAttribute('data-comment-id', commentId);
-          pendingElement.classList.remove('pending');
-          console.log('[Comment] Updated pending element to permanent');
-        }
+        updateCommentElementId(contentEditableRef.current, pendingCommentId, commentId);
         setPendingCommentId(null);
+        console.log('[Comment] Updated pending element to permanent');
       } else {
         // Fallback: do string replacement (shouldn't normally happen)
         console.log('[Comment] No pending element, doing string replacement');
         const currentHTML = contentEditableRef.current.innerHTML;
-        const commentMarkup = `<u data-comment-id="${commentId}" class="comment">${selectedText}</u>`;
+        const commentMarkup = createCommentMarkup(commentId, selectedText);
         const newContent = currentHTML.replace(selectedText, commentMarkup);
         contentEditableRef.current.innerHTML = newContent;
       }
       
       const newHtml = contentEditableRef.current.innerHTML;
-      const markdownContent = turndownService.turndown(newHtml);
+      const markdownContent = htmlToMarkdown(newHtml, turndownService);
       setContent(markdownContent);
       dispatch({
         type: 'UPDATE_CHAPTER',
@@ -474,7 +386,7 @@ export const Editor: React.FC = () => {
     } else {
       // Preview mode - find and replace in content
       console.log('[Comment] Preview/other mode - replacing in content');
-      const commentMarkup = `<u data-comment-id="${commentId}" class="comment">${selectedText}</u>`;
+      const commentMarkup = createCommentMarkup(commentId, selectedText);
       const newContent = content.replace(selectedText, commentMarkup);
       console.log('[Comment] Preview mode - replaced text, new length:', newContent.length);
       setContent(newContent);
@@ -498,27 +410,21 @@ export const Editor: React.FC = () => {
     if (!activeChapter) return;
     
     // Remove comment markup from content, keeping the text
-    const regex = new RegExp(`<u[^>]*data-comment-id="${commentId}"[^>]*>(.*?)</u>`, 'g');
-    const newContent = content.replace(regex, '$1');
+    const newContent = removeCommentMarkup(content, commentId);
     console.log('[Comment] Removed comment markup, content changed:', content.length, '->', newContent.length);
     
     // Also update DOM if in write mode
     if (state.viewMode === 'write' && contentEditableRef.current) {
-      const element = contentEditableRef.current.querySelector(`u[data-comment-id="${commentId}"]`);
-      if (element) {
-        console.log('[Comment] Removing element from DOM');
-        const text = element.textContent || '';
-        const textNode = document.createTextNode(text);
-        element.parentNode?.replaceChild(textNode, element);
-        // Update content from DOM (convert back to markdown)
-        const domContent = contentEditableRef.current.innerHTML;
-        const markdownContent = turndownService.turndown(domContent);
-        setContent(markdownContent);
-        dispatch({
-          type: 'UPDATE_CHAPTER',
-          payload: { id: activeChapter.id, updates: { content: markdownContent } }
-        });
-      }
+      unwrapCommentElement(contentEditableRef.current, commentId);
+      console.log('[Comment] Removing element from DOM');
+      // Update content from DOM (convert back to markdown)
+      const domContent = contentEditableRef.current.innerHTML;
+      const markdownContent = htmlToMarkdown(domContent, turndownService);
+      setContent(markdownContent);
+      dispatch({
+        type: 'UPDATE_CHAPTER',
+        payload: { id: activeChapter.id, updates: { content: markdownContent } }
+      });
     } else {
       setContent(newContent);
       dispatch({
@@ -541,36 +447,7 @@ export const Editor: React.FC = () => {
 
   const getMarkdownHtml = (markdownOverride?: string) => {
     const markdownToProcess = markdownOverride !== undefined ? markdownOverride : content;
-    if (!markdownToProcess) return '';
-    
-    let processedContent = markdownToProcess;
-
-    // Handle hidden comments - remove the markup but keep the text
-    chapterComments.forEach(comment => {
-      if (comment.isHidden) {
-        const regex = new RegExp(`<u[^>]*data-comment-id="${comment.id}"[^>]*>(.*?)</u>`, 'g');
-        processedContent = processedContent.replace(regex, '$1');
-      }
-    });
-
-    // Inject character-specific colors into spans
-    state.characters.forEach(char => {
-      if (char.color) {
-        // Find spans with this character id and inject style
-        const escapedId = char.id.replace(/"/g, '&quot;');
-        const regex = new RegExp(`(<span[^>]*data-character-id=["'](${char.id}|${escapedId})["'][^>]*>)([\\s\\S]*?)(</span>)`, 'g');
-        const colorWithAlpha = `${char.color}25`; // 15% opacity for highlight
-        const ceAttr = state.viewMode === 'write' ? ' contenteditable="false"' : '';
-        processedContent = processedContent.replace(regex, `$1<span style="background-color: ${colorWithAlpha}; color: ${char.color}; border-bottom: 2px solid ${char.color}; padding: 0 4px; border-radius: 4px; font-weight: 500;"${ceAttr}>$3</span>$4`);
-      }
-    });
-    
-    // Parse markdown and then sanitize. Marked handles HTML tags like <u> inside markdown.
-    const rawHtml = marked.parse(processedContent) as string;
-    return DOMPurify.sanitize(rawHtml, {
-      ADD_TAGS: ['u', 'span'],
-      ADD_ATTR: ['class', 'data-comment-id', 'data-character-id', 'data-character-name', 'style', 'contenteditable']
-    });
+    return markdownToHtml(markdownToProcess, chapterComments, state.characters, state.viewMode);
   };
 
   const handlePreviewClick = (e: React.MouseEvent) => {
@@ -628,10 +505,9 @@ export const Editor: React.FC = () => {
     });
 
     // Update the content of the <u> tag
-    const regex = new RegExp(`(<u[^>]*data-comment-id="${commentId}"[^>]*>)(.*?)(</u>)`, 'g');
     const textToShow = newIsPreviewing ? comment.replacementText : comment.originalText;
     console.log('[Suggestion] Preview toggle - showing:', textToShow);
-    const newContent = content.replace(regex, `$1${textToShow}$3`);
+    const newContent = replaceCommentText(content, commentId, textToShow);
 
     // Also update in DOM if in write mode
     if (state.viewMode === 'write' && contentEditableRef.current) {
@@ -663,17 +539,13 @@ export const Editor: React.FC = () => {
     console.log('[Suggestion] Permanently applying suggestion');
 
     // Replace the <u> tag and its content with just the replacement text
-    const regex = new RegExp(`<u[^>]*data-comment-id="${commentId}"[^>]*>.*?</u>`, 'g');
-    const newContent = content.replace(regex, comment.replacementText);
+    const newContent = applySuggestionToContent(content, commentId, comment.replacementText);
 
     // Also update in DOM if in write mode
     if (state.viewMode === 'write' && contentEditableRef.current) {
       // Need to convert markdown to HTML for contentEditable
-      const rawHtml = marked.parse(newContent) as string;
-      contentEditableRef.current.innerHTML = DOMPurify.sanitize(rawHtml, {
-        ADD_TAGS: ['u', 'span'],
-        ADD_ATTR: ['class', 'data-comment-id']
-      });
+      const html = markdownToHtml(newContent, chapterComments, state.characters, state.viewMode);
+      contentEditableRef.current.innerHTML = html;
     }
 
     setContent(newContent);
@@ -691,75 +563,29 @@ export const Editor: React.FC = () => {
     console.log('[Suggestion] Suggestion applied permanently and comment removed');
   };
 
-  const filteredCharacters = state.characters.filter(char =>
-    char.name.toLowerCase().includes((mentionQuery || '').toLowerCase())
-  );
+  const filteredCharacters = filterCharactersByQuery(state.characters, mentionQuery || '');
 
   const selectCharacter = (character: Character) => {
     if (!activeChapter) return;
 
-    const mentionHtml = `<span data-character-id="${character.id}" data-character-name="${character.name}" class="character-mention">${character.name}</span>`;
-
     if (state.viewMode === 'source' && textareaRef.current) {
-      const textarea = textareaRef.current;
-      const start = mentionStartIndex;
-      const end = textarea.selectionStart;
-      const text = textarea.value;
-      const before = text.substring(0, start);
-      const after = text.substring(end);
+      const result = insertMentionInTextarea(textareaRef.current, mentionStartIndex, createMentionMarkup(character));
       
-      const newText = before + mentionHtml + ' ' + after;
-      setContent(newText);
+      setContent(result.newContent);
       dispatch({
         type: 'UPDATE_CHAPTER',
-        payload: { id: activeChapter.id, updates: { content: newText } }
+        payload: { id: activeChapter.id, updates: { content: result.newContent } }
       });
       
       setTimeout(() => {
-        textarea.focus();
-        const newCursorPos = start + mentionHtml.length + 1;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(result.cursorPosition, result.cursorPosition);
+        }
       }, 0);
     } else if (state.viewMode === 'write' && contentEditableRef.current) {
       const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const textNode = range.startContainer;
-        const textContent = textNode.textContent || '';
-        const lastAt = textContent.substring(0, range.startOffset).lastIndexOf('@');
-        
-        if (lastAt !== -1) {
-          // Remove the '@query' part
-          range.setStart(textNode, lastAt);
-          range.deleteContents();
-          
-          // Create the mention span
-          const span = document.createElement('span');
-          span.className = 'character-mention';
-          span.setAttribute('data-character-id', character.id);
-          span.setAttribute('data-character-name', character.name);
-          span.textContent = character.name;
-          span.contentEditable = 'false'; // Make the tag itself non-editable to prevent typing inside
-          
-          // Create a space node specifically AFTER the span
-          const spaceNode = document.createTextNode('\u00A0'); // Using NBSP initially to force cursor out
-          
-          range.insertNode(span);
-          span.after(spaceNode);
-          
-          // Position cursor after the space
-          const newRange = document.createRange();
-          newRange.setStartAfter(spaceNode);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-          
-          // Also insert a trailing regular space after NBSP if needed or just replace NBSP later?
-          // Let's stick with a regular space first but ensure contentEditable="false" on the span.
-          span.contentEditable = 'false';
-          spaceNode.textContent = ' ';
-        }
-        
+      if (selection && insertMentionInContentEditable(selection, character)) {
         handleContentEditableInput();
       }
     }
@@ -891,22 +717,16 @@ export const Editor: React.FC = () => {
           console.log('[Comment] Modal closed/cancelled');
           // Remove pending comment wrapper if cancelled
           if (pendingCommentId && state.viewMode === 'write' && contentEditableRef.current) {
-            const pendingElement = contentEditableRef.current.querySelector(`u[data-comment-id="${pendingCommentId}"]`);
-            if (pendingElement) {
-              console.log('[Comment] Removing pending element');
-              // Unwrap the element, keeping the text
-              const text = pendingElement.textContent || '';
-              const textNode = document.createTextNode(text);
-              pendingElement.parentNode?.replaceChild(textNode, pendingElement);
-              // Sync back to content
-              const newHtml = contentEditableRef.current.innerHTML;
-              const markdownContent = turndownService.turndown(newHtml);
-              setContent(markdownContent);
-              dispatch({
-                type: 'UPDATE_CHAPTER',
-                payload: { id: activeChapter.id, updates: { content: markdownContent } }
-              });
-            }
+            unwrapCommentElement(contentEditableRef.current, pendingCommentId);
+            console.log('[Comment] Removing pending element');
+            // Sync back to content
+            const newHtml = contentEditableRef.current.innerHTML;
+            const markdownContent = htmlToMarkdown(newHtml, turndownService);
+            setContent(markdownContent);
+            dispatch({
+              type: 'UPDATE_CHAPTER',
+              payload: { id: activeChapter.id, updates: { content: markdownContent } }
+            });
             setPendingCommentId(null);
           }
           setShowCommentModal(false);
