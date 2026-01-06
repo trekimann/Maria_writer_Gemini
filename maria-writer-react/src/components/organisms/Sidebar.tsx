@@ -1,14 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Sortable from 'sortablejs';
 import { useStore } from '../../context/StoreContext';
 import { ChapterItem } from '../molecules/ChapterItem';
 import { Button } from '../atoms/Button';
-import { Plus, PenTool, Book } from 'lucide-react';
+import { Plus, PenTool, Book, ChevronLeft, ChevronRight } from 'lucide-react';
 import styles from './Sidebar.module.scss';
 
 export const Sidebar: React.FC = () => {
   const { state, dispatch } = useStore();
   const listRef = useRef<HTMLUListElement>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -44,10 +45,19 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.header}>
-        <span className={styles.headerTitle}>Chapters</span>
-        <Button variant="ghost" size="sm" icon={Plus} onClick={handleAddChapter} />
+    <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
+      <button 
+        className={styles.collapseBtn} 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+      </button>
+      {!isCollapsed && (
+        <>
+          <div className={styles.header}>
+            <span className={styles.headerTitle}>Chapters</span>
+            <Button variant="ghost" size="sm" icon={Plus} onClick={handleAddChapter} />
       </div>
 
       <div className={styles.listContainer}>
@@ -80,6 +90,8 @@ export const Sidebar: React.FC = () => {
           <span>Codex</span>
         </div>
       </div>
+        </>
+      )}
     </aside>
   );
 };

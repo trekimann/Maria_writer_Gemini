@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, Relationship } from '../types';
+import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, Relationship, StoryComment } from '../types';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEventDelete, syncCharacterLifeEventsToTimeline, syncRelationshipToEvent } from '../utils/eventSync';
 
@@ -51,7 +51,10 @@ type Action =
   | { type: 'ADD_TIMELINE_EDGE'; payload: { from: string; to: string; id: string } }
   | { type: 'REMOVE_TIMELINE_EDGE'; payload: string }
   | { type: 'REORDER_TIMELINE_LANES'; payload: string[] }
-  | { type: 'ADD_COMMENT'; payload: { id: string; text: string; timestamp: number } };
+  | { type: 'ADD_COMMENT'; payload: { chapterId: string; comment: StoryComment } }
+  | { type: 'UPDATE_COMMENT'; payload: { chapterId: string; commentId: string; updates: Partial<StoryComment> } }
+  | { type: 'DELETE_COMMENT'; payload: { chapterId: string; commentId: string } }
+  | { type: 'HIDE_COMMENT'; payload: string };
 
 // Reducer
 export const reducer = (state: AppState, action: Action): AppState => {
@@ -177,7 +180,47 @@ export const reducer = (state: AppState, action: Action): AppState => {
     case 'REORDER_TIMELINE_LANES':
       return { ...state, timeline: { ...state.timeline, characterLaneOrder: action.payload } };
     case 'ADD_COMMENT':
-      return { ...state, comments: { ...state.comments, [action.payload.id]: { id: action.payload.id, text: action.payload.text, timestamp: action.payload.timestamp } } };
+      const chapter = state.chapters.find(c => c.id === action.payload.chapterId);
+      if (!chapter) return state;
+      
+      return {
+        ...state,
+        comments: { ...state.comments, [action.payload.comment.id]: action.payload.comment },
+        chapters: state.chapters.map(c =>
+          c.id === action.payload.chapterId
+            ? { ...c, commentIds: [...(c.commentIds || []), action.payload.comment.id] }
+            : c
+        )
+      };
+    case 'UPDATE_COMMENT':
+      if (!state.comments[action.payload.commentId]) return state;
+      return {
+        ...state,
+        comments: {
+          ...state.comments,
+          [action.payload.commentId]: { ...state.comments[action.payload.commentId], ...action.payload.updates }
+        }
+      };
+    case 'DELETE_COMMENT':
+      const { [action.payload.commentId]: removed, ...remainingComments } = state.comments;
+      return {
+        ...state,
+        comments: remainingComments,
+        chapters: state.chapters.map(c =>
+          c.id === action.payload.chapterId
+            ? { ...c, commentIds: (c.commentIds || []).filter(id => id !== action.payload.commentId) }
+            : c
+        )
+      };
+    case 'HIDE_COMMENT':
+      if (!state.comments[action.payload]) return state;
+      return {
+        ...state,
+        comments: {
+          ...state.comments,
+          [action.payload]: { ...state.comments[action.payload], isHidden: !state.comments[action.payload].isHidden }
+        }
+      };
     default:
       return state;
   }

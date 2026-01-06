@@ -11,6 +11,7 @@ export interface Chapter {
   title: string;
   content: string;
   order: number;
+  commentIds?: string[]; // Track comments for this chapter
 }
 
 export type LifeEventType = 'birth-of-child' | 'marriage' | 'friendship';
@@ -47,10 +48,16 @@ export interface Event {
   image?: string;
 }
 
-export interface Comment {
+export interface StoryComment {
   id: string;
+  author: string;
   text: string;
   timestamp: number;
+  isSuggestion: boolean;
+  replacementText?: string;
+  isPreviewing?: boolean; // For suggestions: whether replacement text is temporarily shown
+  isHidden: boolean;
+  originalText: string; // The text that was commented on
 }
 
 export interface TimelineEdge {
@@ -100,7 +107,7 @@ export interface AppState {
   characters: Character[];
   events: Event[];
   relationships: Relationship[];
-  comments: Record<string, Comment>;
+  comments: Record<string, StoryComment>;
   timeline: Timeline;
   viewMode: ViewMode;
   context: ContextMode;

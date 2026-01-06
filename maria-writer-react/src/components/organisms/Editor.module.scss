@@ -4,6 +4,14 @@
   height: 100%;
   overflow: hidden;
   background-color: white;
+  display: flex;
+}
+
+.editorContent {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
 }
 
 .textarea {
@@ -43,18 +51,6 @@
   h4 { font-size: 1.1em; font-weight: bold; margin-top: 0.6em; margin-bottom: 0.3em; color: #4b5563; }
   p { margin-bottom: 1em; color: #374151; }
   blockquote { border-left: 4px solid #e5e7eb; padding-left: 1em; color: #6b7280; font-style: italic; }
-
-  /* Comment highlighting */
-  :global(.maria-comment) {
-    background-color: #f3e8ff; /* purple-100 */
-    border-bottom: 2px solid #d8b4fe; /* purple-300 */
-    cursor: pointer;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: #e9d5ff; /* purple-200 */
-    }
-  }
 }
 
 .editable {

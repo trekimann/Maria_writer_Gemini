@@ -54,30 +54,13 @@ export const TopBar: React.FC = () => {
     dispatch({ type: 'OPEN_MODAL', payload: { type: 'metadata' } });
   };
 
-  const toggleViewMode = () => {
-    // Cycle through: write -> source -> preview -> write
-    const modes = ['write', 'source', 'preview'] as const;
-    const currentIndex = modes.indexOf(state.viewMode);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    dispatch({ type: 'SET_VIEW_MODE', payload: nextMode });
+  const setViewMode = (mode: 'write' | 'source' | 'preview') => {
+    dispatch({ type: 'SET_VIEW_MODE', payload: mode });
   };
 
   const handleFormat = (format: string) => {
     window.dispatchEvent(new CustomEvent('maria-editor-format', { detail: { format } }));
   };
-
-  const getViewModeButton = () => {
-    switch (state.viewMode) {
-      case 'write':
-        return { icon: Code, label: 'Source' };
-      case 'source':
-        return { icon: Eye, label: 'Preview' };
-      case 'preview':
-        return { icon: PenLine, label: 'Write' };
-    }
-  };
-
-  const viewModeButton = getViewModeButton();
 
   return (
     <header className={styles.topbar}>
@@ -136,13 +119,32 @@ export const TopBar: React.FC = () => {
 
       <div className={styles.right}>
         <span className={styles.saveStatus}>Saved locally</span>
-        <Button 
-          variant="secondary" 
-          size="sm" 
-          icon={viewModeButton.icon} 
-          label={viewModeButton.label} 
-          onClick={toggleViewMode}
-        />
+        <div className={styles.viewModes}>
+          <Button 
+            variant={state.viewMode === 'write' ? 'primary' : 'ghost'}
+            size="sm" 
+            icon={PenLine} 
+            label="Write" 
+            onClick={() => setViewMode('write')}
+            title="Write Mode"
+          />
+          <Button 
+            variant={state.viewMode === 'source' ? 'primary' : 'ghost'}
+            size="sm" 
+            icon={Code} 
+            label="Source" 
+            onClick={() => setViewMode('source')}
+            title="Source Mode"
+          />
+          <Button 
+            variant={state.viewMode === 'preview' ? 'primary' : 'ghost'}
+            size="sm" 
+            icon={Eye} 
+            label="Preview" 
+            onClick={() => setViewMode('preview')}
+            title="Preview Mode"
+          />
+        </div>
       </div>
     </header>
   );
