@@ -85,6 +85,32 @@ describe('StoreContext Integration Tests', () => {
     });
   });
 
+    it('should update character color', () => {
+      const { result } = renderHook(() => useStore(), { wrapper });
+
+      const character: Character = {
+        id: 'c1',
+        name: 'Alice',
+        description: 'Main character',
+        color: '#4f46e5'
+      };
+
+      act(() => {
+        result.current.dispatch({ type: 'ADD_CHARACTER', payload: character });
+      });
+
+      const updatedCharacter: Character = {
+        ...character,
+        color: '#ff0000'
+      };
+
+      act(() => {
+        result.current.dispatch({ type: 'UPDATE_CHARACTER', payload: updatedCharacter });
+      });
+
+      expect(result.current.state.characters[0].color).toBe('#ff0000');
+    });
+
   describe('Character and Relationship Integration', () => {
     it('should manage characters and their relationships together', () => {
       const { result } = renderHook(() => useStore(), { wrapper });

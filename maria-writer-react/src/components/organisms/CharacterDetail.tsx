@@ -3,6 +3,7 @@ import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
 import { ArrowLeft, Edit, Calendar, BookOpen } from 'lucide-react';
 import { formatDateTimeOrEmpty, getDisplayAge } from '../../utils/date';
+import { findCharacterMentions } from '../../utils/mention';
 import styles from './CharacterDetail.module.scss';
 
 export const CharacterDetail: React.FC = () => {
@@ -36,34 +37,7 @@ export const CharacterDetail: React.FC = () => {
     dispatch({ type: 'OPEN_MODAL', payload: { type: 'event', itemId: eventId } });
   };
 
-  const mentions = state.chapters.flatMap(chapter => {
-    // Escape double quotes in char.id for the regex
-    const escapedId = char.id.replace(/"/g, '&quot;');
-    const regex = new RegExp(`<span[^>]*data-character-id=["'](${char.id}|${escapedId})["'][^>]*>([\\s\\S]*?)</span>`, 'g');
-    const matches = [];
-    let match;
-    while ((match = regex.exec(chapter.content)) !== null) {
-      const start = Math.max(0, match.index - 60);
-      const end = Math.min(chapter.content.length, match.index + match[0].length + 60);
-      let excerpt = chapter.content.substring(start, end);
-      
-      // Highlight the mention in the excerpt
-      const tagContent = match[2];
-      const colorWithAlpha = `${char.color || '#4f46e5'}25`;
-      excerpt = excerpt.replace(match[0], `<mark class="mention-highlight" style="background-color: ${colorWithAlpha}; color: ${char.color || '#4f46e5'}">${tagContent}</mark>`);
-      
-      // Clean up other HTML tags except our highlight
-      excerpt = excerpt.replace(/<(?!mark|\/mark)[^>]*>/g, '');
-      
-      matches.push({
-        chapterId: chapter.id,
-        chapterTitle: chapter.title,
-        excerpt: excerpt,
-        index: match.index
-      });
-    }
-    return matches;
-  });
+  const mentions = findCharacterMentions(state.chapters, char);
 
   const goToChapter = (chapterId: string) => {
     dispatch({ type: 'SET_ACTIVE_CHAPTER', payload: chapterId });
