@@ -47,7 +47,8 @@ turndownService.addRule('character-mention', {
 
 export const Editor: React.FC = () => {
   const { state, dispatch } = useStore();
-  const [content, setContent] = useState('');
+  const activeChapter = state.chapters.find(c => c.id === state.activeChapterId);
+  const [content, setContent] = useState(activeChapter?.content || '');
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentModalPosition, setCommentModalPosition] = useState({ x: 0, y: 0 });
@@ -63,7 +64,6 @@ export const Editor: React.FC = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
-  const activeChapter = state.chapters.find(c => c.id === state.activeChapterId);
 
   // Get comments for the active chapter
   const chapterComments = activeChapter?.commentIds

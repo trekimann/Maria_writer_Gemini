@@ -20,7 +20,7 @@ export const MainLayout: React.FC = () => {
       <div className={styles.body}>
         <Sidebar />
         <main className={styles.main}>
-          {state.context === 'writer' ? <Editor /> : <Codex />}
+          {state.context === 'writer' ? <Editor key={state.activeChapterId} /> : <Codex />}
         </main>
       </div>
       <MetadataModal />
