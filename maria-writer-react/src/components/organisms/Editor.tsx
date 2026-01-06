@@ -12,6 +12,13 @@ import {
   markdownToHtml,
   extractTitleFromMarkdown
 } from '../../utils/editorMarkdown';
+import { Statistics } from '../atoms/Statistics';
+import {
+  extractCleanText,
+  calculateWordCount,
+  calculateCharacterCount,
+  formatReadingTime
+} from '../../utils/statistics';
 import {
   createCommentMarkup,
   removeCommentMarkup,
@@ -52,6 +59,11 @@ export const Editor: React.FC = () => {
   const [selectedText, setSelectedText] = useState('');
   const [isCommentPaneOpen, setIsCommentPaneOpen] = useState(false);
   const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
+  
+  // Statistics state
+  const [wordCount, setWordCount] = useState(0);
+  const [characterCount, setCharacterCount] = useState(0);
+  const [readingTime, setReadingTime] = useState('Less than 1 min');
   
   // Character tagging state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -97,6 +109,18 @@ export const Editor: React.FC = () => {
       }
     }
   }, [state.viewMode, activeChapter?.id]);
+
+  // Update statistics whenever content changes
+  useEffect(() => {
+    const cleanText = extractCleanText(content);
+    const newWordCount = calculateWordCount(cleanText);
+    const newCharacterCount = calculateCharacterCount(cleanText);
+    const newReadingTime = formatReadingTime(newWordCount);
+
+    setWordCount(newWordCount);
+    setCharacterCount(newCharacterCount);
+    setReadingTime(newReadingTime);
+  }, [content]);
 
   // Debounced automation: Sync first line H1 and mentioned characters to chapter metadata
   useEffect(() => {
@@ -634,34 +658,42 @@ export const Editor: React.FC = () => {
 
   return (
     <div className={styles.editorContainer}>
-      <div className={styles.editorContent}>
-        {state.viewMode === 'source' ? (
-          <textarea
-            ref={textareaRef}
-            className={styles.textarea}
-            value={content}
-            onChange={handleChange}
-            onKeyDown={handleEditorKeyDown}
-            placeholder="Start writing your masterpiece..."
-            spellCheck={false}
-          />
-        ) : state.viewMode === 'write' ? (
-          <div 
-            ref={contentEditableRef}
-            className={`${styles.preview} ${styles.editable}`}
-            contentEditable={true}
-            onInput={handleContentEditableInput}
-            onKeyDown={handleEditorKeyDown}
-            onClick={handleWriteModeClick}
-            suppressContentEditableWarning={true}
-          />
-        ) : (
-          <div 
-            className={styles.preview}
-            onClick={handlePreviewClick}
-            dangerouslySetInnerHTML={{ __html: getMarkdownHtml() }}
-          />
-        )}
+      <div className={styles.editorMainColumn}>
+        <div className={styles.editorContent}>
+          {state.viewMode === 'source' ? (
+            <textarea
+              ref={textareaRef}
+              className={styles.textarea}
+              value={content}
+              onChange={handleChange}
+              onKeyDown={handleEditorKeyDown}
+              placeholder="Start writing your masterpiece..."
+              spellCheck={false}
+            />
+          ) : state.viewMode === 'write' ? (
+            <div 
+              ref={contentEditableRef}
+              className={`${styles.preview} ${styles.editable}`}
+              contentEditable={true}
+              onInput={handleContentEditableInput}
+              onKeyDown={handleEditorKeyDown}
+              onClick={handleWriteModeClick}
+              suppressContentEditableWarning={true}
+            />
+          ) : (
+            <div 
+              className={styles.preview}
+              onClick={handlePreviewClick}
+              dangerouslySetInnerHTML={{ __html: getMarkdownHtml() }}
+            />
+          )}
+        </div>
+
+        <Statistics
+          wordCount={wordCount}
+          characterCount={characterCount}
+          readingTime={readingTime}
+        />
       </div>
 
       {mentionQuery !== null && mentionPosition && (

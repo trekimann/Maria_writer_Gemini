@@ -1,0 +1,39 @@
+.statisticsContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1.5rem;
+  padding: 0.4rem 1rem;
+  border-top: 1px solid var(--color-border, #e0e0e0);
+  background-color: var(--color-background-secondary, #fafafa);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #666);
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.statItem {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted, #999);
+}
+
+.statValue {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #333);
+}
+
+.divider {
+  width: 1px;
+  height: 1.25rem;
+  background-color: var(--color-border, #eeeeee);
+}
