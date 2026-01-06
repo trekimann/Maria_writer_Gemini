@@ -13,34 +13,25 @@ describe('editorMentions', () => {
       id: 'c1',
       name: 'Alice',
       description: '',
-      dob: '',
-      deathDate: '',
       color: '',
       picture: '',
-      tags: [],
-      relationships: []
+      tags: []
     },
     {
       id: 'c2',
       name: 'Bob',
       description: '',
-      dob: '',
-      deathDate: '',
       color: '',
       picture: '',
-      tags: [],
-      relationships: []
+      tags: []
     },
     {
       id: 'c3',
       name: 'Charlie',
       description: '',
-      dob: '',
-      deathDate: '',
       color: '',
       picture: '',
-      tags: [],
-      relationships: []
+      tags: []
     }
   ];
 

@@ -1,7 +1,7 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import TurndownService from 'turndown';
-import { Character, Comment } from '../types';
+import { Character, StoryComment } from '../types';
 
 /**
  * Initialize Turndown service with custom rules for comments and mentions
@@ -58,7 +58,7 @@ export function htmlToMarkdown(html: string, turndownService: TurndownService): 
  */
 export function markdownToHtml(
   markdownContent: string,
-  comments: Comment[],
+  comments: StoryComment[],
   characters: Character[],
   viewMode: 'preview' | 'write' | 'source'
 ): string {

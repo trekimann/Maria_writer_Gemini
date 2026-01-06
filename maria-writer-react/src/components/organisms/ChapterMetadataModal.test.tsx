@@ -2,7 +2,6 @@ import { describe, it, vi, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { ChapterMetadataModal } from './ChapterMetadataModal';
 import { StoreProvider } from '../../context/StoreContext';
-import React from 'react';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({

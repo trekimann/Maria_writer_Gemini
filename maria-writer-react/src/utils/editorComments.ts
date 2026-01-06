@@ -1,4 +1,4 @@
-import { Comment } from '../types';
+import { StoryComment } from '../types';
 
 /**
  * Create comment markup for a given comment ID and text
@@ -43,7 +43,7 @@ export function applySuggestionToContent(
  * Update CSS classes on comment elements in the DOM based on state
  */
 export function updateCommentElementClasses(
-  comments: Comment[],
+  comments: StoryComment[],
   activeCommentId: string | null
 ): void {
   const commentElements = document.querySelectorAll('u[data-comment-id]');

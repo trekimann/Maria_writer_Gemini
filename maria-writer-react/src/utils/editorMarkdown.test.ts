@@ -5,7 +5,7 @@ import {
   markdownToHtml,
   extractTitleFromMarkdown
 } from './editorMarkdown';
-import { Comment, Character } from '../types';
+import { StoryComment, Character } from '../types';
 
 describe('editorMarkdown', () => {
   describe('createTurndownService', () => {
@@ -42,30 +42,27 @@ describe('editorMarkdown', () => {
   });
 
   describe('markdownToHtml', () => {
-    const mockComments: Comment[] = [
-      {
-        id: 'c1',
-        author: 'User',
-        text: 'Comment text',
-        timestamp: Date.now(),
-        isSuggestion: false,
-        isPreviewing: false,
-        isHidden: false,
-        originalText: 'original'
-      }
-    ];
+const mockComments: StoryComment[] = [
+    {
+      id: 'c1',
+      author: 'User',
+      text: 'Comment text',
+      timestamp: Date.now(),
+      isSuggestion: false,
+      isPreviewing: false,
+      isHidden: false,
+      originalText: 'original'
+    }
+  ];
 
-    const mockCharacters: Character[] = [
-      {
-        id: 'ch1',
-        name: 'Alice',
-        description: '',
-        dob: '',
-        deathDate: '',
-        color: '#ff0000',
-        picture: '',
-        tags: [],
-        relationships: []
+  const mockCharacters: Character[] = [
+    {
+      id: 'ch1',
+      name: 'Alice',
+      description: '',
+      color: '#ff0000',
+      picture: '',
+      tags: []
       }
     ];
 
@@ -77,7 +74,7 @@ describe('editorMarkdown', () => {
     });
 
     it('should hide hidden comments', () => {
-      const hiddenComment: Comment = { ...mockComments[0], isHidden: true };
+      const hiddenComment: StoryComment = { ...mockComments[0], isHidden: true };
       const markdown = '<u data-comment-id="c1" class="comment">hidden text</u>';
       const html = markdownToHtml(markdown, [hiddenComment], [], 'preview');
       expect(html).not.toContain('<u data-comment-id="c1"');
