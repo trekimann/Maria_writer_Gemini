@@ -36,6 +36,32 @@ describe('StoreContext Reducer', () => {
     const newState = reducer(initialState, { type: 'ADD_CHAPTER' });
     expect(newState.chapters.length).toBe(initialState.chapters.length + 1);
     expect(newState.activeChapterId).toBeDefined();
+    
+    // Check metadata fields are initialized
+    const newChap = newState.chapters[newState.chapters.length - 1];
+    expect(newChap.relatedEvents).toEqual([]);
+    expect(newChap.mentionedCharacters).toEqual([]);
+  });
+
+  it('should handle UPDATE_CHAPTER with metadata', () => {
+    const chapId = initialState.chapters[0].id;
+    const updates = {
+      title: 'New Chapter Title',
+      date: '01/01/2026 12:00:00',
+      relatedEvents: ['e1'],
+      mentionedCharacters: ['c1']
+    };
+    
+    const newState = reducer(initialState, {
+      type: 'UPDATE_CHAPTER',
+      payload: { id: chapId, updates }
+    });
+    
+    const updatedChap = newState.chapters.find(c => c.id === chapId);
+    expect(updatedChap?.title).toBe('New Chapter Title');
+    expect(updatedChap?.date).toBe('01/01/2026 12:00:00');
+    expect(updatedChap?.relatedEvents).toEqual(['e1']);
+    expect(updatedChap?.mentionedCharacters).toEqual(['c1']);
   });
 
   it('should handle DELETE_CHAPTER', () => {

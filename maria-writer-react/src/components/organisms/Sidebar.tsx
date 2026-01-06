@@ -44,6 +44,11 @@ export const Sidebar: React.FC = () => {
     }
   };
 
+  const handleChapterSettings = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch({ type: 'OPEN_MODAL', payload: { type: 'chapter-metadata', itemId: id } });
+  };
+
   return (
     <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
       <button 
@@ -69,9 +74,14 @@ export const Sidebar: React.FC = () => {
               isActive={chapter.id === state.activeChapterId}
               onClick={() => dispatch({ type: 'SET_ACTIVE_CHAPTER', payload: chapter.id })}
               onDelete={(e) => handleDeleteChapter(chapter.id, e)}
+              onSettings={(e) => handleChapterSettings(chapter.id, e)}
             />
           ))}
         </ul>
+        <button className={styles.addChapterBtn} onClick={handleAddChapter}>
+          <Plus size={16} />
+          <span>New Chapter</span>
+        </button>
       </div>
 
       <div className={styles.nav}>

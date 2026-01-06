@@ -4,9 +4,11 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import TurndownService from 'turndown';
 import { v4 as uuidv4 } from 'uuid';
+import { Plus } from 'lucide-react';
 import { Character } from '../../types';
 import { CommentModal } from '../molecules/CommentModal';
 import { CommentPane } from './CommentPane';
+import { extractMentionedCharacterIds } from '../../utils/mention';
 import styles from './Editor.module.scss';
 
 // Initialize Turndown once
@@ -64,31 +66,82 @@ export const Editor: React.FC = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
+  const lastStoreContent = useRef(activeChapter?.content || '');
 
   // Get comments for the active chapter
   const chapterComments = activeChapter?.commentIds
     ?.map(id => state.comments[id])
     .filter(Boolean) || [];
 
+  // Update local content when store changes EXTERNALLY (e.g. metadata modal)
   useEffect(() => {
-    if (activeChapter) {
+    if (activeChapter && activeChapter.content !== lastStoreContent.current) {
+      console.log('[Sync] External change detected, updating local state');
       setContent(activeChapter.content);
+      lastStoreContent.current = activeChapter.content;
+      
+      // If in write mode, also refresh the DOM
+      if (state.viewMode === 'write' && contentEditableRef.current) {
+        const html = getMarkdownHtml(activeChapter.content);
+        if (contentEditableRef.current.innerHTML !== html) {
+          contentEditableRef.current.innerHTML = html;
+        }
+      }
     }
-  }, [activeChapter?.id]);
+  }, [activeChapter?.content]);
 
-  // Separate effect to update contenteditable div when switching to write mode or content changes
+  // Handle mode switches and initialization
   useEffect(() => {
     if (contentEditableRef.current && state.viewMode === 'write' && activeChapter) {
-      // Only update the HTML if switching modes or if content changed externally
-      const html = getMarkdownHtml();
+      const html = getMarkdownHtml(content);
       const currentHTML = contentEditableRef.current.innerHTML;
       
-      // Check if we need to update (avoid updating during typing)
-      if (currentHTML !== html && content === activeChapter.content) {
+      // Update the HTML if switching to write mode or if DOM is empty
+      if (currentHTML === '' || currentHTML === '<p><br></p>') {
         contentEditableRef.current.innerHTML = html;
       }
     }
   }, [state.viewMode, activeChapter?.id]);
+
+  // Debounced automation: Sync first line H1 and mentioned characters to chapter metadata
+  useEffect(() => {
+    if (!activeChapter) return;
+    
+    const timeoutId = setTimeout(() => {
+      const updates: any = {};
+      
+      // 1. Sync Title from H1
+      const lines = content.split('\n');
+      const firstLine = lines[0]?.trim() || '';
+      if (firstLine.startsWith('# ')) {
+        const h1Title = firstLine.substring(2).trim();
+        if (h1Title && h1Title !== activeChapter.title) {
+          updates.title = h1Title;
+        }
+      }
+
+      // 2. Sync Mentioned Characters from content tags
+      const currentMentionedIds = extractMentionedCharacterIds(content);
+      const existingMentionedIds = activeChapter.mentionedCharacters || [];
+      
+      // Check if they are different (order doesn't matter for sync, but we'll sort for consistency)
+      const sortedCurrent = [...currentMentionedIds].sort();
+      const sortedExisting = [...existingMentionedIds].sort();
+      
+      if (JSON.stringify(sortedCurrent) !== JSON.stringify(sortedExisting)) {
+        updates.mentionedCharacters = currentMentionedIds;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        dispatch({
+          type: 'UPDATE_CHAPTER',
+          payload: { id: activeChapter.id, updates }
+        });
+      }
+    }, 1500); // 1.5s cooldown to avoid jumping while typing
+
+    return () => clearTimeout(timeoutId);
+  }, [content, activeChapter?.id, activeChapter?.title, activeChapter?.mentionedCharacters, dispatch]);
 
   // Update CSS classes on comment elements based on active state and applied suggestions
   useEffect(() => {
@@ -271,6 +324,7 @@ export const Editor: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
+    lastStoreContent.current = newContent; // Mark as local sync
     if (activeChapter) {
       dispatch({
         type: 'UPDATE_CHAPTER',
@@ -303,6 +357,8 @@ export const Editor: React.FC = () => {
       // Convert HTML back to markdown
       const newContent = turndownService.turndown(html);
       setContent(newContent);
+      lastStoreContent.current = newContent; // Mark as local sync
+      
       dispatch({
         type: 'UPDATE_CHAPTER',
         payload: { id: activeChapter.id, updates: { content: newContent } }
@@ -483,10 +539,11 @@ export const Editor: React.FC = () => {
     console.log('[Comment] Delete completed');
   };
 
-  const getMarkdownHtml = () => {
-    if (!content) return '';
+  const getMarkdownHtml = (markdownOverride?: string) => {
+    const markdownToProcess = markdownOverride !== undefined ? markdownOverride : content;
+    if (!markdownToProcess) return '';
     
-    let processedContent = content;
+    let processedContent = markdownToProcess;
 
     // Handle hidden comments - remove the markup but keep the text
     chapterComments.forEach(comment => {
@@ -733,7 +790,20 @@ export const Editor: React.FC = () => {
   };
 
   if (!activeChapter) {
-    return <div className={styles.emptyState}>Select a chapter to start writing.</div>;
+    return (
+      <div className={styles.emptyState}>
+        <div className={styles.emptyStateContent}>
+          <p>Select a chapter or create a new one to start writing.</p>
+          <button 
+            className={styles.addChapterPrompt}
+            onClick={() => dispatch({ type: 'ADD_CHAPTER' })}
+          >
+            <Plus size={20} />
+            <span>Add New Chapter</span>
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

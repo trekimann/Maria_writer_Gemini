@@ -51,3 +51,25 @@ export const findCharacterMentions = (
     return matches;
   });
 };
+
+/**
+ * Extracts all character IDs mentioned in the given content
+ */
+export const extractMentionedCharacterIds = (content: string): string[] => {
+  if (!content) return [];
+  
+  // Match <span ... data-character-id="ID" ... >
+  // This version handles ", ', and &quot; specifically
+  const regex = /data-character-id=(?:&quot;|["'])(.*?)(?:&quot;|["'])/g;
+  const characterIds = new Set<string>();
+  let match;
+  
+  while ((match = regex.exec(content)) !== null) {
+    const id = match[1].trim();
+    if (id) {
+      characterIds.add(id);
+    }
+  }
+  
+  return Array.from(characterIds);
+};

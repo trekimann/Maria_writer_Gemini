@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, vi, beforeEach, expect } from 'vitest';
+import { render } from '@testing-library/react';
 import { Editor } from './Editor';
 import { StoreProvider } from '../../context/StoreContext';
-import React from 'react';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({
@@ -22,6 +21,7 @@ vi.mock('lucide-react', () => ({
   Code: () => <div data-testid="code-icon" />,
   Maximize2: () => <div data-testid="maximize-icon" />,
   Minimize2: () => <div data-testid="minimize-icon" />,
+  Plus: () => <div data-testid="plus-icon" />,
 }));
 
 // Setup safe defaults for window.getSelection

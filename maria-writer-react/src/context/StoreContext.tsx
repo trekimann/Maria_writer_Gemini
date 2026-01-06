@@ -8,7 +8,15 @@ import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEve
 export const initialState: AppState = {
   meta: { title: "New Novel", author: "Anonymous", description: "", tags: [] },
   chapters: [
-    { id: uuidv4(), title: "Chapter 1", content: "# Chapter 1\n\nIt was a dark and stormy night...", order: 0 }
+    { 
+      id: uuidv4(), 
+      title: "Chapter 1", 
+      content: "# Chapter 1\n\nIt was a dark and stormy night...", 
+      order: 0,
+      relatedEvents: [],
+      mentionedCharacters: [],
+      date: ""
+    }
   ],
   activeChapterId: null,
   characters: [],
@@ -68,7 +76,10 @@ export const reducer = (state: AppState, action: Action): AppState => {
         id: uuidv4(),
         title: "New Chapter",
         content: "",
-        order: state.chapters.length
+        order: state.chapters.length,
+        relatedEvents: [],
+        mentionedCharacters: [],
+        date: ""
       };
       return {
         ...state,

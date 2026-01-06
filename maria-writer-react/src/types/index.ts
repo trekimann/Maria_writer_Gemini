@@ -12,6 +12,9 @@ export interface Chapter {
   content: string;
   order: number;
   commentIds?: string[]; // Track comments for this chapter
+  relatedEvents?: string[]; // Array of event IDs
+  mentionedCharacters?: string[]; // Array of character IDs
+  date?: string; // Date the chapter is set
 }
 
 export type LifeEventType = 'birth-of-child' | 'marriage' | 'friendship';
@@ -99,7 +102,7 @@ export interface Relationship {
 export type ViewMode = 'write' | 'source' | 'preview';
 export type ContextMode = 'writer' | 'codex';
 export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
-export type ModalType = 'none' | 'save' | 'metadata' | 'character' | 'event' | 'relationship';
+export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship';
 
 export interface AppState {
   meta: BookMetadata;

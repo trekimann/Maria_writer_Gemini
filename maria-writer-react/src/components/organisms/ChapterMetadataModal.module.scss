@@ -1,0 +1,103 @@
+.field {
+  margin-bottom: 1.5rem;
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+.input, .textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-normal);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.multiSelect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  min-height: 2.5rem;
+}
+
+.selectItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-active);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    color: var(--danger-color);
+  }
+}
+
+.options {
+  margin-top: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.option {
+  padding: 0.5rem;
+  cursor: pointer;
+  background: var(--bg-normal);
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+
+  &.selected {
+    background: var(--bg-active);
+    color: var(--primary-color);
+  }
+}
+
+.hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.saveBtn {
+  margin-left: auto;
+}

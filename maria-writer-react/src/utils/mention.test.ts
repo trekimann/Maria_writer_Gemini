@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCharacterMentions } from './mention';
+import { findCharacterMentions, extractMentionedCharacterIds } from './mention';
 import { Chapter, Character } from '../types';
 
 describe('findCharacterMentions', () => {
@@ -7,9 +7,8 @@ describe('findCharacterMentions', () => {
     id: 'char-1',
     name: 'Maria',
     color: '#ff0000',
-    bio: '',
-    traits: [],
-    relationships: []
+    description: '',
+    tags: []
   };
 
   const mockChapters: Chapter[] = [
@@ -64,5 +63,34 @@ describe('findCharacterMentions', () => {
   it('should return empty array if no mentions found', () => {
     const mentions = findCharacterMentions([mockChapters[1]], mockCharacter);
     expect(mentions).toHaveLength(0);
+  });
+});
+
+describe('extractMentionedCharacterIds', () => {
+  it('should extract single character ID', () => {
+    const content = 'Some text <span data-character-id="char-1">Name</span> more text';
+    expect(extractMentionedCharacterIds(content)).toEqual(['char-1']);
+  });
+
+  it('should extract multiple unique character IDs', () => {
+    const content = `
+      <span data-character-id="char-1">A</span>
+      <span data-character-id="char-2">B</span>
+      <span data-character-id="char-1">A again</span>
+    `;
+    const ids = extractMentionedCharacterIds(content);
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain('char-1');
+    expect(ids).toContain('char-2');
+  });
+
+  it('should handle unescaping &quot;', () => {
+    const content = '<span data-character-id=&quot;char-with-quotes&quot;>Name</span>';
+    expect(extractMentionedCharacterIds(content)).toEqual(['char-with-quotes']);
+  });
+
+  it('should return empty array for no mentions', () => {
+    expect(extractMentionedCharacterIds('Plain text')).toEqual([]);
+    expect(extractMentionedCharacterIds('')).toEqual([]);
   });
 });

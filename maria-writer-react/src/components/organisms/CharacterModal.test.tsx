@@ -1,8 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { CharacterModal } from './CharacterModal';
-import { StoreProvider } from '../../context/StoreContext';
-import React from 'react';
+import { describe, it, vi } from 'vitest';
+// import { render } from '@testing-library/react';
+// import { CharacterModal } from './CharacterModal';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({

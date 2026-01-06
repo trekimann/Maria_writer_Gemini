@@ -14,7 +14,7 @@
     background-color: #e5e7eb;
     color: var(--color-text);
     
-    .deleteBtn {
+    .actions {
       opacity: 1;
     }
   }
@@ -27,6 +27,10 @@
     .icon {
       color: var(--color-primary);
     }
+    
+    .actions {
+      opacity: 1;
+    }
   }
 }
 
@@ -35,6 +39,7 @@
   align-items: center;
   gap: 0.5rem;
   overflow: hidden;
+  flex: 1;
 }
 
 .title {
@@ -43,16 +48,35 @@
   text-overflow: ellipsis;
 }
 
-.deleteBtn {
+.actions {
+  display: flex;
+  gap: 0.25rem;
   opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.actionBtn, .deleteBtn {
   background: none;
   border: none;
-  color: #ef4444;
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 0.25rem;
-  transition: opacity 0.2s, background-color 0.2s;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+.actionBtn {
+  color: var(--color-text-muted);
+  &:hover {
+    background-color: #d1d5db;
+    color: var(--color-text);
+  }
+}
+
+.deleteBtn {
+  color: #ef4444;
   &:hover {
     background-color: #fee2e2;
   }
