@@ -19,6 +19,7 @@ export const CharacterModal: React.FC = () => {
   const [description, setDescription] = useState('');
   const [picture, setPicture] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [nicknames, setNicknames] = useState<string[]>([]);
   const [color, setColor] = useState('#4f46e5'); // Default indigo
   const [selectedParentIds, setSelectedParentIds] = useState<string[]>([]);
   
@@ -40,6 +41,7 @@ export const CharacterModal: React.FC = () => {
           setDescription(char.description || '');
           setPicture(char.picture || '');
           setTags(char.tags || []);
+          setNicknames(char.nicknames || []);
           setColor(char.color || '#4f46e5');
         }
       } else {
@@ -52,6 +54,7 @@ export const CharacterModal: React.FC = () => {
         setDescription('');
         setPicture('');
         setTags([]);
+        setNicknames([]);
         setColor('#4f46e5');
         setSelectedParentIds([]);
       }
@@ -83,6 +86,7 @@ export const CharacterModal: React.FC = () => {
       description,
       picture,
       tags,
+      nicknames,
       color
     };
 
@@ -235,6 +239,11 @@ export const CharacterModal: React.FC = () => {
       <div className={styles.field}>
         <label>Tags</label>
         <TagInput tags={tags} onChange={setTags} color="indigo" />
+      </div>
+
+      <div className={styles.field}>
+        <label>Nicknames / Aliases</label>
+        <TagInput tags={nicknames} onChange={setNicknames} color="emerald" />
       </div>
 
       <div className={styles.field}>

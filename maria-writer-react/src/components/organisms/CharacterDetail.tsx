@@ -108,6 +108,19 @@ export const CharacterDetail: React.FC = () => {
               <p className={styles.description}>{char.description || 'No description provided.'}</p>
             </div>
 
+            {char.nicknames && char.nicknames.length > 0 && (
+              <div className={styles.section}>
+                <h3>Aliases / Nicknames</h3>
+                <div className={styles.tags}>
+                  {char.nicknames.map(nick => (
+                    <span key={nick} className={styles.tag} style={{ backgroundColor: '#ecfdf5', color: '#065f46' }}>
+                      {nick}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className={styles.section}>
               <h3>Related Events</h3>
               {relatedEvents.length > 0 ? (

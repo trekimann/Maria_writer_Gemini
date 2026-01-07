@@ -142,3 +142,116 @@ export function getContentEditableMentionPosition(range: Range): { x: number; y:
   const rect = range.getBoundingClientRect();
   return { x: rect.left, y: rect.bottom + window.scrollY };
 }
+
+/**
+ * Auto-tag characters in the provided HTML content
+ * Scans for character names and nicknames in text nodes that aren't already tagged
+ */
+export function autoTagCharacters(htmlContent: string, characters: Character[]): string {
+  // Create a temporary DOM element to parse content
+  const div = document.createElement('div');
+  div.innerHTML = htmlContent;
+
+  // Prepare search terms (names + nicknames)
+  // Sort by length descending to match longest possible names first
+  const terms: { text: string; char: Character }[] = [];
+  characters.forEach(c => {
+    const addTerm = (rawText: string) => {
+      if (!rawText || !rawText.trim()) return;
+      const t = rawText.trim();
+      // Add literal name/nickname
+      terms.push({ text: t, char: c });
+      // Add possessive form (e.g. "Nick's")
+      terms.push({ text: t + "'s", char: c });
+      // We could add smart quote '’s' if strictly needed, but standard 's is usually enough for input.
+    };
+
+    addTerm(c.name);
+    
+    if (c.nicknames && c.nicknames.length > 0) {
+      c.nicknames.forEach(nick => addTerm(nick));
+    }
+  });
+  
+  terms.sort((a, b) => b.text.length - a.text.length);
+
+  if (terms.length === 0) return htmlContent;
+
+  // Find all text nodes that are NOT inside a character-mention
+  const textNodes: Text[] = [];
+  const treeWalker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      // Check if any ancestor is a mention
+      if (node.parentElement?.closest('.character-mention')) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+
+  while (treeWalker.nextNode()) {
+    textNodes.push(treeWalker.currentNode as Text); 
+  }
+  
+  textNodes.forEach(node => {
+    const text = node.textContent;
+    if (!text) return;
+
+    const fragment = document.createDocumentFragment();
+    let head = 0;
+    let foundMatch = false;
+
+    // We scan the text linearly. At each position, check if any term matches.
+    for (let i = 0; i < text.length; i++) {
+        let bestMatch: { text: string; char: Character } | null = null;
+
+        for (const term of terms) {
+            if (text.startsWith(term.text, i)) {
+                // Check word boundaries
+                const prevChar = i > 0 ? text[i - 1] : ' ';
+                const nextChar = (i + term.text.length < text.length) ? text[i + term.text.length] : ' ';
+                
+                // Punctuation characters that indicate a word boundary
+                const isWordStart = /[\s\.,;:!?("'\u201C\u201D-]/.test(prevChar);
+                const isWordEnd = /[\s\.,;:!?)"'\u201C\u201D-]/.test(nextChar);
+
+                if (isWordStart && isWordEnd) {
+                    bestMatch = term;
+                    break; // Since terms are sorted by length desc, first match is best
+                }
+            }
+        }
+
+        if (bestMatch) {
+            // Found a match
+            // Append text before match
+            if (i > head) {
+                fragment.appendChild(document.createTextNode(text.substring(head, i)));
+            }
+
+            // Create mention span
+            const span = document.createElement('span');
+            span.className = 'character-mention';
+            span.setAttribute('data-character-id', bestMatch.char.id);
+            span.setAttribute('data-character-name', bestMatch.char.name);
+            span.textContent = bestMatch.text; // Use the matched text (e.g. nickname)
+            span.contentEditable = 'false';
+            fragment.appendChild(span);
+
+            // Advance head and i
+            head = i + bestMatch.text.length;
+            i = head - 1; // loop increment will handle +1
+            foundMatch = true;
+        }
+    }
+
+    if (foundMatch) {
+        if (head < text.length) {
+            fragment.appendChild(document.createTextNode(text.substring(head)));
+        }
+        node.parentNode?.replaceChild(fragment, node);
+    }
+  });
+
+  return div.innerHTML;
+}

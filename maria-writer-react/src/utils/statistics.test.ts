@@ -4,10 +4,6 @@ import { extractCleanText, calculateWordCount, calculateCharacterCount, formatRe
 describe('Statistics Utils', () => {
   beforeEach(() => {
     // Mock document.createElement for extractCleanText's entity decoding
-    const mockElement = {
-      innerHTML: '',
-      value: ''
-    };
     vi.spyOn(document, 'createElement').mockImplementation(() => {
         const div = {
             set innerHTML(val: string) { (this as any)._value = val; },

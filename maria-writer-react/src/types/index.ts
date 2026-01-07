@@ -32,6 +32,7 @@ export interface LifeEvent {
 export interface Character {
   id: string;
   name: string;
+  nicknames?: string[]; // Alternative names/aliases
   age?: string;
   dob?: string;
   deathDate?: string;

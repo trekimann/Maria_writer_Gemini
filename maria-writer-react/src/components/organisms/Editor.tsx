@@ -44,6 +44,11 @@ import {
   applyTextareaFormatting,
   applyContentEditableFormatting
 } from '../../utils/editorFormatting';
+import {
+  performCopy,
+  getAutoTaggedHtml,
+  getPasteData
+} from '../../utils/editorContextMenu';
 import styles from './Editor.module.scss';
 
 // Initialize Turndown once
@@ -70,6 +75,13 @@ export const Editor: React.FC = () => {
   const [mentionPosition, setMentionPosition] = useState<{ x: number; y: number } | null>(null);
   const [mentionStartIndex, setMentionStartIndex] = useState<number>(-1); // for textarea
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+
+  // Context Menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false
+  });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
@@ -121,6 +133,17 @@ export const Editor: React.FC = () => {
     setCharacterCount(newCharacterCount);
     setReadingTime(newReadingTime);
   }, [content]);
+
+  // Helper to sync local content to store
+  const syncStoreContent = (newMarkdown: string) => {
+    if (!activeChapter) return;
+    setContent(newMarkdown);
+    lastStoreContent.current = newMarkdown;
+    dispatch({
+      type: 'UPDATE_CHAPTER',
+      payload: { id: activeChapter.id, updates: { content: newMarkdown } }
+    });
+  };
 
   // Debounced automation: Sync first line H1 and mentioned characters to chapter metadata
   useEffect(() => {
@@ -474,6 +497,77 @@ export const Editor: React.FC = () => {
     return markdownToHtml(markdownToProcess, chapterComments, state.characters, state.viewMode);
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (state.viewMode === 'source' && !textareaRef.current) return;
+    if (state.viewMode === 'write' && !contentEditableRef.current) return;
+
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      visible: true
+    });
+  };
+
+  useEffect(() => {
+    const handleClick = () => {
+      if (contextMenu.visible) {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [contextMenu.visible]);
+
+  const handleAutoTag = () => {
+    if (!activeChapter) return;
+    
+    const newHtml = getAutoTaggedHtml(
+      state.viewMode,
+      content,
+      state.characters,
+      contentEditableRef,
+      getMarkdownHtml
+    );
+
+    if (newHtml) {
+      const newMarkdown = htmlToMarkdown(newHtml, turndownService);
+      syncStoreContent(newMarkdown);
+      if (state.viewMode === 'write' && contentEditableRef.current) {
+        contentEditableRef.current.innerHTML = newHtml;
+      }
+    }
+    
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleCopy = async () => {
+    await performCopy(state.viewMode, textareaRef);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handlePaste = async () => {
+    if (!activeChapter) return;
+    try {
+      const result = await getPasteData(state.viewMode, textareaRef, contentEditableRef);
+      
+      if (result?.type === 'source') {
+        syncStoreContent(result.value);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(result.cursor, result.cursor);
+          }
+        }, 0);
+      } else if (result?.type === 'write') {
+        handleContentEditableInput();
+      }
+    } catch (err) {
+      alert('Could not access clipboard. Please use Ctrl+V.');
+    }
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
   const handlePreviewClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     console.log('[Click] Preview/write click', { target: target.tagName, className: target.className });
@@ -667,6 +761,7 @@ export const Editor: React.FC = () => {
               value={content}
               onChange={handleChange}
               onKeyDown={handleEditorKeyDown}
+              onContextMenu={handleContextMenu}
               placeholder="Start writing your masterpiece..."
               spellCheck={false}
             />
@@ -678,6 +773,7 @@ export const Editor: React.FC = () => {
               onInput={handleContentEditableInput}
               onKeyDown={handleEditorKeyDown}
               onClick={handleWriteModeClick}
+              onContextMenu={handleContextMenu}
               suppressContentEditableWarning={true}
             />
           ) : (
@@ -767,6 +863,79 @@ export const Editor: React.FC = () => {
         position={commentModalPosition}
         selectedText={selectedText}
       />
+
+      {contextMenu.visible && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 2000,
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '0.375rem',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            padding: '0.5rem 0',
+            minWidth: '200px'
+          }}
+        >
+          <button
+            onClick={handleCopy}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              color: '#374151',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            Copy
+          </button>
+          <button
+            onClick={handlePaste}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              color: '#374151',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            Paste
+          </button>
+          <div style={{ borderTop: '1px solid #e5e7eb', margin: '0.25rem 0' }} />
+          <button
+            onClick={handleAutoTag}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              color: '#374151',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            Auto-tag Characters
+          </button>
+        </div>
+      )}
     </div>
   );
 };
