@@ -6,7 +6,6 @@ a big part of this project is not to write any code directly where possible, I a
 
 ## Help & Documentation
 
-- [Getting Started](maria-writer-react/public/help/getting-started.md)
 - [Chapters Sidebar](maria-writer-react/public/help/chapters_sidebar.md)
 - [Chapter Metadata](maria-writer-react/public/help/chapter-metadata.md)
 - [Detailed Character View](maria-writer-react/public/help/character-detail.md)
