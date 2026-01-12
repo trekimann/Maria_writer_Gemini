@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { HelpButton } from '../atoms/HelpButton';
 import styles from './Modal.module.scss';
 
 interface ModalProps {
@@ -9,6 +10,7 @@ interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   headerColor?: 'indigo' | 'emerald' | 'amber' | 'gray';
+  helpId?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({ 
@@ -17,7 +19,8 @@ export const Modal: React.FC<ModalProps> = ({
   title, 
   children, 
   footer,
-  headerColor = 'gray' 
+  headerColor = 'gray',
+  helpId
 }) => {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -41,9 +44,12 @@ export const Modal: React.FC<ModalProps> = ({
       <div className={styles.modal}>
         <div className={`${styles.header} ${styles[headerColor]}`}>
           <h3 className={styles.title}>{title}</h3>
-          <button className={styles.closeBtn} onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {helpId && <HelpButton helpId={helpId} className={styles.closeBtn} />}
+            <button className={styles.closeBtn} onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
         </div>
         <div className={styles.body}>
           {children}

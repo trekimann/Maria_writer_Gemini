@@ -1,0 +1,15 @@
+.helpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  cursor: help;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--primary-color);
+  }
+}

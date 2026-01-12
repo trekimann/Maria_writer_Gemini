@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StoryComment } from '../../types';
 import { Eye, EyeOff, Trash2, ChevronDown, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { HelpButton } from '../atoms/HelpButton';
 import styles from './CommentPane.module.scss';
 
 interface CommentPaneProps {
@@ -67,6 +68,7 @@ export const CommentPane: React.FC<CommentPaneProps> = ({
         <>
           <div className={styles.header}>
             <h3>Comments ({comments.length})</h3>
+            <HelpButton helpId="comments-sidebar" />
           </div>
 
           <div className={styles.commentList}>

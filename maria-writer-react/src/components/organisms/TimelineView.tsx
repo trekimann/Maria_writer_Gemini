@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import Sortable from 'sortablejs';
 import { useStore } from '../../context/StoreContext';
+import { HelpButton } from '../atoms/HelpButton';
 import { parseDDMMYYYYHHMMSS } from '../../utils/date';
 import styles from './TimelineView.module.scss';
 
@@ -398,6 +399,7 @@ export const TimelineView: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.toolbar}>
         <span className={styles.toolbarLabel}>Timeline View</span>
+        <HelpButton helpId="timeline-view" />
         
         <div className={styles.dateRangeControls}>
           <div className={styles.dateInputGroup}>

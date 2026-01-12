@@ -3,6 +3,7 @@ import Sortable from 'sortablejs';
 import { useStore } from '../../context/StoreContext';
 import { ChapterItem } from '../molecules/ChapterItem';
 import { Button } from '../atoms/Button';
+import { HelpButton } from '../atoms/HelpButton';
 import { Plus, PenTool, Book, ChevronLeft, ChevronRight } from 'lucide-react';
 import styles from './Sidebar.module.scss';
 
@@ -62,7 +63,10 @@ export const Sidebar: React.FC = () => {
         <>
           <div className={styles.header}>
             <span className={styles.headerTitle}>Chapters</span>
-            <Button variant="ghost" size="sm" icon={Plus} onClick={handleAddChapter} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <HelpButton helpId="chapters_sidebar" size={16} />
+              <Button variant="ghost" size="sm" icon={Plus} onClick={handleAddChapter} />
+            </div>
       </div>
 
       <div className={styles.listContainer}>

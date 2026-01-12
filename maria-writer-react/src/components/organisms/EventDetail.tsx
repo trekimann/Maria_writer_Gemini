@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
+import { HelpButton } from '../atoms/HelpButton';
 import { ArrowLeft, Edit, Calendar, Users } from 'lucide-react';
 import { formatDateTimeOrEmpty } from '../../utils/date';
 import styles from './EventDetail.module.scss';
@@ -43,7 +44,10 @@ export const EventDetail: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <Button variant="ghost" icon={ArrowLeft} onClick={handleBack}>Back</Button>
-        <Button variant="secondary" icon={Edit} onClick={handleEdit}>Edit</Button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <HelpButton helpId="event-detail" />
+          <Button variant="secondary" icon={Edit} onClick={handleEdit}>Edit</Button>
+        </div>
       </div>
 
       <div className={styles.content}>

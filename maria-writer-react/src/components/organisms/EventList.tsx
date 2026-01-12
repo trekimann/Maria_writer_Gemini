@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
+import { HelpButton } from '../atoms/HelpButton';
 import { Plus, Calendar, Users } from 'lucide-react';
 import { formatDateTimeOrEmpty } from '../../utils/date';
 import styles from './EventList.module.scss';
@@ -32,7 +33,10 @@ export const EventList: React.FC = () => {
           onChange={(e) => setSearch(e.target.value)}
           className={styles.search}
         />
-        <Button variant="primary" icon={Plus} onClick={handleAdd}>Add Event</Button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <HelpButton helpId="event-list" />
+          <Button variant="primary" icon={Plus} onClick={handleAdd}>Add Event</Button>
+        </div>
       </div>
 
       <div className={styles.list}>

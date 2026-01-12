@@ -83,6 +83,7 @@ export const ChapterMetadataModal: React.FC = () => {
       onClose={handleClose}
       title="Chapter Metadata"
       headerColor="indigo"
+      helpId="chapter-metadata"
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>Cancel</Button>

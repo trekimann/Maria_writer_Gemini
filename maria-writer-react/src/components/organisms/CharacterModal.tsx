@@ -170,6 +170,7 @@ export const CharacterModal: React.FC = () => {
       onClose={handleClose}
       title={isEditing ? "Edit Character" : "New Character"}
       headerColor="indigo"
+      helpId="character-modal"
       footer={
         <div className={styles.footerContent}>
           {isEditing && (

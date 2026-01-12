@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
+import { HelpButton } from '../atoms/HelpButton';
 import { ArrowLeft, Edit, Calendar, BookOpen } from 'lucide-react';
 import { formatDateTimeOrEmpty, getDisplayAge } from '../../utils/date';
 import { findCharacterMentions } from '../../utils/mention';
@@ -49,6 +50,7 @@ export const CharacterDetail: React.FC = () => {
       <div className={styles.header}>
         <Button variant="ghost" icon={ArrowLeft} onClick={handleBack}>Back</Button>
         <div className={styles.headerActions}>
+          <HelpButton helpId="character-detail" />
           <Button variant="secondary" icon={Edit} onClick={handleEdit}>Edit</Button>
         </div>
       </div>

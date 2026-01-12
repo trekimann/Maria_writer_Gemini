@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { StoreProvider } from './context/StoreContext';
+import { HelpProvider } from './context/HelpContext';
 import { MainLayout } from './components/templates/MainLayout';
 
 // Mock vis-network
@@ -31,7 +32,9 @@ describe('App Integration', () => {
   it('renders the TopBar and Sidebar', () => {
     render(
       <StoreProvider>
-        <MainLayout />
+        <HelpProvider>
+          <MainLayout />
+        </HelpProvider>
       </StoreProvider>
     );
 
@@ -43,7 +46,9 @@ describe('App Integration', () => {
   it('switches to Codex view', () => {
     render(
       <StoreProvider>
-        <MainLayout />
+        <HelpProvider>
+          <MainLayout />
+        </HelpProvider>
       </StoreProvider>
     );
 
@@ -59,7 +64,9 @@ describe('App Integration', () => {
   it('opens Metadata modal', () => {
     render(
       <StoreProvider>
-        <MainLayout />
+        <HelpProvider>
+          <MainLayout />
+        </HelpProvider>
       </StoreProvider>
     );
 

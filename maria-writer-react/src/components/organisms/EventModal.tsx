@@ -4,10 +4,8 @@ import { Modal } from '../molecules/Modal';
 import { Button } from '../atoms/Button';
 import { DateTimeInput } from '../molecules/DateTimeInput';
 import { v4 as uuidv4 } from 'uuid';
-import { Upload, X, Heart } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { normalizeDDMMYYYYHHMMSS } from '../../utils/date';
-import { syncLifeEventToRelationships } from '../../utils/eventSync';
-import { LifeEventType } from '../../types';
 import styles from './EventModal.module.scss';
 
 export const EventModal: React.FC = () => {
@@ -17,8 +15,6 @@ export const EventModal: React.FC = () => {
   const [description, setDescription] = useState('');
   const [image, setImage] = useState('');
   const [selectedChars, setSelectedChars] = useState<string[]>([]);
-  const [showLifeEvents, setShowLifeEvents] = useState(false);
-  const [selectedLifeEvent, setSelectedLifeEvent] = useState<LifeEventType | ''>('');
 
   const isOpen = state.activeModal === 'event';
   const isEditing = !!state.editingItemId;
@@ -40,7 +36,6 @@ export const EventModal: React.FC = () => {
         setDescription('');
         setImage('');
         setSelectedChars([]);
-        setSelectedLifeEvent('');
       }
     }
   }, [isOpen, isEditing, state.editingItemId, state.events]);
@@ -51,19 +46,6 @@ export const EventModal: React.FC = () => {
 
   const handleSave = () => {
     if (!title.trim()) return alert('Title is required');
-
-    // Validate life event requirements
-    if (selectedLifeEvent) {
-      if (selectedLifeEvent === 'marriage' && selectedChars.length !== 2) {
-        return alert('Marriage requires exactly 2 characters');
-      }
-      if ((selectedLifeEvent === 'friendship' || selectedLifeEvent === 'birth-of-child') && selectedChars.length < 2) {
-        return alert(`${selectedLifeEvent === 'friendship' ? 'Friendship' : 'Birth of Child'} requires at least 2 characters`);
-      }
-      if (!date.trim()) {
-        return alert('Date is required for life events');
-      }
-    }
 
     const normalizedDate = date.trim() ? normalizeDDMMYYYYHHMMSS(date) : '';
     if (date.trim() && !normalizedDate) return alert('Event date must be in dd/MM/yyyy HH:mm:ss format');
@@ -81,59 +63,8 @@ export const EventModal: React.FC = () => {
       dispatch({ type: 'UPDATE_EVENT', payload: eventData });
     } else {
       dispatch({ type: 'ADD_EVENT', payload: eventData });
-      
-      // If this is a life event, also create a relationship and update characters
-      if (selectedLifeEvent) {
-        handleLifeEventCreation(eventData);
-      }
     }
 
-    handleClose();
-  };
-
-  const handleLifeEventCreation = (eventData: any) => {
-    // Guard: Only proceed if a valid life event type is selected
-    if (!selectedLifeEvent) return;
-    
-    // Use the centralized sync utility
-    const syncResult = syncLifeEventToRelationships(
-      selectedLifeEvent,
-      eventData,
-      state.relationships,
-      state.characters
-    );
-    
-    // Dispatch all the updates
-    syncResult.relationships.forEach(rel => {
-      // Only dispatch new relationships (check if they exist in current state)
-      if (!state.relationships.find(r => r.id === rel.id)) {
-        dispatch({ type: 'ADD_RELATIONSHIP', payload: rel });
-      }
-    });
-    
-    // Update all affected characters
-    syncResult.characters.forEach(char => {
-      const existingChar = state.characters.find(c => c.id === char.id);
-      if (existingChar && JSON.stringify(existingChar.lifeEvents) !== JSON.stringify(char.lifeEvents)) {
-        dispatch({ type: 'UPDATE_CHARACTER', payload: char });
-      }
-    });
-  };
-
-  const handleLifeEventSelect = (type: LifeEventType) => {
-    setSelectedLifeEvent(type);
-    
-    // Pre-fill event data based on life event type
-    if (type === 'marriage') {
-      setTitle('Marriage');
-      setDescription('Marriage ceremony');
-    } else if (type === 'friendship') {
-      setTitle('Friendship Formed');
-      setDescription('Became friends');
-    } else if (type === 'birth-of-child') {
-      setTitle('Birth of Child');
-      setDescription('Child was born');
-    }
     handleClose();
   };
 
@@ -194,6 +125,7 @@ export const EventModal: React.FC = () => {
       onClose={handleClose}
       title={isEditing ? "Edit Event" : "New Event"}
       headerColor="amber"
+      helpId="event-modal"
       footer={
         <div className={styles.footerContent}>
           {isEditing && (
@@ -239,51 +171,6 @@ export const EventModal: React.FC = () => {
           className={styles.input}
         />
       </div>
-
-      {!isEditing && (
-        <div className={styles.field}>
-          <div className={styles.lifeEventToggle}>
-            <button
-              type="button"
-              className={`${styles.toggleButton} ${showLifeEvents ? styles.active : ''}`}
-              onClick={() => setShowLifeEvents(!showLifeEvents)}
-            >
-              <Heart size={16} />
-              {showLifeEvents ? 'Hide Life Events' : 'Create from Life Event'}
-            </button>
-          </div>
-
-          {showLifeEvents && (
-            <div className={styles.lifeEventSection}>
-              <label>Life Event Type</label>
-              <select
-                value={selectedLifeEvent}
-                onChange={(e) => handleLifeEventSelect(e.target.value as LifeEventType)}
-                className={styles.select}
-              >
-                <option value="">Select a life event type...</option>
-                <option value="marriage">Marriage - Requires 2 characters</option>
-                <option value="friendship">Friendship - Requires 2+ characters</option>
-                <option value="birth-of-child">Birth of Child - Requires 2+ characters</option>
-              </select>
-              
-              {selectedLifeEvent && (
-                <div className={styles.lifeEventHelp}>
-                  {selectedLifeEvent === 'marriage' && (
-                    <p>📋 Marriage will create a spouse relationship and add the event to both characters' timelines.</p>
-                  )}
-                  {selectedLifeEvent === 'friendship' && (
-                    <p>📋 Friendship will create a friend relationship and add the event to all selected characters' timelines.</p>
-                  )}
-                  {selectedLifeEvent === 'birth-of-child' && (
-                    <p>📋 Birth of Child will create a parent-child relationship and add the event to the characters' timelines.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className={styles.field}>
         <label>Date (dd/MM/yyyy HH:mm:ss)</label>
