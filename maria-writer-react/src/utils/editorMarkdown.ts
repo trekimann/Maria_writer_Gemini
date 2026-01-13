@@ -42,6 +42,20 @@ export function createTurndownService(): TurndownService {
     }
   });
 
+  // Configure turndown to keep event markers
+  turndownService.addRule('event-marker', {
+    filter: (node) => {
+      return node.nodeName === 'SPAN' && (node as HTMLElement).getAttribute('data-event-id') !== null;
+    },
+    replacement: (content, node) => {
+      const el = node as HTMLElement;
+      const eventId = el.getAttribute('data-event-id');
+      const isPending = el.getAttribute('data-event-pending');
+      const pendingAttr = isPending ? ` data-event-pending="${isPending}"` : '';
+      return `<span data-event-id="${eventId}"${pendingAttr} class="event-marker">${content}</span>`;
+    }
+  });
+
   return turndownService;
 }
 
@@ -89,7 +103,7 @@ export function markdownToHtml(
   const rawHtml = marked.parse(processedContent) as string;
   return DOMPurify.sanitize(rawHtml, {
     ADD_TAGS: ['u', 'span'],
-    ADD_ATTR: ['class', 'data-comment-id', 'data-character-id', 'data-character-name', 'style', 'contenteditable']
+    ADD_ATTR: ['class', 'data-comment-id', 'data-character-id', 'data-character-name', 'data-event-id', 'data-event-pending', 'style', 'contenteditable']
   });
 }
 

@@ -3,7 +3,8 @@ import {
   createMentionMarkup,
   filterCharactersByQuery,
   detectMentionInTextarea,
-  getTextareaMentionPosition
+  getTextareaMentionPosition,
+  findCharactersInPlainText
 } from './editorMentions';
 import { Character } from '../types';
 
@@ -123,6 +124,29 @@ describe('editorMentions', () => {
       const position = getTextareaMentionPosition(textarea);
       expect(position.x).toBe(120); // left + 20
       expect(position.y).toBe(250); // top + 50
+    });
+  });
+
+  describe('findCharactersInPlainText', () => {
+    it('should find characters in plain text', () => {
+      const text = 'Alice and Bob went to the market.';
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c1');
+      expect(result).toContain('c2');
+      expect(result).not.toContain('c3');
+    });
+
+    it('should match full names with punctuation', () => {
+      const text = '"Alice!" he shouted.';
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c1');
+    });
+
+    it('should not match partial words', () => {
+      const text = 'Alice wonderland bobby';
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c1');
+      expect(result).not.toContain('c2'); // bobby != Bob
     });
   });
 });

@@ -120,4 +120,5 @@ export interface AppState {
   activeModal: ModalType;
   editingItemId: string | null; // For character/event modals
   viewingItemId: string | null; // For detail views
+  prefilledEventData?: Partial<Event>; // For creating events from editor
 }

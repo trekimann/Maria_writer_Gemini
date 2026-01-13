@@ -38,7 +38,8 @@ import {
   insertMentionInTextarea,
   insertMentionInContentEditable,
   getTextareaMentionPosition,
-  getContentEditableMentionPosition
+  getContentEditableMentionPosition,
+  findCharactersInPlainText
 } from '../../utils/editorMentions';
 import {
   applyTextareaFormatting,
@@ -49,6 +50,7 @@ import {
   getAutoTaggedHtml,
   getPasteData
 } from '../../utils/editorContextMenu';
+import { createEventMarkup, removeEventMarkup, finalizeEventMarkup } from '../../utils/editorEvents';
 import styles from './Editor.module.scss';
 
 // Initialize Turndown once
@@ -64,6 +66,7 @@ export const Editor: React.FC = () => {
   const [selectedText, setSelectedText] = useState('');
   const [isCommentPaneOpen, setIsCommentPaneOpen] = useState(false);
   const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
   
   // Statistics state
   const [wordCount, setWordCount] = useState(0);
@@ -497,6 +500,128 @@ export const Editor: React.FC = () => {
     return markdownToHtml(markdownToProcess, chapterComments, state.characters, state.viewMode);
   };
 
+  const handleCreateEvent = () => {
+    let textToEvent = '';
+    if (state.viewMode === 'write') {
+      textToEvent = window.getSelection()?.toString() || '';
+    } else if (state.viewMode === 'source' && textareaRef.current) {
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      textToEvent = textareaRef.current.value.substring(start, end);
+    }
+
+    if (!textToEvent.trim()) {
+       alert('Please select some text to create an event');
+       setContextMenu(prev => ({ ...prev, visible: false }));
+       return;
+    }
+
+    const tempEventId = uuidv4();
+    
+    const foundCharacterIds = findCharactersInPlainText(textToEvent, state.characters);
+
+    dispatch({ 
+        type: 'SET_PREFILLED_EVENT_DATA', 
+        payload: { 
+            id: tempEventId,
+            description: textToEvent, 
+            date: activeChapter?.date || '',
+            characters: foundCharacterIds
+        } 
+    });
+
+    setPendingEventId(tempEventId);
+
+    if (state.viewMode === 'write' && contentEditableRef.current) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed) {
+              const span = document.createElement('span');
+              span.setAttribute('data-event-id', tempEventId);
+              span.setAttribute('data-event-pending', 'true');
+              // Class is applied via global css selector span[data-event-id]
+              
+              const content = range.extractContents();
+              span.appendChild(content);
+              range.insertNode(span);
+              
+              handleContentEditableInput();
+            }
+        }
+    } else if (state.viewMode === 'source' && textareaRef.current) {
+         const markup = createEventMarkup(tempEventId, textToEvent, true);
+         const start = textareaRef.current.selectionStart;
+         const end = textareaRef.current.selectionEnd;
+         const newContent = content.substring(0, start) + markup + content.substring(end);
+         setContent(newContent);
+         dispatch({
+            type: 'UPDATE_CHAPTER',
+            payload: { id: activeChapter?.id || '', updates: { content: newContent } }
+         });
+    }
+
+    setContextMenu(prev => ({ ...prev, visible: false }));
+    dispatch({ type: 'OPEN_MODAL', payload: { type: 'event' } });
+  };
+
+  // Watch for modal close to finalize or cancel pending event
+  useEffect(() => {
+    if (state.activeModal === 'none' && pendingEventId) {
+       const isSaved = state.events.some(e => e.id === pendingEventId);
+       
+       if (isSaved) {
+         // Finalize: Remove pending attribute
+         if (state.viewMode === 'write' && contentEditableRef.current) {
+            const span = contentEditableRef.current.querySelector(`span[data-event-id="${pendingEventId}"]`);
+            if (span) {
+                span.removeAttribute('data-event-pending');
+                handleContentEditableInput();
+            }
+         } else {
+             // Re-process content to remove pending attr for source mode or sync
+             const newContent = finalizeEventMarkup(content, pendingEventId);
+             setContent(newContent);
+             if (activeChapter) {
+                 dispatch({
+                     type: 'UPDATE_CHAPTER',
+                     payload: { id: activeChapter.id, updates: { content: newContent } }
+                 });
+             }
+         }
+       } else {
+         // Cancelled: Remove marking
+         if (state.viewMode === 'write' && contentEditableRef.current) {
+            unwrapCommentElement(contentEditableRef.current, pendingEventId, 'data-event-id'); // Reusing unwrap logic from comments but need to check if it supports attribute name
+            // Wait, unwrapCommentElement uses data-comment-id hardcoded?
+            // Let's check unwrapCommentElement. It might be specific.
+            // If so, implementing specific unwrap for events here.
+            const span = contentEditableRef.current.querySelector(`span[data-event-id="${pendingEventId}"]`);
+            if (span) {
+                const parent = span.parentNode;
+                if (parent) {
+                    while (span.firstChild) {
+                        parent.insertBefore(span.firstChild, span);
+                    }
+                    parent.removeChild(span);
+                    handleContentEditableInput();
+                }
+            }
+         } else {
+             const newContent = removeEventMarkup(content, pendingEventId);
+             setContent(newContent);
+             if (activeChapter) {
+                 dispatch({
+                     type: 'UPDATE_CHAPTER',
+                     payload: { id: activeChapter.id, updates: { content: newContent } }
+                 });
+             }
+         }
+       }
+       setPendingEventId(null);
+    }
+  }, [state.activeModal, pendingEventId, state.events, state.viewMode, content, activeChapter, dispatch]);
+
   const handleContextMenu = (e: React.MouseEvent) => {
     if (state.viewMode === 'source' && !textareaRef.current) return;
     if (state.viewMode === 'write' && !contentEditableRef.current) return;
@@ -916,6 +1041,24 @@ export const Editor: React.FC = () => {
             Paste
           </button>
           <div style={{ borderTop: '1px solid #e5e7eb', margin: '0.25rem 0' }} />
+          <button
+            onClick={handleCreateEvent}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              color: '#374151',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            Create event
+          </button>
           <button
             onClick={handleAutoTag}
             style={{

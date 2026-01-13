@@ -29,7 +29,8 @@ export const initialState: AppState = {
   activeCodexTab: 'timeline',
   activeModal: 'none',
   editingItemId: null,
-  viewingItemId: null
+  viewingItemId: null,
+  prefilledEventData: undefined
 };
 
 // Actions
@@ -44,7 +45,7 @@ type Action =
   | { type: 'ADD_CHARACTER'; payload: Character }
   | { type: 'UPDATE_CHARACTER'; payload: Character }
   | { type: 'DELETE_CHARACTER'; payload: string }
-  | { type: 'ADD_EVENT'; payload: Event }
+  | { type: 'ADD_EVENT'; payload: { event: Event; chapterId?: string } }
   | { type: 'UPDATE_EVENT'; payload: Event }
   | { type: 'ADD_RELATIONSHIP'; payload: Relationship }
   | { type: 'UPDATE_RELATIONSHIP'; payload: Relationship }
@@ -139,7 +140,17 @@ export const reducer = (state: AppState, action: Action): AppState => {
     case 'DELETE_CHARACTER':
       return { ...state, characters: state.characters.filter(c => c.id !== action.payload) };
     case 'ADD_EVENT':
-      return { ...state, events: [...state.events, action.payload] };
+      const newEvents = [...state.events, action.payload.event];
+      let updatedChapters = state.chapters;
+      
+      if (action.payload.chapterId) {
+        updatedChapters = state.chapters.map(c => 
+          c.id === action.payload.chapterId 
+            ? { ...c, relatedEvents: [...(c.relatedEvents || []), action.payload.event.id] }
+            : c
+        );
+      }
+      return { ...state, events: newEvents, chapters: updatedChapters };
     case 'UPDATE_EVENT': {
       const previousEvent = state.events.find(e => e.id === action.payload.id) || null;
       const updatedEvents = state.events.map(e => e.id === action.payload.id ? action.payload : e);
@@ -172,6 +183,8 @@ export const reducer = (state: AppState, action: Action): AppState => {
       return { ...state, relationships: state.relationships.map(r => r.id === action.payload.id ? action.payload : r) };
     case 'DELETE_RELATIONSHIP':
       return { ...state, relationships: state.relationships.filter(r => r.id !== action.payload) };
+    case 'SET_PREFILLED_EVENT_DATA':
+      return { ...state, prefilledEventData: action.payload };
     case 'SET_VIEW_MODE':
       return { ...state, viewMode: action.payload };
     case 'SET_CONTEXT_MODE':

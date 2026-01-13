@@ -149,8 +149,26 @@ describe('StoreContext Reducer', () => {
 
   it('should handle ADD_EVENT', () => {
     const evt = { id: 'e1', title: 'Inciting Incident' };
-    const newState = reducer(initialState, { type: 'ADD_EVENT', payload: evt });
+    const newState = reducer(initialState, { type: 'ADD_EVENT', payload: { event: evt } });
     expect(newState.events).toContainEqual(evt);
+  });
+
+  it('should handle ADD_EVENT with chapterId linkage', () => {
+    const evt = { id: 'e1', title: 'Chapter Event' };
+    const chapter = { id: 'ch1', title: 'Chapter 1', relatedEvents: [] };
+    const stateWithChapter = {
+      ...initialState,
+      chapters: [chapter as any]
+    };
+    
+    const newState = reducer(stateWithChapter, { 
+      type: 'ADD_EVENT', 
+      payload: { event: evt, chapterId: 'ch1' } 
+    });
+    
+    expect(newState.events).toContainEqual(evt);
+    const updatedChapter = newState.chapters.find(c => c.id === 'ch1');
+    expect(updatedChapter?.relatedEvents).toContain('e1');
   });
 
   // === Tests for bi-directional sync between characters and events ===

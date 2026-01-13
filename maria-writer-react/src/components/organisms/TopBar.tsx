@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
 import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
+import { HelpButton } from '../atoms/HelpButton';
 import styles from './TopBar.module.scss';
 
 export const TopBar: React.FC = () => {
@@ -144,6 +145,9 @@ export const TopBar: React.FC = () => {
             onClick={() => setViewMode('preview')}
             title="Preview Mode"
           />
+        </div>
+        <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center' }}>
+          <HelpButton helpId="manuscript-editor" />
         </div>
       </div>
     </header>

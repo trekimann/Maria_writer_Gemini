@@ -3,6 +3,7 @@ import { useStore } from '../../context/StoreContext';
 import { RelationshipGraph } from './RelationshipGraph';
 import { RelationshipList } from './RelationshipList';
 import { Plus, Network, List } from 'lucide-react';
+import { HelpButton } from '../atoms/HelpButton';
 import styles from './RelationshipView.module.scss';
 
 type ViewMode = 'graph' | 'list' | 'split';
@@ -27,7 +28,10 @@ export const RelationshipView: React.FC = () => {
   return (
     <div className={styles.relationshipView}>
       <div className={styles.header}>
-        <h2>Relationships</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2>Relationships</h2>
+          <HelpButton helpId="relationship-view" />
+        </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <div className={styles.viewToggle}>
             <button

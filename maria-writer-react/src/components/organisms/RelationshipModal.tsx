@@ -121,6 +121,7 @@ export const RelationshipModal: React.FC = () => {
       isOpen={isOpen}
       onClose={handleClose}
       title={editingRelationship ? 'Edit Relationship' : 'New Relationship'}
+      helpId="relationship-editor"
     >
       <div className={styles.relationshipModal}>
         <form onSubmit={handleSubmit} className={styles.form}>

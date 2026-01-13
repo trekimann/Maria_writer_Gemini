@@ -17,5 +17,18 @@ The **Event Editor** allows you to create or modify events in your story's timel
 
 ## Actions
 - **Save Event**: Persists your changes.
-- **Cancel**: Closes the modal without saving.
+- **Cancel**: Closes the modal without saving. (If creating an event from editor selection, this will unmark the text).
 - **Delete**: (Edit Mode Only) Permanently removes the event.
+
+## Creating Events from the Editor
+You can seamlessly create events directly from your writing:
+1.  **Select** a portion of text in the editor (e.g., "The dragon attacked the village").
+2.  **Right-click** on the selection.
+3.  Choose **Create event** from the context menu.
+4.  The **Event Editor** will open with:
+    *   **Description** pre-filled with your selected text.
+    *   **Date** pre-filled from the current chapter's date (if set).
+    *   **Characters** automatically detected and checked if their names appear in the selection.
+5.  Click **Save**. The text in the editor will be permanently underlined in green to indicate it is linked to an event. Hovering over it creates a visual highlight.
+
+**Note:** If you cancel the creation, the temporary highlight on your text will be removed.

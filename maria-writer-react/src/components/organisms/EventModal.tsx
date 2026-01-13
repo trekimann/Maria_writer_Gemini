@@ -30,6 +30,12 @@ export const EventModal: React.FC = () => {
           setImage(evt.image || '');
           setSelectedChars(evt.characters || []);
         }
+      } else if (state.prefilledEventData) {
+        setTitle(state.prefilledEventData.title || '');
+        setDate(state.prefilledEventData.date || '');
+        setDescription(state.prefilledEventData.description || '');
+        setImage(state.prefilledEventData.image || '');
+        setSelectedChars(state.prefilledEventData.characters || []);
       } else {
         setTitle('');
         setDate('');
@@ -38,9 +44,10 @@ export const EventModal: React.FC = () => {
         setSelectedChars([]);
       }
     }
-  }, [isOpen, isEditing, state.editingItemId, state.events]);
+  }, [isOpen, isEditing, state.editingItemId, state.events, state.prefilledEventData]);
 
   const handleClose = () => {
+    dispatch({ type: 'SET_PREFILLED_EVENT_DATA', payload: undefined });
     dispatch({ type: 'CLOSE_MODAL' });
   };
 
@@ -51,7 +58,7 @@ export const EventModal: React.FC = () => {
     if (date.trim() && !normalizedDate) return alert('Event date must be in dd/MM/yyyy HH:mm:ss format');
 
     const eventData = {
-      id: isEditing ? state.editingItemId! : uuidv4(),
+      id: isEditing ? state.editingItemId! : (state.prefilledEventData?.id || uuidv4()),
       title,
       date: normalizedDate || '',
       description,
@@ -62,7 +69,13 @@ export const EventModal: React.FC = () => {
     if (isEditing) {
       dispatch({ type: 'UPDATE_EVENT', payload: eventData });
     } else {
-      dispatch({ type: 'ADD_EVENT', payload: eventData });
+      dispatch({ 
+        type: 'ADD_EVENT', 
+        payload: { 
+          event: eventData, 
+          chapterId: state.prefilledEventData ? state.activeChapterId : undefined 
+        } 
+      });
     }
 
     handleClose();

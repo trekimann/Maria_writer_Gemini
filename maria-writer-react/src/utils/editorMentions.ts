@@ -1,6 +1,31 @@
 import { Character } from '../types';
 
 /**
+ * Find characters mentioned in plain text
+ */
+export function findCharactersInPlainText(text: string, characters: Character[]): string[] {
+  const foundIds = new Set<string>();
+  
+  characters.forEach(char => {
+    const names = [char.name, ...(char.nicknames || [])];
+    const isFound = names.some(name => {
+      if (!name || !name.trim()) return false;
+      // Escape special regex chars
+      const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // match word boundaries or common punctuation
+      const regex = new RegExp(`(^|\\s|[.,;!?("'\u201C\u201D-])${escaped}($|\\s|[.,;!?)"'\u201C\u201D-]s?)`, 'i');
+      return regex.test(text);
+    });
+    
+    if (isFound) {
+      foundIds.add(char.id);
+    }
+  });
+
+  return Array.from(foundIds);
+}
+
+/**
  * Create HTML markup for a character mention
  */
 export function createMentionMarkup(character: Character): string {
