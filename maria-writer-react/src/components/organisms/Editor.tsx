@@ -51,6 +51,7 @@ import {
   getPasteData
 } from '../../utils/editorContextMenu';
 import { createEventMarkup, removeEventMarkup, finalizeEventMarkup } from '../../utils/editorEvents';
+import { stripFormattingMarkup } from '../../utils/PreviewFormattingUtility';
 import styles from './Editor.module.scss';
 
 // Initialize Turndown once
@@ -495,9 +496,12 @@ export const Editor: React.FC = () => {
     console.log('[Comment] Delete completed');
   };
 
-  const getMarkdownHtml = (markdownOverride?: string) => {
+  const getMarkdownHtml = (markdownOverride?: string, isCleanPreview: boolean = false) => {
     const markdownToProcess = markdownOverride !== undefined ? markdownOverride : content;
-    return markdownToHtml(markdownToProcess, chapterComments, state.characters, state.viewMode);
+    // For clean preview, don't apply character or comment styling
+    const commentsToUse = isCleanPreview ? [] : chapterComments;
+    const charactersToUse = isCleanPreview ? [] : state.characters;
+    return markdownToHtml(markdownToProcess, commentsToUse, charactersToUse, state.viewMode);
   };
 
   const handleCreateEvent = () => {
@@ -905,7 +909,7 @@ export const Editor: React.FC = () => {
             <div 
               className={styles.preview}
               onClick={handlePreviewClick}
-              dangerouslySetInnerHTML={{ __html: getMarkdownHtml() }}
+              dangerouslySetInnerHTML={{ __html: getMarkdownHtml(stripFormattingMarkup(content), true) }}
             />
           )}
         </div>
