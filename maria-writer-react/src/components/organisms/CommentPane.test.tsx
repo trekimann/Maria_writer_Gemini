@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, RenderOptions } from '@testing-library/react';
+import React, { ReactElement } from 'react';
 import { CommentPane } from './CommentPane';
 import { StoryComment } from '../../types';
+import { HelpProvider } from '../../context/HelpContext';
 
 const createMockComment = (overrides?: Partial<StoryComment>): StoryComment => ({
   id: 'test-comment-1',
@@ -13,6 +15,10 @@ const createMockComment = (overrides?: Partial<StoryComment>): StoryComment => (
   originalText: 'selected text',
   ...overrides
 });
+
+const renderWithHelp = (ui: ReactElement, options?: RenderOptions) => {
+  return render(ui, { wrapper: HelpProvider, ...options });
+};
 
 describe('CommentPane', () => {
   const defaultProps = {
@@ -26,13 +32,13 @@ describe('CommentPane', () => {
   };
 
   it('should render collapsed by default', () => {
-    const { container } = render(<CommentPane {...defaultProps} />);
+    const { container } = renderWithHelp(<CommentPane {...defaultProps} />);
     const pane = container.firstChild as HTMLElement;
     expect(pane.className).toContain('collapsed');
   });
 
   it('should expand when collapse button is clicked', () => {
-    const { container } = render(<CommentPane {...defaultProps} />);
+    const { container } = renderWithHelp(<CommentPane {...defaultProps} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     
     fireEvent.click(collapseBtn);
@@ -42,7 +48,7 @@ describe('CommentPane', () => {
   });
 
   it('should show empty state when no comments', () => {
-    render(<CommentPane {...defaultProps} />);
+    renderWithHelp(<CommentPane {...defaultProps} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -56,7 +62,7 @@ describe('CommentPane', () => {
       createMockComment({ id: 'comment-2', author: 'Bob', text: 'Second comment' })
     ];
     
-    render(<CommentPane {...defaultProps} comments={comments} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={comments} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -67,7 +73,7 @@ describe('CommentPane', () => {
   it('should expand comment when clicked', () => {
     const comment = createMockComment({ id: 'comment-1', author: 'Alice' });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -91,7 +97,7 @@ describe('CommentPane', () => {
       replacementText: 'improved text'
     });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -105,7 +111,7 @@ describe('CommentPane', () => {
       replacementText: 'improved text'
     });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -129,7 +135,7 @@ describe('CommentPane', () => {
       replacementText: 'improved text'
     });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} onApplySuggestion={onApplySuggestion} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} onApplySuggestion={onApplySuggestion} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -154,7 +160,7 @@ describe('CommentPane', () => {
       isPreviewing: true
     });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -171,7 +177,7 @@ describe('CommentPane', () => {
     const onHideComment = vi.fn();
     const comment = createMockComment({ id: 'comment-1' });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} onHideComment={onHideComment} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} onHideComment={onHideComment} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -194,7 +200,7 @@ describe('CommentPane', () => {
     // Mock window.confirm to return true
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     
-    render(<CommentPane {...defaultProps} comments={[comment]} onDeleteComment={onDeleteComment} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} onDeleteComment={onDeleteComment} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -217,7 +223,7 @@ describe('CommentPane', () => {
     // Mock window.confirm to return false
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     
-    render(<CommentPane {...defaultProps} comments={[comment]} onDeleteComment={onDeleteComment} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} onDeleteComment={onDeleteComment} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -235,7 +241,7 @@ describe('CommentPane', () => {
 
   it('should highlight active comment', () => {
     const comment = createMockComment({ id: 'active-comment' });
-    const { container } = render(
+    const { container } = renderWithHelp(
       <CommentPane {...defaultProps} comments={[comment]} activeCommentId="active-comment" />
     );
     const collapseBtn = screen.getByTitle('Expand comments');
@@ -250,7 +256,7 @@ describe('CommentPane', () => {
   it('should auto-expand active comment', () => {
     const comment = createMockComment({ id: 'active-comment' });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} activeCommentId="active-comment" />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} activeCommentId="active-comment" />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -259,7 +265,7 @@ describe('CommentPane', () => {
   });
 
   it('should respect isOpen prop', () => {
-    const { container, rerender } = render(<CommentPane {...defaultProps} isOpen={false} />);
+    const { container, rerender } = renderWithHelp(<CommentPane {...defaultProps} isOpen={false} />);
     let pane = container.firstChild as HTMLElement;
     expect(pane.className).toContain('collapsed');
     
@@ -276,7 +282,7 @@ describe('CommentPane', () => {
       originalText: 'original text'
     });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -297,7 +303,7 @@ describe('CommentPane', () => {
       createMockComment({ id: 'middle', author: 'Middle', timestamp: 2000 })
     ];
     
-    render(<CommentPane {...defaultProps} comments={comments} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={comments} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -310,7 +316,7 @@ describe('CommentPane', () => {
   it('should show hidden badge for hidden comments', () => {
     const comment = createMockComment({ id: 'hidden', isHidden: true });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     
@@ -321,7 +327,7 @@ describe('CommentPane', () => {
     const onCommentClick = vi.fn();
     const comment = createMockComment({ id: 'comment-1' });
     
-    render(<CommentPane {...defaultProps} comments={[comment]} onCommentClick={onCommentClick} />);
+    renderWithHelp(<CommentPane {...defaultProps} comments={[comment]} onCommentClick={onCommentClick} />);
     const collapseBtn = screen.getByTitle('Expand comments');
     fireEvent.click(collapseBtn);
     

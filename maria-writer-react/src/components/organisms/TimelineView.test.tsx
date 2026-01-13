@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, RenderOptions } from '@testing-library/react';
+import React, { ReactElement } from 'react';
 import { TimelineView } from './TimelineView';
 import { AppState } from '../../types';
+import { HelpProvider } from '../../context/HelpContext';
 
 // Helper to create a mock state with events
 const createMockState = (events: AppState['events'], characters: AppState['characters'] = []): Partial<AppState> => ({
@@ -25,6 +27,10 @@ vi.mock('../../context/StoreContext', async () => {
   };
 });
 
+const renderWithHelp = (ui: ReactElement, options?: RenderOptions) => {
+  return render(ui, { wrapper: HelpProvider, ...options });
+};
+
 describe('TimelineView', () => {
   beforeEach(() => {
     mockDispatch.mockClear();
@@ -42,7 +48,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Event 1', date: '2024-06-15', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show the event on timeline (not in undated section)
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
@@ -53,7 +59,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Event 1', date: '15/06/2024', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show event, not undated
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
@@ -65,7 +71,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Event 1', date: '15/06/2024 10:30:00', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show event, not undated
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
@@ -77,7 +83,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Maria Born', date: '01/02/2000 00:00:00', characters: ['c1'] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show event, not undated
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
@@ -88,7 +94,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Undated Event', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show undated section
       expect(screen.getByText('📅 Undated Events')).toBeInTheDocument();
@@ -100,7 +106,7 @@ describe('TimelineView', () => {
         { id: '2', title: 'Undated Event', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show undated section for the undated event
       expect(screen.getByText('📅 Undated Events')).toBeInTheDocument();
@@ -114,7 +120,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Old West Event', date: '1885-07-04', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
     });
@@ -124,7 +130,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Sci-Fi Event', date: '2250-12-25', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
     });
@@ -134,7 +140,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Old West Event', date: '04/07/1885 00:00:00', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
     });
@@ -144,7 +150,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Sci-Fi Event', date: '25/12/2250 00:00:00', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.queryByText('📅 Undated Events')).not.toBeInTheDocument();
     });
@@ -157,7 +163,7 @@ describe('TimelineView', () => {
         { id: '2', title: 'Event 2', date: '2024-12-31', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       // Should show date range info
       expect(screen.getByText(/Showing:/)).toBeInTheDocument();
@@ -166,7 +172,7 @@ describe('TimelineView', () => {
     it('should show empty state when no events', () => {
       mockState = createMockState([]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.getByText(/No events yet/)).toBeInTheDocument();
     });
@@ -178,7 +184,7 @@ describe('TimelineView', () => {
         { id: '1', title: 'Event 1', date: '2024-06-15', characters: [] },
       ]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.getByText('All Events')).toBeInTheDocument();
     });
@@ -193,7 +199,7 @@ describe('TimelineView', () => {
         ]
       );
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.getByText('Hero')).toBeInTheDocument();
     });
@@ -203,7 +209,7 @@ describe('TimelineView', () => {
     it('should render zoom controls', () => {
       mockState = createMockState([]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.getByTitle('Zoom In (Ctrl+Scroll)')).toBeInTheDocument();
       expect(screen.getByTitle('Zoom Out (Ctrl+Scroll)')).toBeInTheDocument();
@@ -213,7 +219,7 @@ describe('TimelineView', () => {
     it('should render date range inputs', () => {
       mockState = createMockState([]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.getByText('From:')).toBeInTheDocument();
       expect(screen.getByText('To:')).toBeInTheDocument();
@@ -224,7 +230,7 @@ describe('TimelineView', () => {
     it('should render quick range buttons', () => {
       mockState = createMockState([]);
 
-      render(<TimelineView />);
+      renderWithHelp(<TimelineView />);
       
       expect(screen.getByText('1800s')).toBeInTheDocument();
       expect(screen.getByText('±50yr')).toBeInTheDocument();
