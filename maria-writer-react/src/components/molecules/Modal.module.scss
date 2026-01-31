@@ -17,15 +17,37 @@
 
 .modal {
   position: relative;
-  background-color: white;
+  background-color: var(--color-surface);
   border-radius: 0.5rem;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
-  max-width: 32rem; /* max-w-lg */
+  max-width: 32rem; /* default: max-w-lg */
   overflow: hidden;
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+
+  /* Size variants */
+  &.sm {
+    max-width: 24rem; /* max-w-sm */
+  }
+
+  &.md {
+    max-width: 32rem; /* max-w-lg */
+  }
+
+  &.lg {
+    max-width: 48rem; /* max-w-3xl */
+  }
+
+  &.xl {
+    max-width: 64rem; /* max-w-5xl */
+  }
+
+  &.full {
+    max-width: 90vw;
+    max-height: 85vh;
+  }
 }
 
 .header {
@@ -40,7 +62,7 @@
   &.indigo { background: linear-gradient(to right, #6366f1, #a855f7); }
   &.emerald { background: linear-gradient(to right, #10b981, #14b8a6); }
   &.amber { background-color: #d97706; color: white; } /* Simple color for amber */
-  &.gray { background-color: #f9fafb; color: var(--color-text); border-bottom: 1px solid var(--color-border); }
+  &.gray { background-color: var(--color-bg-secondary); color: var(--color-text); border-bottom: 1px solid var(--color-border); }
 }
 
 .title {
@@ -78,7 +100,7 @@
 
 .footer {
   padding: 1rem;
-  background-color: #f9fafb;
+  background-color: var(--color-bg-secondary);
   border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;

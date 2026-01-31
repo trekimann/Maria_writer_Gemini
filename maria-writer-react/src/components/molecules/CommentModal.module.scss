@@ -159,12 +159,12 @@
 }
 
 .cancelBtn {
-  background-color: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
 
   &:hover {
-    background-color: #f9fafb;
+    background-color: var(--color-bg-secondary);
   }
 }
 

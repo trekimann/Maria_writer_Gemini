@@ -1,5 +1,5 @@
 .card {
-  background-color: white;
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   overflow: hidden;
@@ -14,7 +14,7 @@
 
 .imageWrapper {
   height: 10rem;
-  background-color: #f3f4f6;
+  background-color: var(--color-bg);
   display: flex;
   align-items: center;
   justify-content: center;

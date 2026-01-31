@@ -5,6 +5,7 @@
   --font-serif: 'Merriweather', serif;
   --font-mono: 'Menlo', 'Monaco', 'Courier New', monospace;
 
+  /* Light theme (default) */
   --color-primary: #4f46e5; /* Indigo 600 */
   --color-primary-hover: #4338ca; /* Indigo 700 */
   --color-bg: #f3f4f6;
@@ -12,6 +13,118 @@
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-border: #e5e7eb;
+  --color-bg-secondary: #f9fafb;
+  --color-primary-light: #e0e7ff;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+  --comment-text: #7c3aed;
+  --comment-text-hover: #6d28d9;
+  --comment-bg: #f3e8ff;
+  --comment-bg-hover: #f3e8ff;
+  --event-text: #059669;
+  --event-text-hover: #047857;
+  --event-bg: #ecfdf5;
+  --event-bg-hover: #ecfdf5;
+  
+  /* Extensible: Add new color variables here as features are added */
+  /* Example for romantic scenes:
+  --romantic-text: #ec4899;
+  --romantic-text-hover: #db2777;
+  --romantic-bg: #fce7f3;
+  --romantic-bg-hover: #fbcfe8;
+  */
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-primary: #6366f1;
+    --color-primary-hover: #818cf8;
+    --color-bg: #0f172a;
+    --color-surface: #1e293b;
+    --color-text: #f1f5f9;
+    --color-text-muted: #cbd5e1;
+    --color-border: #334155;
+    --color-bg-secondary: #334155;
+    --color-primary-light: #312e81;
+    --scrollbar-thumb: #475569;
+    --scrollbar-thumb-hover: #64748b;
+    --comment-text: #a78bfa;
+    --comment-text-hover: #c4b5fd;
+    --comment-bg: #4c1d95;
+    --comment-bg-hover: #5b21b6;
+    --event-text: #6ee7b7;
+    --event-text-hover: #5eead4;
+    --event-bg: #042f2e;
+    --event-bg-hover: #134e4a;
+    
+    /* Extensible: Add new dark theme colors here
+    --romantic-text: #f9a8d4;
+    --romantic-text-hover: #fbcfe8;
+    --romantic-bg: #831843;
+    --romantic-bg-hover: #9f1239;
+    */
+  }
+}
+
+/* Explicit dark theme via data attribute */
+html[data-theme="dark"] {
+  --color-primary: #6366f1;
+  --color-primary-hover: #818cf8;
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #f1f5f9;
+  --color-text-muted: #cbd5e1;
+  --color-border: #334155;
+  --color-bg-secondary: #334155;
+  --color-primary-light: #312e81;
+  --scrollbar-thumb: #475569;
+  --scrollbar-thumb-hover: #64748b;
+  --comment-text: #a78bfa;
+  --comment-text-hover: #c4b5fd;
+  --comment-bg: #4c1d95;
+  --comment-bg-hover: #5b21b6;
+  --event-text: #6ee7b7;
+  --event-text-hover: #5eead4;
+  --event-bg: #042f2e;
+  --event-bg-hover: #134e4a;
+  
+  /* Extensible: Add new dark theme colors here
+  --romantic-text: #f9a8d4;
+  --romantic-text-hover: #fbcfe8;
+  --romantic-bg: #831843;
+  --romantic-bg-hover: #9f1239;
+  */
+}
+
+/* Explicit light theme via data attribute */
+html[data-theme="light"] {
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-bg: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-bg-secondary: #f9fafb;
+  --color-primary-light: #e0e7ff;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+  --comment-text: #7c3aed;
+  --comment-text-hover: #6d28d9;
+  --comment-bg: #f3e8ff;
+  --comment-bg-hover: #f3e8ff;
+  --event-text: #059669;
+  --event-text-hover: #047857;
+  --event-bg: #ecfdf5;
+  --event-bg-hover: #ecfdf5;
+  
+  /* Extensible: Add new light theme colors here
+  --romantic-text: #ec4899;
+  --romantic-text-hover: #db2777;
+  --romantic-bg: #fce7f3;
+  --romantic-bg-hover: #fbcfe8;
+  */
 }
 
 * {
@@ -43,19 +156,19 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Comment highlighting - styled as clickable underlined text */
 u[data-comment-id] {
-  color: #7c3aed; /* purple-600 */
+  color: var(--comment-text);
   text-decoration: underline;
   text-decoration-style: dashed;
-  text-decoration-color: #7c3aed; /* purple-600 */
+  text-decoration-color: var(--comment-text);
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -64,9 +177,9 @@ u[data-comment-id] {
 }
 
 u[data-comment-id]:hover {
-  color: #6d28d9; /* purple-700 */
-  text-decoration-color: #6d28d9;
-  background-color: #f3e8ff; /* purple-100 */
+  color: var(--comment-text-hover);
+  text-decoration-color: var(--comment-text-hover);
+  background-color: var(--comment-bg-hover);
   text-decoration-style: solid;
 }
 
@@ -100,10 +213,10 @@ u[data-comment-id].suggestion-applied:hover {
 
 /* Event marking - styled as underlined text */
 span[data-event-id] {
-  color: #059669; /* emerald-600 */
+  color: var(--event-text);
   text-decoration: underline;
   text-decoration-style: dashed;
-  text-decoration-color: #059669; /* emerald-600 */
+  text-decoration-color: var(--event-text);
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -112,9 +225,9 @@ span[data-event-id] {
 }
 
 span[data-event-id]:hover {
-  color: #047857; /* emerald-700 */
-  text-decoration-color: #047857;
-  background-color: #ecfdf5; /* emerald-50 */
+  color: var(--event-text-hover);
+  text-decoration-color: var(--event-text-hover);
+  background-color: var(--event-bg-hover);
   text-decoration-style: solid;
 }
 

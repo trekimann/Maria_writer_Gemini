@@ -103,7 +103,12 @@ export interface Relationship {
 export type ViewMode = 'write' | 'source' | 'preview';
 export type ContextMode = 'writer' | 'codex';
 export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
-export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship';
+export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship' | 'theme-config';
+
+export interface ThemeCustomization {
+  name: string;
+  colors: Record<string, string>;
+}
 
 export interface AppState {
   meta: BookMetadata;
@@ -121,4 +126,5 @@ export interface AppState {
   editingItemId: string | null; // For character/event modals
   viewingItemId: string | null; // For detail views
   prefilledEventData?: Partial<Event>; // For creating events from editor
+  themeCustomizations?: ThemeCustomization[]; // Custom theme presets
 }

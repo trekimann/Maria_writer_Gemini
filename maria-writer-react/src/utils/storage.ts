@@ -1,7 +1,7 @@
 import { AppState } from '../types';
 
 const STORAGE_KEY = 'maria_autosave';
-const STORAGE_VERSION = '2.0'; // Updated for relationships support
+const STORAGE_VERSION = '2.1'; // Updated for theme customizations
 
 export const loadFromLocal = (): Partial<AppState> | null => {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -20,6 +20,11 @@ export const loadFromLocal = (): Partial<AppState> | null => {
           ...char,
           lifeEvents: char.lifeEvents || []
         }));
+      }
+
+      // Ensure themeCustomizations array exists
+      if (!parsed.themeCustomizations) {
+        parsed.themeCustomizations = [];
       }
       
       return parsed;

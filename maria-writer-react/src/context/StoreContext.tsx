@@ -30,7 +30,8 @@ export const initialState: AppState = {
   activeModal: 'none',
   editingItemId: null,
   viewingItemId: null,
-  prefilledEventData: undefined
+  prefilledEventData: undefined,
+  themeCustomizations: []
 };
 
 // Actions

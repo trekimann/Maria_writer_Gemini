@@ -10,6 +10,7 @@ import { CharacterModal } from '../organisms/CharacterModal';
 import { EventModal } from '../organisms/EventModal';
 import { RelationshipModal } from '../organisms/RelationshipModal';
 import { ChapterMetadataModal } from '../organisms/ChapterMetadataModal';
+import { ThemeConfigModal } from '../organisms/ThemeConfigModal';
 import styles from './MainLayout.module.scss';
 
 export const MainLayout: React.FC = () => {
@@ -30,6 +31,7 @@ export const MainLayout: React.FC = () => {
       <EventModal />
       <RelationshipModal />
       <ChapterMetadataModal />
+      <ThemeConfigModal />
     </div>
   );
 };

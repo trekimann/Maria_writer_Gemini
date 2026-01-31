@@ -19,7 +19,7 @@
   font-size: 0.75rem;
   font-weight: 500;
 
-  &.indigo { background-color: #e0e7ff; color: #4338ca; }
+  &.indigo { background-color: var(--color-primary-light); color: var(--color-primary-hover); }
   &.emerald { background-color: #d1fae5; color: #047857; }
   &.amber { background-color: #fef3c7; color: #b45309; }
 }
@@ -49,6 +49,8 @@
   border-radius: 0.375rem;
   padding: 0.5rem;
   font-size: 0.875rem;
+  background-color: var(--color-surface);
+  color: var(--color-text);
   outline: none;
   
   &:focus {
@@ -59,14 +61,15 @@
 
 .addBtn {
   padding: 0.5rem 1rem;
-  background-color: white;
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
+  color: var(--color-text);
   font-size: 0.875rem;
   cursor: pointer;
   
   &:hover:not(:disabled) {
-    background-color: #f9fafb;
+    background-color: var(--color-bg-secondary);
   }
   
   &:disabled {

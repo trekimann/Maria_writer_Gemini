@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
-import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
+import { ThemeToggle } from '../atoms/ThemeToggle';
+import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette } from 'lucide-react';
 import { HelpButton } from '../atoms/HelpButton';
 import styles from './TopBar.module.scss';
 
@@ -55,6 +56,10 @@ export const TopBar: React.FC = () => {
     dispatch({ type: 'OPEN_MODAL', payload: { type: 'metadata' } });
   };
 
+  const handleThemeConfig = () => {
+    dispatch({ type: 'OPEN_MODAL', payload: { type: 'theme-config' } });
+  };
+
   const setViewMode = (mode: 'write' | 'source' | 'preview') => {
     dispatch({ type: 'SET_VIEW_MODE', payload: mode });
   };
@@ -75,6 +80,11 @@ export const TopBar: React.FC = () => {
         <Button variant="ghost" size="sm" icon={Save} onClick={handleSave} title="Save" />
         <Button variant="ghost" size="sm" icon={FolderOpen} onClick={handleOpen} title="Open" />
         <Button variant="ghost" size="sm" icon={BookOpen} onClick={handleMetadata} title="Info" />
+        
+        <div className={styles.divider}></div>
+        <ThemeToggle />
+        
+        <Button variant="ghost" size="sm" icon={Palette} onClick={handleThemeConfig} title="Theme Configuration" />
         <input 
           type="file" 
           id="file-input" 

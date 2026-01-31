@@ -24,7 +24,7 @@
 }
 
 .secondary {
-  background-color: white;
+  background-color: var(--color-surface);
   border-color: var(--color-border);
   color: var(--color-text);
   &:hover:not(:disabled) {

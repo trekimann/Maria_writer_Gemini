@@ -1,8 +1,8 @@
 .pane {
   width: 20rem;
   height: 100%;
-  background-color: #fafafa;
-  border-left: 1px solid #e5e7eb;
+  background-color: var(--color-bg);
+  border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -16,8 +16,8 @@
 
 .header {
   padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: white;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -27,7 +27,7 @@
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--color-text);
   }
 }
 

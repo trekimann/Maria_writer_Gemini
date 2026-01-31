@@ -11,6 +11,7 @@ interface ModalProps {
   footer?: React.ReactNode;
   headerColor?: 'indigo' | 'emerald' | 'amber' | 'gray';
   helpId?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 export const Modal: React.FC<ModalProps> = ({ 
@@ -20,7 +21,8 @@ export const Modal: React.FC<ModalProps> = ({
   children, 
   footer,
   headerColor = 'gray',
-  helpId
+  helpId,
+  size = 'md'
 }) => {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -41,7 +43,7 @@ export const Modal: React.FC<ModalProps> = ({
   return (
     <div className={styles.overlay}>
       <div className={styles.backdrop} onClick={onClose} />
-      <div className={styles.modal}>
+      <div className={`${styles.modal} ${styles[size]}`}>
         <div className={`${styles.header} ${styles[headerColor]}`}>
           <h3 className={styles.title}>{title}</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

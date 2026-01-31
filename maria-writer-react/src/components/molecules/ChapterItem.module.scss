@@ -11,7 +11,7 @@
   margin-bottom: 0.25rem;
 
   &:hover {
-    background-color: #e5e7eb;
+    background-color: var(--color-border);
     color: var(--color-text);
     
     .actions {
@@ -20,8 +20,8 @@
   }
 
   &.active {
-    background-color: #e0e7ff;
-    color: #1e40af;
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
     border-left: 3px solid var(--color-primary);
     
     .icon {
@@ -70,7 +70,7 @@
 .actionBtn {
   color: var(--color-text-muted);
   &:hover {
-    background-color: #d1d5db;
+    background-color: var(--color-bg-secondary);
     color: var(--color-text);
   }
 }
@@ -78,6 +78,6 @@
 .deleteBtn {
   color: #ef4444;
   &:hover {
-    background-color: #fee2e2;
+    background-color: rgba(239, 68, 68, 0.1);
   }
 }
