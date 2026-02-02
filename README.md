@@ -1,8 +1,93 @@
-# Maria Writer
-a react typescript node JS application made specifically for writing novels and managing information within those novels.
-includes the ability to comment, create chapters, create character BIOS, record specific events and link them to characters, create a relationship graph between characters and more.
+# Maria Writer with Cloud Storage 🚀
 
-a big part of this project is not to write any code directly where possible, I aim to create a maintain this application fully through generative AI use. the idea being that as long as you construct best practices and treat it as the smartest junior developer you've ever met who needs hand holding then you should be able to get high quality maintainable code.
+A powerful novel writing application with cloud persistence, built with React, TypeScript, Node.js, and MariaDB.
+
+## Overview
+
+Maria Writer is a comprehensive novel writing tool designed specifically for managing novels and their associated information. It includes features for commenting, chapter management, character bios, event tracking, relationship mapping, and much more.
+
+**NEW in v1.0:** Cloud storage with MariaDB backend! Your work is now saved to a persistent database with flexible auto-save options.
+
+### Philosophy
+
+This project is maintained primarily through AI-assisted development, demonstrating that high-quality, maintainable code can be achieved through careful direction and best practices guidance to generative AI systems.
+
+## 🎯 Quick Start
+
+### Using Docker Compose (Recommended)
+
+```bash
+cd c:\Source\Maria_writer_Gemini
+copy .env.example .env
+# Edit .env with secure passwords
+docker-compose up -d
+```
+
+Open http://localhost - you're ready to write!
+
+### Manual Setup
+
+See **[SETUP_GUIDE.md](SETUP_GUIDE.md)** for detailed instructions.
+
+## ✨ Features
+
+### Cloud Storage (Phase 1 - NEW!)
+- ☁️ **MariaDB Backend** - Persistent cloud storage for your novels
+- 💾 **Flexible Storage** - Choose local, cloud, or both
+- ⏱️ **Auto-Save Options:**
+  - Save on chapter change
+  - Save at regular intervals
+  - Save on window focus loss
+- 🆔 **Guest IDs** - Simple access without creating accounts
+- 📦 **Export/Import** - Backup as `.maria` files
+
+### Core Writing Features
+- 📝 **Multiple Editor Modes** - Write, Source, and Preview modes
+- 📚 **Chapter Management** - Drag-and-drop reordering, metadata
+- 👥 **Character Database** - Detailed bios, relationships, life events
+- 📅 **Timeline & Events** - Track story events, link to characters
+- 💬 **Commenting System** - Add comments and suggestions to text
+- 🎨 **Theme Customization** - Light/dark themes with color customization
+- 📊 **Writing Statistics** - Word count, character count, reading time
+- 🔗 **Relationship Graph** - Visual character relationships
+
+## 📖 Documentation
+
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup and troubleshooting
+- **[FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md](FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md)** - Multi-user roadmap
+- **[maria-writer-backend/README.md](maria-writer-backend/README.md)** - Backend API docs
+- **[LLM_REFERENCE/](LLM_REFERENCE/)** - Developer guides
+
+## 🛠️ Technology Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Frontend | React 18, TypeScript, Vite, SCSS |
+| Backend | Node.js, Express, TypeScript |
+| Database | MariaDB 11 with Prisma ORM |
+| Testing | Vitest, Jest, Supertest |
+| Deployment | Docker, Docker Compose, nginx |
+
+## 📋 Roadmap
+
+- ✅ **Phase 1: Cloud Storage** (Current) - MariaDB backend, auto-save
+- 📅 **Phase 2: Authentication** - User accounts, JWT auth
+- 📅 **Phase 3: Collaboration** - Share projects, permissions
+- 📅 **Phase 4: Real-Time Sync** - WebSockets, live collaboration
+
+See [MULTI_USER_IMPLEMENTATION_PLAN.md](FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md) for details.
+
+## 🎯 Usage
+
+### Saving Your Work
+
+1. Click the **Save icon (💾)** in the toolbar
+2. Configure your preferences:
+   - Enable cloud storage for cross-device access
+   - Set up auto-save options
+   - View your Guest ID
+3. Click **Save Now** or let auto-save handle it
+4. Export to `.maria` files for backups
 
 ## Help & Documentation
 

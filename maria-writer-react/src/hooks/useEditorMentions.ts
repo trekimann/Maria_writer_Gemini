@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Character } from '../types';
 import {
   createMentionMarkup,
@@ -12,7 +12,7 @@ import {
 } from '../utils/editorMentions';
 
 interface UseEditorMentionsProps {
-  viewMode: string;
+  viewMode: 'write' | 'source' | 'preview';
   textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
   contentEditableRef: React.MutableRefObject<HTMLDivElement | null>;
   content: string;
@@ -40,7 +40,6 @@ export const useEditorMentions = ({
   viewMode,
   textareaRef,
   contentEditableRef,
-  content,
   characters,
   setContent,
   dispatch,

@@ -1,0 +1,60 @@
+import express from 'express';
+import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import dotenv from 'dotenv';
+import { errorHandler } from './middleware/errorHandler';
+import { logger } from './utils/logger';
+import healthRoutes from './routes/health';
+import projectRoutes from './routes/projects';
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || 'http://localhost',
+    credentials: true,
+  },
+});
+
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost',
+  credentials: true,
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.path}`);
+  next();
+});
+
+// Routes
+app.use('/api/health', healthRoutes);
+app.use('/api/projects', projectRoutes);
+
+// WebSocket connection (Phase 4 - placeholder for now)
+io.on('connection', (socket) => {
+  logger.info(`WebSocket client connected: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    logger.info(`WebSocket client disconnected: ${socket.id}`);
+  });
+});
+
+// Error handling
+app.use(errorHandler);
+
+// Start server
+httpServer.listen(PORT, () => {
+  logger.info(`Server running on port ${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV}`);
+});
+
+export { app, io };

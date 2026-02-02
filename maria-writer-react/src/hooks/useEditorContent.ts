@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  htmlToMarkdown,
   markdownToHtml,
-  extractTitleFromMarkdown,
   createTurndownService
 } from '../utils/editorMarkdown';
 import { Chapter, StoryComment, Character } from '../types';
 
 interface UseEditorContentProps {
   activeChapter: Chapter | undefined;
-  viewMode: string;
+  viewMode: 'write' | 'source' | 'preview';
   chapterComments: StoryComment[];
   dispatch: any;
 }

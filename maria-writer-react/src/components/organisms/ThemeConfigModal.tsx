@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { useTheme, ThemeColors, lightTheme, darkTheme } from '../../context/ThemeContext';
+import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { Modal } from '../molecules/Modal';
 import { Button } from '../atoms/Button';
 import { Palette, RotateCcw, Save, Trash2, Sun, Moon } from 'lucide-react';

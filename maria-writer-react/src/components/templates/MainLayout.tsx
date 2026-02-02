@@ -6,6 +6,7 @@ import { Editor } from '../organisms/Editor';
 import { Codex } from '../organisms/Codex';
 import { MetadataModal } from '../organisms/MetadataModal';
 import { SaveModal } from '../organisms/SaveModal';
+import { SaveSettingsModal } from '../organisms/SaveSettingsModal';
 import { CharacterModal } from '../organisms/CharacterModal';
 import { EventModal } from '../organisms/EventModal';
 import { RelationshipModal } from '../organisms/RelationshipModal';
@@ -14,7 +15,7 @@ import { ThemeConfigModal } from '../organisms/ThemeConfigModal';
 import styles from './MainLayout.module.scss';
 
 export const MainLayout: React.FC = () => {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
 
   return (
     <div className={styles.layout}>
@@ -27,6 +28,10 @@ export const MainLayout: React.FC = () => {
       </div>
       <MetadataModal />
       <SaveModal />
+      <SaveSettingsModal 
+        isOpen={state.activeModal === 'save-settings'} 
+        onClose={() => dispatch({ type: 'CLOSE_MODAL' })} 
+      />
       <CharacterModal />
       <EventModal />
       <RelationshipModal />

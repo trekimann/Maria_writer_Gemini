@@ -1,0 +1,24 @@
+// Prisma schema for Maria Writer
+// Phase 1: Simple JSON storage with guest IDs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  guestId   String   @map("guest_id") @db.VarChar(36)
+  title     String   @db.VarChar(500)
+  data      Json     @db.Json
+  version   String   @default("2.1") @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([guestId])
+  @@map("projects")
+}

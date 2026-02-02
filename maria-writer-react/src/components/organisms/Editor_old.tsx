@@ -596,10 +596,8 @@ export const Editor: React.FC = () => {
        } else {
          // Cancelled: Remove marking
          if (state.viewMode === 'write' && contentEditableRef.current) {
-            unwrapCommentElement(contentEditableRef.current, pendingEventId, 'data-event-id'); // Reusing unwrap logic from comments but need to check if it supports attribute name
-            // Wait, unwrapCommentElement uses data-comment-id hardcoded?
-            // Let's check unwrapCommentElement. It might be specific.
-            // If so, implementing specific unwrap for events here.
+            // unwrapCommentElement doesn't support custom attributes
+            // Implementing specific unwrap for events here.
             const span = contentEditableRef.current.querySelector(`span[data-event-id="${pendingEventId}"]`);
             if (span) {
                 const parent = span.parentNode;

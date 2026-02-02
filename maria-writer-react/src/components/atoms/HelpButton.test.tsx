@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { HelpButton } from './HelpButton';
-import { HelpProvider } from '../../context/HelpContext';
 
 // Mock Lucide icon to avoid issues
 vi.mock('lucide-react', () => ({

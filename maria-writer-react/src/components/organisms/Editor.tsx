@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Plus } from 'lucide-react';
 import { Statistics } from '../atoms/Statistics';
@@ -9,7 +9,7 @@ import { EditorContextMenu } from '../molecules/EditorContextMenu';
 import { EditorModeSwitch } from '../molecules/EditorModeSwitch';
 import { stripFormattingMarkup } from '../../utils/PreviewFormattingUtility';
 import { extractMentionedCharacterIds } from '../../utils/mention';
-import { htmlToMarkdown, markdownToHtml, extractTitleFromMarkdown } from '../../utils/editorMarkdown';
+import { htmlToMarkdown, extractTitleFromMarkdown } from '../../utils/editorMarkdown';
 import { unwrapCommentElement } from '../../utils/editorComments';
 import { useEditorContent } from '../../hooks/useEditorContent';
 import { useEditorStatistics } from '../../hooks/useEditorStatistics';
@@ -52,10 +52,7 @@ export const Editor: React.FC = () => {
   const {
     mentionQuery,
     mentionPosition,
-    mentionStartIndex,
     mentionSelectedIndex,
-    setMentionQuery,
-    setMentionSelectedIndex,
     filteredCharacters,
     handleChange,
     handleContentEditableInput: hookHandleContentEditableInput,
@@ -81,8 +78,6 @@ export const Editor: React.FC = () => {
     pendingCommentId,
     setActiveCommentId,
     setShowCommentModal,
-    setCommentModalPosition,
-    setIsCommentPaneOpen,
     setPendingCommentId,
     handleSaveComment,
     handleHideComment,
@@ -104,9 +99,7 @@ export const Editor: React.FC = () => {
   });
 
   const {
-    pendingEventId,
-    handleCreateEvent: hookHandleCreateEvent,
-    handleEventModalClose
+    handleCreateEvent: hookHandleCreateEvent
   } = useEditorEvents({
     activeChapterId: activeChapter?.id,
     activeChapterDate: activeChapter?.date,

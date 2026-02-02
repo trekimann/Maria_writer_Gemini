@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, RenderOptions } from '@testing-library/react';
-import React, { ReactElement } from 'react';
+import { ReactElement } from 'react';
 import { TimelineView } from './TimelineView';
 import { AppState } from '../../types';
 import { HelpProvider } from '../../context/HelpContext';

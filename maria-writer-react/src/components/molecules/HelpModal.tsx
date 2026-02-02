@@ -4,7 +4,6 @@ import { useHelp } from '../../context/HelpContext';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import styles from './HelpModal.module.scss';
-import { useStore } from '../../context/StoreContext';
 
 export const HelpModal: React.FC = () => {
   const { isOpen, helpId, closeHelp } = useHelp();

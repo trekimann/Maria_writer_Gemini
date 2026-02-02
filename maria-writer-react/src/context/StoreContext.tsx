@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { AppState, BookMetadata, Chapter, Character, Event, ViewMode, ContextMode, CodexTab, ModalType, Relationship, StoryComment } from '../types';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEventDelete, syncCharacterLifeEventsToTimeline, syncRelationshipToEvent } from '../utils/eventSync';
+import { cloudStorageService } from '../services/cloudStorage';
+import { useAutoSave } from '../hooks/useAutoSave';
 
 // Initial State
 export const initialState: AppState = {
@@ -31,7 +33,21 @@ export const initialState: AppState = {
   editingItemId: null,
   viewingItemId: null,
   prefilledEventData: undefined,
-  themeCustomizations: []
+  themeCustomizations: [],
+  saveSettings: {
+    saveToLocal: true,
+    saveToCloud: false,
+    autoSaveOnChapterChange: false,
+    autoSaveInterval: 0,
+    autoSaveOnFocusLoss: false,
+  },
+  cloudSync: {
+    projectId: null,
+    guestId: null,
+    lastSyncedAt: null,
+    isSyncing: false,
+    syncError: null,
+  }
 };
 
 // Actions
@@ -64,7 +80,13 @@ type Action =
   | { type: 'ADD_COMMENT'; payload: { chapterId: string; comment: StoryComment } }
   | { type: 'UPDATE_COMMENT'; payload: { chapterId: string; commentId: string; updates: Partial<StoryComment> } }
   | { type: 'DELETE_COMMENT'; payload: { chapterId: string; commentId: string } }
-  | { type: 'HIDE_COMMENT'; payload: string };
+  | { type: 'HIDE_COMMENT'; payload: string }
+  | { type: 'UPDATE_SAVE_SETTINGS'; payload: Partial<import('../types').SaveSettings> }
+  | { type: 'SET_CLOUD_SYNC_STATE'; payload: Partial<import('../types').CloudSyncState> }
+  | { type: 'CLOUD_SYNC_START' }
+  | { type: 'CLOUD_SYNC_SUCCESS'; payload: { projectId: string; timestamp: string } }
+  | { type: 'CLOUD_SYNC_ERROR'; payload: string }
+  | { type: 'SET_PREFILLED_EVENT_DATA'; payload: Partial<Event> | undefined };
 
 // Reducer
 export const reducer = (state: AppState, action: Action): AppState => {
@@ -246,6 +268,43 @@ export const reducer = (state: AppState, action: Action): AppState => {
           [action.payload]: { ...state.comments[action.payload], isHidden: !state.comments[action.payload].isHidden }
         }
       };
+    case 'UPDATE_SAVE_SETTINGS':
+      return {
+        ...state,
+        saveSettings: { ...state.saveSettings, ...action.payload } as any
+      };
+    case 'SET_CLOUD_SYNC_STATE':
+      return {
+        ...state,
+        cloudSync: { ...state.cloudSync, ...action.payload } as any
+      };
+    case 'CLOUD_SYNC_START':
+      return {
+        ...state,
+        cloudSync: { ...state.cloudSync, isSyncing: true, syncError: null } as any
+      };
+    case 'CLOUD_SYNC_SUCCESS':
+      return {
+        ...state,
+        cloudSync: {
+          ...state.cloudSync,
+          isSyncing: false,
+          projectId: action.payload.projectId,
+          lastSyncedAt: action.payload.timestamp,
+          syncError: null
+        } as any
+      };
+    case 'CLOUD_SYNC_ERROR':
+      return {
+        ...state,
+        cloudSync: {
+          ...state.cloudSync,
+          isSyncing: false,
+          syncError: action.payload
+        } as any
+      };
+    case 'SET_PREFILLED_EVENT_DATA':
+      return { ...state, prefilledEventData: action.payload };
     default:
       return state;
   }
@@ -268,23 +327,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const loaded = loadFromLocal();
     if (loaded) {
       // Merge loaded state with initial state to ensure all fields exist
-      dispatch({ type: 'LOAD_STATE', payload: { ...initialState, ...loaded } as any });
+      const mergedState = { ...initialState, ...loaded } as AppState;
+      
+      // Initialize guest ID if not present
+      if (!mergedState.cloudSync?.guestId) {
+        mergedState.cloudSync = {
+          ...mergedState.cloudSync,
+          guestId: cloudStorageService.getGuestId(),
+        } as any;
+      }
+      
+      dispatch({ type: 'LOAD_STATE', payload: mergedState });
     } else {
       // Set initial active chapter if not loaded
       if (initialState.chapters.length > 0) {
         dispatch({ type: 'SET_ACTIVE_CHAPTER', payload: initialState.chapters[0].id });
       }
+      
+      // Set guest ID
+      dispatch({
+        type: 'SET_CLOUD_SYNC_STATE',
+        payload: { guestId: cloudStorageService.getGuestId() },
+      });
     }
     // Flag as ready so we can start auto-saving
     setIsReady(true);
   }, []);
 
-  // Auto-save
+  // Auto-save to local storage (always on, but respects settings)
   useEffect(() => {
-    if (isReady) {
+    if (isReady && state.saveSettings?.saveToLocal !== false) {
       saveToLocal(state);
     }
   }, [state, isReady]);
+
+  // Auto-save hook for interval, chapter change, and focus loss
+  useAutoSave({
+    state,
+    settings: state.saveSettings,
+    onCloudSyncStart: () => dispatch({ type: 'CLOUD_SYNC_START' }),
+    onCloudSyncSuccess: (projectId, timestamp) =>
+      dispatch({ type: 'CLOUD_SYNC_SUCCESS', payload: { projectId, timestamp } }),
+    onCloudSyncError: (error) => dispatch({ type: 'CLOUD_SYNC_ERROR', payload: error }),
+  });
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

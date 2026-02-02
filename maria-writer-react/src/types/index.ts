@@ -103,11 +103,27 @@ export interface Relationship {
 export type ViewMode = 'write' | 'source' | 'preview';
 export type ContextMode = 'writer' | 'codex';
 export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
-export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship' | 'theme-config';
+export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship' | 'theme-config' | 'save-settings';
 
 export interface ThemeCustomization {
   name: string;
   colors: Record<string, string>;
+}
+
+export interface SaveSettings {
+  saveToLocal: boolean;
+  saveToCloud: boolean;
+  autoSaveOnChapterChange: boolean;
+  autoSaveInterval: number; // minutes, 0 = disabled
+  autoSaveOnFocusLoss: boolean;
+}
+
+export interface CloudSyncState {
+  projectId: string | null;
+  guestId: string | null;
+  lastSyncedAt: string | null;
+  isSyncing: boolean;
+  syncError: string | null;
 }
 
 export interface AppState {
@@ -127,4 +143,6 @@ export interface AppState {
   viewingItemId: string | null; // For detail views
   prefilledEventData?: Partial<Event>; // For creating events from editor
   themeCustomizations?: ThemeCustomization[]; // Custom theme presets
+  saveSettings?: SaveSettings; // Save preferences
+  cloudSync?: CloudSyncState; // Cloud sync state
 }

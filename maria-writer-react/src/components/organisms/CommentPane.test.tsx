@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, RenderOptions } from '@testing-library/react';
-import React, { ReactElement } from 'react';
+import { ReactElement } from 'react';
 import { CommentPane } from './CommentPane';
 import { StoryComment } from '../../types';
 import { HelpProvider } from '../../context/HelpContext';

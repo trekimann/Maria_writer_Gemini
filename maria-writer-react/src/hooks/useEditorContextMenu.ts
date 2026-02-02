@@ -8,7 +8,7 @@ import {
 import { htmlToMarkdown } from '../utils/editorMarkdown';
 
 interface UseEditorContextMenuProps {
-  viewMode: string;
+  viewMode: 'write' | 'source' | 'preview';
   textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
   contentEditableRef: React.MutableRefObject<HTMLDivElement | null>;
   getMarkdownHtml: (markdownOverride?: string) => string;

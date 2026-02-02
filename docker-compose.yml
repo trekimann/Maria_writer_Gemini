@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: ./maria-writer-react
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    networks:
+      - maria-network
+
+  backend:
+    build:
+      context: ./maria-writer-backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=mysql://maria_user:${DB_PASSWORD:-maria_password_2026}@db:3306/maria_writer
+      - NODE_ENV=production
+      - PORT=3000
+      - CORS_ORIGIN=http://localhost
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_change_in_production}
+    networks:
+      - maria-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root_password_2026}
+      - MYSQL_DATABASE=maria_writer
+      - MYSQL_USER=maria_user
+      - MYSQL_PASSWORD=${DB_PASSWORD:-maria_password_2026}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - maria-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  maria-network:
+    driver: bridge

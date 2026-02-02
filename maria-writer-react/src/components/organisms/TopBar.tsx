@@ -28,7 +28,7 @@ export const TopBar: React.FC = () => {
   }, [showHeadingMenu]);
 
   const handleSave = () => {
-    dispatch({ type: 'OPEN_MODAL', payload: { type: 'save' } });
+    dispatch({ type: 'OPEN_MODAL', payload: { type: 'save-settings' } });
   };
 
   const handleOpen = () => {

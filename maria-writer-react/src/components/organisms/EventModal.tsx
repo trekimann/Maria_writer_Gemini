@@ -73,7 +73,7 @@ export const EventModal: React.FC = () => {
         type: 'ADD_EVENT', 
         payload: { 
           event: eventData, 
-          chapterId: state.prefilledEventData ? state.activeChapterId : undefined 
+          chapterId: state.prefilledEventData ? (state.activeChapterId ?? undefined) : undefined 
         } 
       });
     }
