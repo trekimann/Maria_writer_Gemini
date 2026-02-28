@@ -43,10 +43,8 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
     setIsManualSaving(true);
     
     try {
-      // Save to local if enabled
-      if (settings.saveToLocal) {
-        saveToLocal(state);
-      }
+      // Always save locally
+      saveToLocal(state);
 
       // Save to cloud if enabled
       if (settings.saveToCloud) {
@@ -113,12 +111,8 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
           <h3>Storage Location</h3>
           <div className={styles.checkboxGroup}>
             <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={settings.saveToLocal}
-                onChange={(e) => handleSettingChange('saveToLocal', e.target.checked)}
-              />
-              <span>Save to Browser (Local Storage)</span>
+              <input type="checkbox" checked={true} disabled />
+              <span>Always save to Browser (Local Storage)</span>
             </label>
             
             <label className={styles.checkboxLabel}>
@@ -127,7 +121,7 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
                 checked={settings.saveToCloud}
                 onChange={(e) => handleSettingChange('saveToCloud', e.target.checked)}
               />
-              <span>Save to Cloud (MariaDB)</span>
+              <span>Also save to Cloud (MariaDB) when clicking Save Now</span>
             </label>
           </div>
 

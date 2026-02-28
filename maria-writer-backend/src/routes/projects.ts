@@ -16,12 +16,12 @@ router.get('/', validateQuery(ProjectQuerySchema), projectController.listProject
 router.post('/', writeLimiter, validate(CreateProjectSchema), projectController.createOrUpdateProject);
 
 // GET /api/projects/:id - Get specific project
-router.get('/:id', projectController.getProject);
+router.get('/:id', validateQuery(ProjectQuerySchema), projectController.getProject);
 
 // PUT /api/projects/:id - Update existing project
-router.put('/:id', writeLimiter, validate(UpdateProjectSchema), projectController.updateProject);
+router.put('/:id', writeLimiter, validateQuery(ProjectQuerySchema), validate(UpdateProjectSchema), projectController.updateProject);
 
 // DELETE /api/projects/:id - Delete project
-router.delete('/:id', writeLimiter, projectController.deleteProject);
+router.delete('/:id', writeLimiter, validateQuery(ProjectQuerySchema), projectController.deleteProject);
 
 export default router;

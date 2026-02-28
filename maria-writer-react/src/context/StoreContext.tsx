@@ -271,7 +271,7 @@ export const reducer = (state: AppState, action: Action): AppState => {
     case 'UPDATE_SAVE_SETTINGS':
       return {
         ...state,
-        saveSettings: { ...state.saveSettings, ...action.payload } as any
+        saveSettings: { ...state.saveSettings, ...action.payload, saveToLocal: true } as any
       };
     case 'SET_CLOUD_SYNC_STATE':
       return {
@@ -354,9 +354,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsReady(true);
   }, []);
 
-  // Auto-save to local storage (always on, but respects settings)
+  // Auto-save to local storage (always on)
   useEffect(() => {
-    if (isReady && state.saveSettings?.saveToLocal !== false) {
+    if (isReady) {
       saveToLocal(state);
     }
   }, [state, isReady]);
