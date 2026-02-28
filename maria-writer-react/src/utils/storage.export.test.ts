@@ -3,9 +3,52 @@ import { exportFile } from './storage';
 import { AppState } from '../types';
 import { initialState } from '../context/StoreContext';
 import { v4 as uuidv4 } from 'uuid';
+import { APP_VERSION } from '../constants/version';
 
 describe('Storage - Export with Comments', () => {
   describe('exportFile', () => {
+    it('should export separate book and app version metadata fields', () => {
+      const stateWithVersions: AppState = {
+        ...initialState,
+        meta: {
+          ...initialState.meta,
+          bookVersion: '3.1.0',
+          bookRevision: '12',
+          appVersion: 'old-app-version-should-be-overwritten',
+        },
+      };
+
+      let capturedData: string | null = null;
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = function(tagName: string) {
+        const element = originalCreateElement(tagName);
+        if (tagName === 'a') {
+          const originalSetAttribute = element.setAttribute.bind(element);
+          element.setAttribute = function(name: string, value: string) {
+            if (name === 'href' && value.startsWith('data:text/json')) {
+              capturedData = decodeURIComponent(value.split(',')[1]);
+            }
+            return originalSetAttribute(name, value);
+          };
+          element.click = () => {};
+        }
+        return element;
+      };
+
+      exportFile(stateWithVersions, 'version-test');
+
+      expect(capturedData).not.toBeNull();
+
+      if (capturedData) {
+        const parsed = JSON.parse(capturedData);
+        expect(parsed.meta.bookVersion).toBe('3.1.0');
+        expect(parsed.meta.bookRevision).toBe('12');
+        expect(parsed.meta.appVersion).toBe(APP_VERSION);
+      }
+
+      document.createElement = originalCreateElement;
+    });
+
     it('should include comments in exported data', () => {
       const commentId = uuidv4();
       const chapterId = initialState.chapters[0].id;

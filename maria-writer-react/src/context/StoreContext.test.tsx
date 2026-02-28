@@ -15,8 +15,15 @@ vi.mock('uuid', () => ({
 }));
 
 import { reducer, initialState } from './StoreContext';
+import { APP_VERSION } from '../constants/version';
 
 describe('StoreContext Reducer', () => {
+  it('should initialize metadata with separate version fields', () => {
+    expect(initialState.meta.bookVersion).toBe('1.0.0');
+    expect(initialState.meta.bookRevision).toBe('0');
+    expect(initialState.meta.appVersion).toBe(APP_VERSION);
+  });
+
   it('should handle ADD_CHARACTER', () => {
     const char = { id: 'c1', name: 'Hero', tags: [] };
     const newState = reducer(initialState, { type: 'ADD_CHARACTER', payload: char });

@@ -3,6 +3,9 @@ export interface BookMetadata {
   author: string;
   description: string;
   tags: string[];
+  bookVersion?: string;
+  bookRevision?: string;
+  appVersion?: string;
   currentDate?: string; // Story's current date (dd/MM/yyyy HH:mm:ss) - used for age calculations
 }
 
@@ -103,7 +106,7 @@ export interface Relationship {
 export type ViewMode = 'write' | 'source' | 'preview';
 export type ContextMode = 'writer' | 'codex';
 export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
-export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship' | 'theme-config' | 'save-settings';
+export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship' | 'theme-config' | 'save-settings' | 'load-project';
 
 export interface ThemeCustomization {
   name: string;

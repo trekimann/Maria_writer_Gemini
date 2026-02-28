@@ -5,10 +5,19 @@ import { loadFromLocal, saveToLocal } from '../utils/storage';
 import { syncCharacterToEvents, syncEventToCharacters, clearCharacterFieldsOnEventDelete, syncCharacterLifeEventsToTimeline, syncRelationshipToEvent } from '../utils/eventSync';
 import { cloudStorageService } from '../services/cloudStorage';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { APP_VERSION } from '../constants/version';
 
 // Initial State
 export const initialState: AppState = {
-  meta: { title: "New Novel", author: "Anonymous", description: "", tags: [] },
+  meta: {
+    title: "New Novel",
+    author: "Anonymous",
+    description: "",
+    tags: [],
+    bookVersion: '1.0.0',
+    bookRevision: '0',
+    appVersion: APP_VERSION,
+  },
   chapters: [
     { 
       id: uuidv4(), 
@@ -327,7 +336,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const loaded = loadFromLocal();
     if (loaded) {
       // Merge loaded state with initial state to ensure all fields exist
-      const mergedState = { ...initialState, ...loaded } as AppState;
+      const mergedState = {
+        ...initialState,
+        ...loaded,
+        meta: {
+          ...initialState.meta,
+          ...(loaded.meta || {}),
+          bookVersion: loaded.meta?.bookVersion || (loaded.meta as any)?.version || initialState.meta.bookVersion,
+          bookRevision: loaded.meta?.bookRevision || initialState.meta.bookRevision,
+          appVersion: loaded.meta?.appVersion || APP_VERSION,
+        },
+      } as AppState;
       
       // Initialize guest ID if not present
       if (!mergedState.cloudSync?.guestId) {

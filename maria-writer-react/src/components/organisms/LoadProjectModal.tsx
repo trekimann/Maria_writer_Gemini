@@ -1,0 +1,406 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Upload, RefreshCw, Cloud } from 'lucide-react';
+import { useStore, initialState } from '../../context/StoreContext';
+import { Modal } from '../molecules/Modal';
+import { Button } from '../atoms/Button';
+import { cloudStorageService, CloudProject } from '../../services/cloudStorage';
+import { AppState } from '../../types';
+import { APP_VERSION } from '../../constants/version';
+import { getBreakingMigrationWarning } from '../../constants/versionCompatibility';
+import styles from './LoadProjectModal.module.scss';
+
+type LoadTab = 'local' | 'cloud';
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+function validateImportedState(value: any): string | null {
+  if (!value || typeof value !== 'object') return 'File does not contain a valid project object.';
+
+  if (!value.meta || typeof value.meta !== 'object') return 'Missing metadata section.';
+  if (typeof value.meta.title !== 'string') return 'Invalid metadata: title is required.';
+  if (typeof value.meta.author !== 'string') return 'Invalid metadata: author is required.';
+  if (typeof value.meta.description !== 'string') return 'Invalid metadata: description is required.';
+  if (!Array.isArray(value.meta.tags)) return 'Invalid metadata: tags must be an array.';
+
+  if (!Array.isArray(value.chapters)) return 'Invalid data: chapters must be an array.';
+  if (!Array.isArray(value.characters)) return 'Invalid data: characters must be an array.';
+  if (!Array.isArray(value.events)) return 'Invalid data: events must be an array.';
+  if (!Array.isArray(value.relationships)) return 'Invalid data: relationships must be an array.';
+
+  if (!value.comments || typeof value.comments !== 'object' || Array.isArray(value.comments)) {
+    return 'Invalid data: comments must be an object.';
+  }
+
+  if (!value.timeline || typeof value.timeline !== 'object' || Array.isArray(value.timeline)) {
+    return 'Invalid data: timeline must be an object.';
+  }
+
+  return null;
+}
+
+function buildLoadedState(raw: any, currentState: AppState, cloudProjectId?: string): AppState {
+  const guestId = currentState.cloudSync?.guestId || cloudStorageService.getGuestId();
+
+  const merged = {
+    ...initialState,
+    ...raw,
+    meta: {
+      ...initialState.meta,
+      ...(raw.meta || {}),
+      bookVersion: raw.meta?.bookVersion || raw.meta?.version || initialState.meta.bookVersion,
+      bookRevision: raw.meta?.bookRevision || initialState.meta.bookRevision,
+      appVersion: raw.meta?.appVersion || APP_VERSION,
+    },
+    saveSettings: {
+      ...initialState.saveSettings,
+      ...currentState.saveSettings,
+      ...(raw.saveSettings || {}),
+      saveToLocal: true,
+    },
+    cloudSync: {
+      ...initialState.cloudSync,
+      ...currentState.cloudSync,
+      ...(raw.cloudSync || {}),
+      guestId,
+      ...(cloudProjectId
+        ? {
+            projectId: cloudProjectId,
+            lastSyncedAt: new Date().toISOString(),
+            syncError: null,
+          }
+        : {}),
+    },
+    activeModal: 'none',
+    editingItemId: null,
+  } as AppState;
+
+  if (!merged.activeChapterId && merged.chapters.length > 0) {
+    merged.activeChapterId = merged.chapters[0].id;
+  }
+
+  return merged;
+}
+
+export const LoadProjectModal: React.FC = () => {
+  const { state, dispatch } = useStore();
+  const isOpen = state.activeModal === 'load-project';
+
+  const [activeTab, setActiveTab] = useState<LoadTab>('local');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [localReadyName, setLocalReadyName] = useState<string | null>(null);
+  const [parsedLocalState, setParsedLocalState] = useState<any | null>(null);
+
+  const [cloudProjects, setCloudProjects] = useState<CloudProject[]>([]);
+  const [cloudError, setCloudError] = useState<string | null>(null);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(false);
+  const [selectedCloudProjectId, setSelectedCloudProjectId] = useState<string | null>(null);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const importedVersion = useMemo(() => {
+    if (!parsedLocalState?.meta) return null;
+
+    const bookVersion = parsedLocalState.meta.bookVersion || parsedLocalState.meta.version;
+    const bookRevision = parsedLocalState.meta.bookRevision;
+    const appVersion = parsedLocalState.meta.appVersion;
+
+    return {
+      bookVersion: bookVersion ? String(bookVersion) : null,
+      bookRevision: bookRevision ? String(bookRevision) : null,
+      appVersion: appVersion ? String(appVersion) : null,
+    };
+  }, [parsedLocalState]);
+
+  const localBreakingWarning = useMemo(
+    () => getBreakingMigrationWarning(importedVersion?.appVersion, APP_VERSION),
+    [importedVersion],
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setActiveTab('local');
+    setIsDragOver(false);
+    setIsReadingFile(false);
+    setLocalError(null);
+    setLocalReadyName(null);
+    setParsedLocalState(null);
+    setCloudError(null);
+    setSelectedCloudProjectId(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'cloud') return;
+    void refreshCloudProjects();
+  }, [isOpen, activeTab]);
+
+  const closeModal = () => {
+    dispatch({ type: 'CLOSE_MODAL' });
+  };
+
+  const refreshCloudProjects = async () => {
+    setIsLoadingCloud(true);
+    setCloudError(null);
+    try {
+      const projects = await cloudStorageService.listProjects();
+      setCloudProjects(projects);
+      if (projects.length > 0 && !selectedCloudProjectId) {
+        setSelectedCloudProjectId(projects[0].id);
+      }
+    } catch (error: any) {
+      setCloudError(error?.message || 'Failed to load cloud projects.');
+      setCloudProjects([]);
+    } finally {
+      setIsLoadingCloud(false);
+    }
+  };
+
+  const parseFile = async (file: File) => {
+    setLocalError(null);
+    setLocalReadyName(null);
+    setParsedLocalState(null);
+
+    if (!file.name.toLowerCase().endsWith('.maria')) {
+      setLocalError('Only .maria files are supported.');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setLocalError('File is too large. Maximum size is 10 MB.');
+      return;
+    }
+
+    setIsReadingFile(true);
+    try {
+      const content = await file.text();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        setLocalError('Malformed JSON. The file could not be parsed.');
+        return;
+      }
+
+      const validationError = validateImportedState(parsed);
+      if (validationError) {
+        setLocalError(validationError);
+        return;
+      }
+
+      setParsedLocalState(parsed);
+      setLocalReadyName(file.name);
+    } catch {
+      setLocalError('Failed to read file.');
+    } finally {
+      setIsReadingFile(false);
+    }
+  };
+
+  const onDropFile = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(false);
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await parseFile(file);
+  };
+
+  const onChooseFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await parseFile(file);
+    event.target.value = '';
+  };
+
+  const executeLoad = async () => {
+    const confirmed = window.confirm('Loading will replace the current in-memory project. Continue?');
+    if (!confirmed) return;
+
+    if (activeTab === 'local') {
+      if (!parsedLocalState) {
+        setLocalError('Select a valid .maria file first.');
+        return;
+      }
+
+      const localWarning = getBreakingMigrationWarning(parsedLocalState?.meta?.appVersion || null, APP_VERSION);
+      if (localWarning) {
+        const proceed = window.confirm(`${localWarning}\n\nContinue loading this file?`);
+        if (!proceed) return;
+      }
+
+      const nextState = buildLoadedState(parsedLocalState, state);
+      dispatch({ type: 'LOAD_STATE', payload: nextState });
+      dispatch({ type: 'CLOSE_MODAL' });
+      return;
+    }
+
+    if (!selectedCloudProjectId) {
+      setCloudError('Select a cloud project first.');
+      return;
+    }
+
+    setIsLoadingProject(true);
+    setCloudError(null);
+    try {
+      const loaded = await cloudStorageService.loadFromCloud(selectedCloudProjectId);
+      const validationError = validateImportedState(loaded);
+      if (validationError) {
+        setCloudError(`Cloud project is invalid: ${validationError}`);
+        return;
+      }
+
+      const cloudWarning = getBreakingMigrationWarning(loaded?.meta?.appVersion || null, APP_VERSION);
+      if (cloudWarning) {
+        const proceed = window.confirm(`${cloudWarning}\n\nContinue loading this cloud project?`);
+        if (!proceed) return;
+      }
+
+      const nextState = buildLoadedState(loaded, state, selectedCloudProjectId);
+      dispatch({ type: 'LOAD_STATE', payload: nextState });
+      dispatch({ type: 'CLOSE_MODAL' });
+    } catch (error: any) {
+      setCloudError(error?.message || 'Failed to load selected cloud project.');
+    } finally {
+      setIsLoadingProject(false);
+    }
+  };
+
+  const selectedCloudProject = cloudProjects.find((project) => project.id === selectedCloudProjectId) || null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={closeModal}
+      title="Load Project"
+      headerColor="indigo"
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+          <Button
+            variant="primary"
+            onClick={executeLoad}
+            disabled={isReadingFile || isLoadingCloud || isLoadingProject}
+          >
+            {isLoadingProject ? 'Loading...' : activeTab === 'local' ? 'Load File' : 'Load Selected'}
+          </Button>
+        </>
+      }
+    >
+      <div className={styles.tabs}>
+        <button
+          className={`${styles.tab} ${activeTab === 'local' ? styles.active : ''}`}
+          onClick={() => setActiveTab('local')}
+          type="button"
+        >
+          Local File
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'cloud' ? styles.active : ''}`}
+          onClick={() => setActiveTab('cloud')}
+          type="button"
+        >
+          Cloud
+        </button>
+      </div>
+
+      {activeTab === 'local' && (
+        <div className={styles.panel}>
+          <div
+            className={`${styles.dropZone} ${isDragOver ? styles.dragOver : ''}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={onDropFile}
+          >
+            <Upload size={20} />
+            <p>Drag a .maria file here</p>
+            <p className={styles.subtle}>or</p>
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()} type="button">
+              Browse Files
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".maria"
+              className={styles.hiddenInput}
+              onChange={onChooseFile}
+            />
+          </div>
+
+          {isReadingFile && <div className={styles.info}>Reading file...</div>}
+          {localReadyName && <div className={styles.success}>Ready to load: {localReadyName}</div>}
+          {importedVersion && (
+            <div className={styles.info}>
+              Imported metadata: book v{importedVersion.bookVersion || '1.0.0'}
+              {importedVersion.bookRevision ? ` rev ${importedVersion.bookRevision}` : ''}
+              {importedVersion.appVersion ? ` · app ${importedVersion.appVersion}` : ''}
+            </div>
+          )}
+          {localError && <div className={styles.error}>{localError}</div>}
+          {localBreakingWarning && (
+            <div className={styles.warning}>{localBreakingWarning}</div>
+          )}
+          {parsedLocalState && !importedVersion?.appVersion && (
+            <div className={styles.info}>Imported file has no app version metadata. It will be set to {APP_VERSION}.</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'cloud' && (
+        <div className={styles.panel}>
+          <div className={styles.cloudHeader}>
+            <Button
+              variant="secondary"
+              icon={RefreshCw}
+              onClick={refreshCloudProjects}
+              disabled={isLoadingCloud}
+              type="button"
+            >
+              {isLoadingCloud ? 'Refreshing...' : 'Refresh List'}
+            </Button>
+          </div>
+
+          {cloudError && <div className={styles.error}>{cloudError}</div>}
+
+          {!cloudError && !isLoadingCloud && cloudProjects.length === 0 && (
+            <div className={styles.info}>No cloud projects found for this user.</div>
+          )}
+
+          {cloudProjects.length > 0 && (
+            <div className={styles.cloudList}>
+              {cloudProjects.map((project) => (
+                <label key={project.id} className={styles.cloudItem}>
+                  <input
+                    type="radio"
+                    name="cloudProject"
+                    checked={selectedCloudProjectId === project.id}
+                    onChange={() => setSelectedCloudProjectId(project.id)}
+                  />
+                  <div>
+                    <div className={styles.cloudTitle}>{project.title}</div>
+                    <div className={styles.cloudMeta}>
+                      Updated {new Date(project.updatedAt).toLocaleString()} · v{project.version}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {selectedCloudProject && (
+            <div className={styles.info}>
+              <Cloud size={16} />
+              Selected: {selectedCloudProject.title}
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+};
