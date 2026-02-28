@@ -16,18 +16,20 @@ vi.mock('../molecules/Modal', () => ({
   },
 }));
 
-const mockCloudService = {
-  listProjects: vi.fn(),
-  loadFromCloud: vi.fn(),
-  saveToCloud: vi.fn(),
-  deleteFromCloud: vi.fn(),
-  updateProject: vi.fn(),
-  getGuestId: vi.fn(() => 'guest-1'),
-};
-
 vi.mock('../../services/cloudStorage', () => ({
-  cloudStorageService: mockCloudService,
+  cloudStorageService: {
+    listProjects: vi.fn(),
+    loadFromCloud: vi.fn(),
+    saveToCloud: vi.fn(),
+    deleteFromCloud: vi.fn(),
+    updateProject: vi.fn(),
+    getGuestId: vi.fn(() => 'guest-1'),
+  },
 }));
+
+// Import the mock after vi.mock so we can reference it in tests
+import { cloudStorageService } from '../../services/cloudStorage';
+const mockCloudService = vi.mocked(cloudStorageService);
 
 const mockDispatch = vi.fn();
 
