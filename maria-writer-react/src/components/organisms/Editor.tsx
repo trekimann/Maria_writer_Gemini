@@ -44,6 +44,7 @@ export const Editor: React.FC = () => {
     activeChapter,
     viewMode: state.viewMode,
     chapterComments,
+    characters: state.characters,
     dispatch
   });
 

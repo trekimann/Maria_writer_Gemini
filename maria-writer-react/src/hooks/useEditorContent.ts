@@ -9,6 +9,7 @@ interface UseEditorContentProps {
   activeChapter: Chapter | undefined;
   viewMode: 'write' | 'source' | 'preview';
   chapterComments: StoryComment[];
+  characters: Character[];
   dispatch: any;
 }
 
@@ -27,6 +28,7 @@ export const useEditorContent = ({
   activeChapter,
   viewMode,
   chapterComments,
+  characters,
   dispatch
 }: UseEditorContentProps): UseEditorContentReturn => {
   const [content, setContentState] = useState(activeChapter?.content || '');
@@ -58,8 +60,7 @@ export const useEditorContent = ({
   const getMarkdownHtml = (markdownOverride?: string, isCleanPreview: boolean = false) => {
     const markdownToProcess = markdownOverride !== undefined ? markdownOverride : content;
     const commentsToUse = isCleanPreview ? [] : chapterComments;
-    // Characters will be handled at higher level; pass empty for now
-    const charactersToUse: Character[] = [];
+    const charactersToUse = isCleanPreview ? [] : characters;
     return markdownToHtml(markdownToProcess, commentsToUse, charactersToUse, viewMode);
   };
 

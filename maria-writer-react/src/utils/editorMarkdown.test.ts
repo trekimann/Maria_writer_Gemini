@@ -88,6 +88,37 @@ const mockComments: StoryComment[] = [
       expect(html).toContain('background-color');
     });
 
+    it('should inject distinct colors for different characters', () => {
+      const characters: Character[] = [
+        { id: 'ch1', name: 'Alice', description: '', color: '#ff0000', picture: '', tags: [] },
+        { id: 'ch2', name: 'Bob', description: '', color: '#00ff00', picture: '', tags: [] },
+      ];
+      const markdown =
+        '<span data-character-id="ch1" data-character-name="Alice" class="character-mention">Alice</span> ' +
+        'and <span data-character-id="ch2" data-character-name="Bob" class="character-mention">Bob</span>';
+      const html = markdownToHtml(markdown, [], characters, 'preview');
+      expect(html).toContain('color: #ff0000');
+      expect(html).toContain('color: #00ff00');
+      expect(html).toContain('background-color: #ff000025');
+      expect(html).toContain('background-color: #00ff0025');
+    });
+
+    it('should not apply colors when characters array is empty', () => {
+      const markdown = '<span data-character-id="ch1" data-character-name="Alice" class="character-mention">Alice</span>';
+      const html = markdownToHtml(markdown, [], [], 'preview');
+      expect(html).not.toContain('background-color');
+      expect(html).not.toContain('#ff0000');
+    });
+
+    it('should add contenteditable=false in write mode for character mentions', () => {
+      const markdown = '<span data-character-id="ch1" data-character-name="Alice" class="character-mention">Alice</span>';
+      const htmlWrite = markdownToHtml(markdown, [], mockCharacters, 'write');
+      expect(htmlWrite).toContain('contenteditable="false"');
+
+      const htmlPreview = markdownToHtml(markdown, [], mockCharacters, 'preview');
+      expect(htmlPreview).not.toContain('contenteditable="false"');
+    });
+
     it('should return empty string for empty markdown', () => {
       const html = markdownToHtml('', [], [], 'preview');
       expect(html).toBe('');

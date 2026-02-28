@@ -11,12 +11,13 @@
 2. [Architecture Decisions](#architecture-decisions)
 3. [Phase 1: MariaDB Persistent Storage](#phase-1-mariadb-persistent-storage)
 4. [Phase 2: Authentication & User Management](#phase-2-authentication--user-management)
-5. [Phase 3: Collaboration Features](#phase-3-collaboration-features)
-6. [Phase 4: Real-Time Sync](#phase-4-real-time-sync)
-7. [Database Schema](#database-schema)
-8. [API Endpoints](#api-endpoints)
-9. [Security Considerations](#security-considerations)
-10. [Testing Strategy](#testing-strategy)
+5. [Phase 2.5: Image Storage & Media Management](#phase-25-image-storage--media-management)
+6. [Phase 3: Collaboration Features](#phase-3-collaboration-features)
+7. [Phase 4: Real-Time Sync](#phase-4-real-time-sync)
+8. [Database Schema](#database-schema)
+9. [API Endpoints](#api-endpoints)
+10. [Security Considerations](#security-considerations)
+11. [Testing Strategy](#testing-strategy)
 
 ---
 
@@ -1427,6 +1428,691 @@ Frontend:
 
 ---
 
+## Phase 2.5: Image Storage & Media Management
+
+**Goal:** Move images out of the JSON data blob into dedicated storage; enable images throughout the application  
+**Status:** 📋 Planned — Not yet started  
+**Prerequisites:** Phase 2 complete (users exist to own images)  
+**Estimated effort:** 1.5–2 weeks
+
+### 2.5.0 Current State — The Problem
+
+Images are currently stored as **base64-encoded JPEG strings** inline in the JSON data blob:
+
+| Field | Type | Location | How it gets there |
+|-------|------|----------|-------------------|
+| `Character.picture` | `string` (base64) | `src/types/index.ts` line 44 | `CharacterModal.tsx` — FileReader → canvas resize → `toDataURL('image/jpeg', 0.8)` |
+| `Event.image` | `string` (base64) | `src/types/index.ts` line 56 | `EventModal.tsx` — same pipeline |
+
+**Why this is a problem:**
+
+| Concern | Impact |
+|---------|--------|
+| **Size bloat** | Base64 encoding adds ~37% overhead. A 500KB JPEG becomes ~685KB of text. 10 character portraits = 5–7MB of JSON. |
+| **localStorage quota** | Most browsers cap localStorage at 5–10MB total. A few images can exhaust the quota and break auto-save. |
+| **Cloud save performance** | The entire JSON blob (including all images) is sent on every save. A 10MB payload takes noticeably longer and strains the 50MB Express body-parser limit. |
+| **Encryption overhead** | In Phase 2, the JSON blob is AES-256-GCM encrypted. Encrypting/decrypting megabytes of base64 image data on every save/load is wasteful. |
+| **Export file size** | `.maria` export files balloon with embedded images. |
+| **No image reuse** | The same image duplicated across characters/events is stored multiple times. |
+| **Blocks new features** | Chapter illustrations, book covers, and codex visuals can't be added without making the problem dramatically worse. |
+
+### 2.5.1 Design Goals
+
+1. **Images stored separately** from the project JSON — project data stays lean
+2. **URL references** replace base64 strings in the data model
+3. **Backward compatible** — existing base64 images migrated transparently
+4. **Works for all image types** — current (character portraits, event images) and future (chapter illustrations, book cover, codex images)
+5. **Self-hosted** — no external cloud dependencies (Unraid-friendly)
+6. **Supports guests** — guest users can upload images (tied to guestId); images transfer on account claim
+
+### 2.5.2 Storage Architecture — Provider Abstraction
+
+The image storage layer is designed around a **provider interface** so that the
+underlying storage technology can be swapped without changing any business logic,
+API routes, or frontend code. The interface is the contract; implementations are
+deploy-time configuration.
+
+#### 2.5.2.1 `IImageStorageProvider` Interface
+
+```typescript
+// src/services/imageStorage/IImageStorageProvider.ts
+
+import { Readable } from 'stream';
+
+export interface ImageStorageMetadata {
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface IImageStorageProvider {
+  /**
+   * Persist a processed image buffer.
+   * @param buffer  Processed image bytes (already resized/stripped by sharp).
+   * @param key     Storage key — typically "{ownerId}/{imageId}.{ext}".
+   * @param meta    MIME type and size for storage-level metadata.
+   * @returns       The provider-specific storage path/identifier.
+   */
+  save(buffer: Buffer, key: string, meta: ImageStorageMetadata): Promise<string>;
+
+  /**
+   * Retrieve an image as a readable stream + metadata.
+   * Used when the backend proxies the file to the client.
+   */
+  getStream(key: string): Promise<{ stream: Readable; mimeType: string; sizeBytes: number }>;
+
+  /**
+   * Return a URL the client can use directly to fetch the image.
+   * - Filesystem provider: returns an internal path for nginx X-Accel-Redirect.
+   * - S3 provider: returns a pre-signed GET URL (short TTL).
+   * - Azure provider: returns a SAS-token URL.
+   * If the provider doesn't support direct URLs, return null and the
+   * controller falls back to streaming via getStream().
+   */
+  getDirectUrl(key: string): Promise<string | null>;
+
+  /**
+   * Delete an image from storage.
+   */
+  delete(key: string): Promise<void>;
+
+  /**
+   * Check whether an image exists in storage.
+   */
+  exists(key: string): Promise<boolean>;
+}
+```
+
+#### 2.5.2.2 Provider Implementations
+
+| Provider | Class | When to use | Env selector |
+|----------|-------|-------------|--------------|
+| **Filesystem** | `FilesystemStorageProvider` | Self-hosted (Unraid, bare-metal, single-node Docker) | `IMAGE_STORAGE_PROVIDER=filesystem` |
+| **S3 / MinIO** | `S3StorageProvider` | AWS, any S3-compatible store (MinIO, DigitalOcean Spaces, Backblaze B2) | `IMAGE_STORAGE_PROVIDER=s3` |
+| **Azure Blob** | `AzureBlobStorageProvider` | Azure deployments | `IMAGE_STORAGE_PROVIDER=azure` |
+
+Selected at startup via env var. Factory pattern:
+
+```typescript
+// src/services/imageStorage/index.ts
+
+import { IImageStorageProvider } from './IImageStorageProvider';
+import { FilesystemStorageProvider } from './FilesystemStorageProvider';
+import { S3StorageProvider } from './S3StorageProvider';
+import { AzureBlobStorageProvider } from './AzureBlobStorageProvider';
+
+export function createImageStorageProvider(): IImageStorageProvider {
+  const provider = process.env.IMAGE_STORAGE_PROVIDER || 'filesystem';
+
+  switch (provider) {
+    case 'filesystem':
+      return new FilesystemStorageProvider(process.env.UPLOAD_DIR || '/uploads');
+    case 's3':
+      return new S3StorageProvider({
+        bucket:    process.env.S3_BUCKET!,
+        region:    process.env.S3_REGION || 'us-east-1',
+        endpoint:  process.env.S3_ENDPOINT,        // for MinIO / non-AWS
+        accessKey: process.env.S3_ACCESS_KEY!,
+        secretKey: process.env.S3_SECRET_KEY!,
+        forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',  // MinIO needs this
+        signedUrlTtl: parseInt(process.env.S3_SIGNED_URL_TTL || '3600'),
+      });
+    case 'azure':
+      return new AzureBlobStorageProvider({
+        connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING!,
+        container:        process.env.AZURE_STORAGE_CONTAINER || 'maria-images',
+        signedUrlTtl:     parseInt(process.env.AZURE_SIGNED_URL_TTL || '3600'),
+      });
+    default:
+      throw new Error(`Unknown IMAGE_STORAGE_PROVIDER: ${provider}`);
+  }
+}
+```
+
+**v1 ships with `FilesystemStorageProvider` only.** The S3 and Azure providers
+are stubbed out as classes that throw "Not implemented" — they'll be filled in
+when a cloud deployment is needed. The key point is that the interface exists
+from day one, so no refactoring is required later.
+
+#### 2.5.2.3 Filesystem Provider Detail
+
+```typescript
+// src/services/imageStorage/FilesystemStorageProvider.ts
+
+export class FilesystemStorageProvider implements IImageStorageProvider {
+  constructor(private readonly basePath: string) {}
+
+  async save(buffer: Buffer, key: string, meta: ImageStorageMetadata): Promise<string> {
+    const fullPath = path.join(this.basePath, key);
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    await fs.writeFile(fullPath, buffer);
+    return key;  // relative path is the storage identifier
+  }
+
+  async getStream(key: string) {
+    const fullPath = path.join(this.basePath, key);
+    const stat = await fs.stat(fullPath);
+    return {
+      stream: createReadStream(fullPath),
+      mimeType: mime.lookup(fullPath) || 'application/octet-stream',
+      sizeBytes: stat.size,
+    };
+  }
+
+  async getDirectUrl(key: string): Promise<string | null> {
+    // Returns an nginx X-Accel-Redirect path (not a public URL)
+    return `/internal-uploads/${key}`;
+  }
+
+  async delete(key: string): Promise<void> {
+    await fs.unlink(path.join(this.basePath, key));
+  }
+
+  async exists(key: string): Promise<boolean> {
+    try { await fs.access(path.join(this.basePath, key)); return true; }
+    catch { return false; }
+  }
+}
+```
+
+#### 2.5.2.4 S3 Provider Detail (Stub — Implement When Needed)
+
+```typescript
+// src/services/imageStorage/S3StorageProvider.ts
+
+export class S3StorageProvider implements IImageStorageProvider {
+  // Uses @aws-sdk/client-s3 + @aws-sdk/s3-request-presigner
+  // save()       → PutObjectCommand
+  // getStream()  → GetObjectCommand → Body as Readable
+  // getDirectUrl() → getSignedUrl(GetObjectCommand, { expiresIn: ttl })
+  // delete()     → DeleteObjectCommand
+  // exists()     → HeadObjectCommand (catch 404)
+}
+```
+
+Works with AWS S3, MinIO (set `S3_ENDPOINT` + `S3_FORCE_PATH_STYLE=true`),
+DigitalOcean Spaces, Backblaze B2, and any S3-compatible API.
+
+#### 2.5.2.5 Azure Blob Provider Detail (Stub — Implement When Needed)
+
+```typescript
+// src/services/imageStorage/AzureBlobStorageProvider.ts
+
+export class AzureBlobStorageProvider implements IImageStorageProvider {
+  // Uses @azure/storage-blob
+  // save()         → blockBlobClient.uploadData(buffer)
+  // getStream()    → blockBlobClient.download() → readableStreamBody
+  // getDirectUrl() → generateBlobSASQueryParameters() → SAS URL
+  // delete()       → blockBlobClient.delete()
+  // exists()       → blockBlobClient.exists()
+}
+```
+
+#### 2.5.2.6 How the Provider Plugs Into the API
+
+The image controller receives the provider via dependency injection at startup:
+
+```typescript
+// src/controllers/imageController.ts
+
+const storageProvider = createImageStorageProvider();
+
+async function uploadImage(req, res) {
+  // 1. Validate, process with sharp (same regardless of provider)
+  const processed = await sharp(req.file.buffer).resize(...).jpeg(...).toBuffer();
+
+  // 2. Delegate storage to the provider
+  const key = `${req.user.id}/${imageId}.jpg`;
+  const storagePath = await storageProvider.save(processed, key, { mimeType: 'image/jpeg', sizeBytes: processed.length });
+
+  // 3. Save metadata to DB (storagePath is provider-agnostic key)
+  await prisma.image.create({ data: { id: imageId, storagePath, ... } });
+
+  // 4. Return URL (always /api/images/{id} — resolved server-side)
+  res.status(201).json({ id: imageId, url: `/api/images/${imageId}` });
+}
+
+async function serveImage(req, res) {
+  const image = await prisma.image.findUnique({ where: { id: req.params.id } });
+  // Auth check...
+
+  // Try direct URL first (S3 signed URL, nginx X-Accel, etc.)
+  const directUrl = await storageProvider.getDirectUrl(image.storagePath);
+  if (directUrl) {
+    if (directUrl.startsWith('/internal-')) {
+      // nginx X-Accel-Redirect (filesystem provider)
+      res.set('X-Accel-Redirect', directUrl);
+      res.set('Content-Type', image.mimeType);
+      return res.end();
+    }
+    // Pre-signed URL (S3/Azure) — redirect client
+    return res.redirect(302, directUrl);
+  }
+
+  // Fallback: stream through Express
+  const { stream, mimeType, sizeBytes } = await storageProvider.getStream(image.storagePath);
+  res.set('Content-Type', mimeType);
+  res.set('Content-Length', String(sizeBytes));
+  stream.pipe(res);
+}
+```
+
+**Key design principle:** The frontend always references `/api/images/{id}`. It
+never sees S3 URLs, Azure SAS tokens, or filesystem paths. The backend resolves
+the right serving strategy at runtime. This means zero frontend changes when
+switching storage providers.
+
+#### 2.5.2.7 Storage Backend Comparison Matrix
+
+| Capability | Filesystem | S3 / MinIO | Azure Blob |
+|------------|-----------|------------|------------|
+| Self-hosted (Unraid) | ✅ Native | ✅ via MinIO container | ❌ |
+| AWS deployment | ❌ Needs EFS | ✅ Native | ❌ |
+| Azure deployment | ❌ Needs Azure Files | ❌ | ✅ Native |
+| CDN integration | Via nginx | CloudFront / CDN | Azure CDN |
+| Pre-signed URLs | ❌ (X-Accel only) | ✅ | ✅ (SAS tokens) |
+| Multi-instance backends | ❌ (shared vol required) | ✅ | ✅ |
+| Cost | Free | S3 pricing / free (MinIO) | Blob pricing |
+| Backup | Volume snapshot | S3 versioning | Blob snapshots |
+| Setup complexity | Lowest | Medium | Medium |
+
+#### 2.5.2.8 Storage Layout (Filesystem Provider)
+
+```
+/uploads/                              # Docker volume: /mnt/user/appdata/maria-writer/uploads
+├── {ownerId|guestId}/                 # Scoped per user/guest
+│   ├── {imageId}.jpg                  # Processed image file
+│   └── {imageId}.jpg                  # ...
+└── orphan-cleanup.log                 # Periodic cleanup log
+```
+
+**File naming:** `{uuid}.{ext}` — image ID is a UUIDv4 generated at upload time. Original filename is stored in DB metadata but not used on disk (prevents path traversal, collisions).
+
+**S3/Azure key format:** Same `{ownerId}/{imageId}.{ext}` structure — the key
+is identical across all providers. Only the storage backend differs.
+
+### 2.5.3 Database Schema
+
+```prisma
+model Image {
+  id           String   @id @default(uuid())
+  ownerId      String?  @map("owner_id") @db.VarChar(36)   // FK to User (after auth)
+  guestId      String?  @map("guest_id") @db.VarChar(36)   // for pre-auth uploads
+  projectId    String?  @map("project_id") @db.VarChar(36)  // which project this belongs to
+  filename     String   @db.VarChar(255)                    // original upload filename
+  mimeType     String   @map("mime_type") @db.VarChar(50)   // image/jpeg, image/png, image/webp
+  sizeBytes    Int      @map("size_bytes")                  // file size for quota tracking
+  width        Int?                                          // pixel dimensions (from processing)
+  height       Int?
+  purpose      String   @db.VarChar(50)                     // 'character-portrait', 'event-image', 'chapter-cover', 'book-cover', 'codex-image'
+  entityId     String?  @map("entity_id") @db.VarChar(36)   // ID of character/event/chapter this is linked to
+  storagePath  String   @map("storage_path") @db.VarChar(500) // relative path on disk
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  owner   User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([guestId])
+  @@index([projectId])
+  @@index([entityId])
+  @@map("images")
+}
+```
+
+### 2.5.4 API Endpoints
+
+```
+POST   /api/images/upload          # Upload image (multipart/form-data)
+GET    /api/images/:id             # Serve image file (nginx X-Accel-Redirect or Express stream)
+GET    /api/images/:id/meta        # Get image metadata (dimensions, size, purpose)
+DELETE /api/images/:id             # Delete image + file
+```
+
+#### Upload Endpoint
+
+```
+POST /api/images/upload
+Content-Type: multipart/form-data
+
+Fields:
+  file:      <binary>                          # The image file
+  purpose:   'character-portrait' | 'event-image' | 'chapter-cover' | 'book-cover' | 'codex-image'
+  projectId: 'uuid'                            # Which project this belongs to
+  entityId:  'uuid' (optional)                 # Character/event/chapter ID to link to
+
+Response 201:
+{
+  "id": "img-uuid",
+  "url": "/api/images/img-uuid",
+  "width": 800,
+  "height": 600,
+  "sizeBytes": 245760
+}
+```
+
+**Server-side processing on upload:**
+1. Validate file type (JPEG, PNG, WebP only) — check magic bytes, not just extension
+2. Validate file size (max 5MB per image, configurable via env `MAX_IMAGE_SIZE_MB`)
+3. Resize/compress using `sharp` (already runs on Node):
+   - Character portraits: max 512×512, JPEG quality 85
+   - Event images: max 1200×800, JPEG quality 85
+   - Chapter covers: max 1600×1200, JPEG quality 85
+   - Book cover: max 1200×1800, JPEG quality 90
+   - Codex images: max 1200×800, JPEG quality 85
+4. Strip EXIF metadata (privacy — GPS coords, camera info)
+5. Write processed file to disk
+6. Create `Image` row in DB
+7. Return image URL
+
+**Quota enforcement:**
+- Per-project limit: 100 images (configurable via env `MAX_IMAGES_PER_PROJECT`)
+- Per-project total size: 200MB (configurable via env `MAX_IMAGE_STORAGE_MB`)
+- Checked before accepting upload
+
+#### Serving Images
+
+Serving is handled transparently by the storage provider via `serveImage()` in
+§2.5.2.6. The controller tries `getDirectUrl()` first, then falls back to
+`getStream()`. The behaviour per provider:
+
+| Provider | `getDirectUrl()` returns | Client receives |
+|----------|-------------------------|----------------|
+| Filesystem (dev) | `null` | Express streams the file via `getStream()` |
+| Filesystem (prod) | `/internal-uploads/{key}` | nginx serves via `X-Accel-Redirect` (see below) |
+| S3 / MinIO | Pre-signed GET URL (1h TTL) | 302 redirect → client fetches directly from S3 |
+| Azure Blob | SAS-token URL (1h TTL) | 302 redirect → client fetches directly from Blob |
+
+**nginx config for filesystem provider (production):**
+
+```nginx
+# nginx.conf addition for image serving
+location /internal-uploads/ {
+    internal;
+    alias /uploads/;
+    expires 7d;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+**Toggle:** `IMAGE_SERVE_MODE=proxy|x-accel` env var controls whether the
+filesystem provider returns `null` (stream through Express) or an X-Accel path.
+Defaults to `proxy` in development, `x-accel` in production.
+
+### 2.5.5 Data Model Changes (Frontend)
+
+Replace base64 strings with image URLs:
+
+```typescript
+// BEFORE
+interface Character {
+  // ...
+  picture?: string;  // base64 data URI: "data:image/jpeg;base64,/9j/4AAQ..."
+}
+
+interface Event {
+  // ...
+  image?: string;    // base64 data URI
+}
+
+// AFTER
+interface Character {
+  // ...
+  picture?: string;  // URL: "/api/images/img-uuid" (or base64 for legacy/guest-local)
+}
+
+interface Event {
+  // ...
+  image?: string;    // URL: "/api/images/img-uuid"
+}
+
+// NEW: Additional image fields
+interface Chapter {
+  // ...existing fields
+  coverImage?: string;  // URL: "/api/images/img-uuid"
+}
+
+interface BookMetadata {
+  // ...existing fields
+  coverImage?: string;  // URL: "/api/images/img-uuid"  — book title page / cover
+}
+```
+
+**No type changes needed for `picture` and `image`** — they remain `string`. The value just changes from a base64 data URI to a relative URL. Both `<img src="data:image/jpeg;base64,...">` and `<img src="/api/images/uuid">` work in `<img>` tags, so the rendering components (CharacterDetail, TimelineView, RelationshipGraph, EventDetail) need **zero changes** for existing fields.
+
+### 2.5.6 New Image Features Unlocked
+
+Once image storage is external, the following features become viable:
+
+| Feature | Image purpose | Where it appears | UI location |
+|---------|--------------|-------------------|-------------|
+| **Character portrait** | `character-portrait` | Character detail, timeline lanes, relationship graph | CharacterModal (already exists — migrate from base64) |
+| **Event image** | `event-image` | Event detail view | EventModal (already exists — migrate from base64) |
+| **Chapter cover** | `chapter-cover` | Chapter list sidebar, chapter header in editor | ChapterSidebar item + editor header — NEW UI |
+| **Book cover** | `book-cover` | Metadata modal, export title page, project list | MetadataModal — NEW field + image upload |
+| **Codex image** | `codex-image` | Inline in chapter editor via special embed syntax | Editor toolbar button — NEW feature |
+
+#### Chapter Cover Images
+- Optional image per chapter shown as a thumbnail in the chapter sidebar
+- Displayed as a header/banner when viewing the chapter in the editor
+- Included in export
+
+#### Book Cover Image
+- Added to `BookMetadata` — uploaded in the Metadata modal
+- Shown as thumbnail in the Load Project modal's project list
+- Used as title page in future ePub/PDF export
+- Displayed in the TopBar or a dedicated "Book Info" view
+
+#### Codex Images (Editor Embeds)
+- Toolbar button or drag-and-drop to insert images into chapter content
+- Stored as markdown-style references: `![alt text](/api/images/img-uuid)`
+- Rendered inline in write/preview mode
+- Requires TipTap extension for image node handling
+
+### 2.5.7 Frontend Upload Flow Changes
+
+Replace the current `FileReader → canvas → toDataURL → setState(base64)` pipeline:
+
+```
+BEFORE (current):
+  User selects file
+    → FileReader reads as DataURL
+    → Draw on canvas (resize)
+    → canvas.toDataURL('image/jpeg', 0.8)
+    → Store base64 string in state
+    → base64 saved in project JSON
+
+AFTER:
+  User selects file
+    → POST /api/images/upload (multipart/form-data)
+    → Server processes (resize, strip EXIF, save to disk)
+    → Response: { id, url, width, height }
+    → Store URL string in state (e.g., "/api/images/img-uuid")
+    → URL saved in project JSON (tiny string instead of huge base64)
+```
+
+**Files to modify:**
+- `CharacterModal.tsx` — replace canvas pipeline with upload API call
+- `EventModal.tsx` — same
+- New: upload component/hook `useImageUpload.ts` — shared upload logic, progress indicator, error handling
+
+**Guest mode consideration:**
+- Guest users (no auth) can still upload images — tied to `guestId` instead of `ownerId`
+- On account claim (Phase 2 → ClaimProjectsPage), images are reassigned: `UPDATE images SET owner_id = :userId WHERE guest_id = :guestId`
+- For pure local-only guests (no cloud), images remain as base64 in localStorage (no server to upload to). The upload path gracefully falls back to the current base64 approach.
+
+### 2.5.8 Export / Import with Images
+
+#### Export (`.maria` file)
+
+When exporting, images must be bundled into the file. Two approaches:
+
+| Approach | Pros | Cons | Verdict |
+|----------|------|------|---------|
+| **A) Re-embed as base64** | Simple, single JSON file | File gets big again, defeats purpose during export | Acceptable — export is one-time |
+| **B) ZIP archive** | Clean separation, smaller on disk (binary images not base64-inflated) | More complex, `.maria` format changes from JSON to ZIP | Better long-term |
+
+**Decision: Option B — ZIP archive for v2 of the export format.**
+
+```
+my-novel.maria (ZIP archive):
+├── project.json           # All state data (with image URLs replaced by relative paths)
+├── images/
+│   ├── img-uuid-1.jpg     # Character portrait
+│   ├── img-uuid-2.jpg     # Event image
+│   └── img-uuid-3.jpg     # Chapter cover
+└── manifest.json          # { version: "3.0", imageCount: 3, format: "zip" }
+```
+
+**Backward compatibility:**
+- Import detects whether `.maria` file is raw JSON (legacy) or ZIP (new format) by checking first bytes
+- Legacy JSON files with base64 images still import correctly
+- On import of ZIP: extract images → upload to storage → replace paths with new URLs
+
+### 2.5.9 Migration Strategy (base64 → URL)
+
+**For cloud-synced projects:**
+1. Backend migration script: iterate all projects, scan JSON for base64 data URIs
+2. For each base64 string found: decode → write to disk → create Image row → replace base64 with URL
+3. Re-save project JSON (now much smaller)
+4. Run during Phase 2.5 deployment as a one-time migration
+
+**For localStorage-only projects:**
+1. On next cloud save or export: frontend detects base64 strings (starts with `data:image/`)
+2. Uploads each to `/api/images/upload`
+3. Replaces base64 with returned URL in state
+4. Saves updated state
+
+**Detection logic:**
+```typescript
+function isBase64Image(value: string): boolean {
+  return value.startsWith('data:image/');
+}
+
+function isImageUrl(value: string): boolean {
+  return value.startsWith('/api/images/');
+}
+```
+
+### 2.5.10 Docker / Infrastructure Changes
+
+#### Filesystem Provider (Unraid / Self-Hosted)
+
+```yaml
+# docker-compose.unraid.yml additions
+services:
+  backend:
+    volumes:
+      - ${UPLOAD_PATH:-/mnt/user/appdata/maria-writer/uploads}:/uploads
+    environment:
+      - IMAGE_STORAGE_PROVIDER=filesystem
+      - UPLOAD_DIR=/uploads
+      - IMAGE_SERVE_MODE=x-accel
+      - MAX_IMAGE_SIZE_MB=5
+      - MAX_IMAGES_PER_PROJECT=100
+      - MAX_IMAGE_STORAGE_MB=200
+
+  frontend:
+    volumes:
+      - ${UPLOAD_PATH:-/mnt/user/appdata/maria-writer/uploads}:/uploads:ro  # read-only for nginx X-Accel
+```
+
+#### S3 / MinIO Provider (AWS / Cloud)
+
+```yaml
+# docker-compose.cloud.yml example (or ECS task definition env)
+services:
+  backend:
+    environment:
+      - IMAGE_STORAGE_PROVIDER=s3
+      - S3_BUCKET=maria-writer-images
+      - S3_REGION=us-east-1
+      # - S3_ENDPOINT=http://minio:9000    # uncomment for MinIO
+      # - S3_FORCE_PATH_STYLE=true          # uncomment for MinIO
+      - S3_ACCESS_KEY=${AWS_ACCESS_KEY_ID}
+      - S3_SECRET_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_SIGNED_URL_TTL=3600
+      - MAX_IMAGE_SIZE_MB=5
+      - MAX_IMAGES_PER_PROJECT=100
+      - MAX_IMAGE_STORAGE_MB=200
+```
+
+#### Azure Blob Provider
+
+```yaml
+services:
+  backend:
+    environment:
+      - IMAGE_STORAGE_PROVIDER=azure
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONN}
+      - AZURE_STORAGE_CONTAINER=maria-images
+      - AZURE_SIGNED_URL_TTL=3600
+      - MAX_IMAGE_SIZE_MB=5
+      - MAX_IMAGES_PER_PROJECT=100
+      - MAX_IMAGE_STORAGE_MB=200
+```
+
+Note: S3/Azure providers need additional npm packages installed only when used:
+- S3: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`
+- Azure: `@azure/storage-blob`
+
+These are listed as optional peer dependencies and only imported dynamically by
+their respective provider classes. The Dockerfile and `package.json` for
+self-hosted deployments do not need them.
+
+**Core backend dependencies (always required):**
+
+```bash
+cd maria-writer-backend
+npm install sharp multer
+npm install -D @types/multer
+```
+
+### 2.5.11 Cleanup & Orphan Prevention
+
+Images can become orphaned when:
+- A character/event is deleted but the image remains on disk
+- An upload succeeds but the user never saves the project (abandoned upload)
+
+**Strategy:**
+- **On entity delete:** Backend middleware on character/event delete → also delete linked images (DB row + file)
+- **Periodic cleanup cron:** Scan `images` table for rows with no matching `entityId` in any model, older than 24 hours → delete
+- **Simple implementation:** A `/api/admin/images/cleanup` endpoint that admins can trigger, or a `setInterval` in the backend process
+
+### 2.5.12 Implementation Order
+
+```
+Step 1:  IImageStorageProvider interface + FilesystemStorageProvider              ~ 0.5 day
+Step 2:  Provider factory (createImageStorageProvider) + env-based selection      ~ 0.25 day
+Step 3:  Install sharp + multer, add Image model to Prisma, migrate DB           ~ 0.5 day
+Step 4:  Image upload endpoint (POST /api/images/upload) using provider          ~ 1 day
+Step 5:  Image serve endpoint (GET /api/images/:id) with provider fallback       ~ 0.5 day
+         (getDirectUrl → redirect/X-Accel, else getStream → pipe)
+Step 6:  Image delete endpoint + cascade on entity delete via provider           ~ 0.5 day
+Step 7:  Frontend useImageUpload hook (shared upload logic, progress, errors)    ~ 0.5 day
+Step 8:  Update CharacterModal + EventModal to use upload API instead of base64  ~ 1 day
+Step 9:  Add book cover image field to MetadataModal                             ~ 0.5 day
+Step 10: Add chapter cover image field to chapter sidebar + editor               ~ 1 day
+Step 11: Migration script: extract existing base64 images via provider           ~ 1 day
+Step 12: Update export/import to ZIP format with bundled images                  ~ 1.5 days
+Step 13: Backend + frontend tests (incl. provider unit tests with mock FS)       ~ 1.5 days
+Step 14: S3StorageProvider stub + AzureBlobStorageProvider stub                  ~ 0.25 day
+         (throw 'Not implemented' — ready for future PRs)
+Step 15: Docker volume config, .env vars, update SETUP_GUIDE                     ~ 0.5 day
+                                                                        Total: ~10.5 days
+```
+
+### 2.5.13 Security Considerations
+
+- **File type validation:** Check magic bytes (not just Content-Type header or extension) — prevent uploading disguised executables
+- **Path traversal:** Image files named as UUIDs on disk, never user-supplied filenames
+- **Access control:** Image serve endpoint checks that the requesting user owns (or collaborates on) the project the image belongs to
+- **Size limits:** Per-file and per-project limits enforced server-side
+- **EXIF stripping:** Remove GPS coordinates, camera serial numbers, timestamps — privacy protection
+- **No directory listing:** Upload directory is not served as a static directory
+- **Content-Security-Policy:** Images served with `Content-Disposition: inline` + correct `Content-Type` — prevents browser from executing uploaded files
+
+---
+
 ## Phase 3: Collaboration Features
 
 **Goal:** Allow multiple users to work on same novel
@@ -2286,12 +2972,13 @@ For questions about this implementation plan, refer to:
 | Planning | ✅ Complete | Feb 1, 2026 | Feb 1, 2026 | This document |
 | Phase 1 | 🚧 In Progress | Feb 2026 | - | Backend + cloud save done; cloud load UX pending |
 | Phase 2 | 📋 Detailed plan ready | - | - | Authentication — fully elaborated, ready to implement |
+| Phase 2.5 | 📋 Detailed plan ready | - | - | Image storage & media management — move images out of JSON blob |
 | Phase 3 | 📋 Planned | - | - | Collaboration |
 | Phase 4 | 📋 Planned | - | - | Real-time sync |
 
 ---
 
 **Last Updated:** February 28, 2026  
-**Document Version:** 2.0  
+**Document Version:** 2.1  
 **Author:** Development Team  
 **Next Review:** Before starting Phase 2 implementation — resolve open questions in §2.14

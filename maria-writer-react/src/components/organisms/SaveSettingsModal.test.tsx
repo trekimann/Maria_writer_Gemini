@@ -92,14 +92,21 @@ describe('SaveSettingsModal', () => {
     expect(screen.getByText('Export')).toBeInTheDocument();
   });
 
-  it('calls onClose when close button is clicked', () => {
+  it('calls onClose when X close button is clicked', () => {
     const onClose = vi.fn();
     render(<SaveSettingsModal isOpen={true} onClose={onClose} />);
     // The X (close) button
     const closeButton = screen.getAllByRole('button').find(btn =>
       btn.querySelector('svg') && btn.textContent === ''
     );
-    // Also the Close text button at the bottom
+    expect(closeButton).toBeDefined();
+    fireEvent.click(closeButton!);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls onClose when Close text button is clicked', () => {
+    const onClose = vi.fn();
+    render(<SaveSettingsModal isOpen={true} onClose={onClose} />);
     fireEvent.click(screen.getByText('Close'));
     expect(onClose).toHaveBeenCalled();
   });
