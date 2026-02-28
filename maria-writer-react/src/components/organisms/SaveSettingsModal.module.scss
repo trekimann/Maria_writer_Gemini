@@ -10,11 +10,12 @@
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .modalContent {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 24px;
   min-width: 500px;
@@ -33,14 +34,14 @@
   h2 {
     margin: 0;
     font-size: 1.5rem;
-    color: var(--text-primary);
+    color: var(--color-text);
   }
 }
 
 .closeButton {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -50,8 +51,8 @@
   transition: background-color 0.2s;
 
   &:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
   }
 }
 
@@ -61,7 +62,7 @@
   h3 {
     margin: 0 0 12px 0;
     font-size: 1.1rem;
-    color: var(--text-primary);
+    color: var(--color-text);
   }
 }
 
@@ -81,7 +82,7 @@
   transition: background-color 0.2s;
 
   &:hover {
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
   }
 
   input[type="checkbox"] {
@@ -91,7 +92,7 @@
   }
 
   span {
-    color: var(--text-primary);
+    color: var(--color-text);
     font-size: 0.95rem;
   }
 }
@@ -103,41 +104,41 @@
   margin-top: 8px;
 
   label {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     font-size: 0.9rem;
   }
 
   input[type="number"] {
     width: 80px;
     padding: 6px 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
     font-size: 0.95rem;
 
     &:focus {
       outline: none;
-      border-color: var(--accent-color);
+      border-color: var(--color-primary);
     }
   }
 
   span {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     font-size: 0.9rem;
   }
 }
 
 .cloudInfo {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 12px;
   margin-top: 12px;
 
   p {
     margin: 0 0 8px 0;
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     font-size: 0.9rem;
 
     &:last-child {
@@ -145,7 +146,7 @@
     }
 
     strong {
-      color: var(--text-primary);
+      color: var(--color-text);
     }
   }
 }
@@ -192,11 +193,11 @@
   border: none;
 
   &.primary {
-    background: var(--accent-color);
+    background: var(--color-primary);
     color: white;
 
     &:hover:not(:disabled) {
-      background: var(--accent-hover);
+      background: var(--color-primary-hover);
     }
 
     &:disabled {
@@ -206,12 +207,12 @@
   }
 
   &.secondary {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
 
     &:hover {
-      background: var(--bg-tertiary);
+      background: var(--color-bg);
     }
   }
 
