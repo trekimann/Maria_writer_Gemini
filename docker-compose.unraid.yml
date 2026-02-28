@@ -10,8 +10,6 @@ services:
 
   backend:
     image: ${REGISTRY:-192.168.0.189:5000}/maria-writer-backend:latest
-    ports:
-      - "${BACKEND_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
