@@ -1,6 +1,6 @@
 # Multi-User Implementation Plan for Maria Writer
 
-**Status:** Phase 1 In Progress (Partially Implemented)  
+**Status:** Phase 2 In Progress (Step 1 — Migration Complete)  
 **Last Updated:** February 28, 2026  
 **Decision:** JWT Authentication + WebSockets + MariaDB
 
@@ -389,7 +389,8 @@ describe('Cloud Storage Integration', () => {
 - ✅ Implemented: Health checks, Prisma schema, and Docker Compose stack
 - 🟡 Partial: WebSocket server initialized but only connection/disconnection placeholder logic
 - ❌ Missing for "basic cloud storage" completion: user-facing cloud project browser + "Load from Cloud" flow
-- ❌ Not started: Phase 2 auth, Phase 3 collaboration permissions/invites, Phase 4 real-time sync events
+- 🚧 In Progress: Phase 2 auth — Step 1 (Prisma migration) applied Feb 28, 2026. Users, RefreshTokens tables created; Projects table updated.
+- ❌ Not started: Phase 3 collaboration permissions/invites, Phase 4 real-time sync events
 
 ### Phase 1 Timeline Estimate
 - **Setup & Configuration:** 2-3 days
@@ -404,8 +405,8 @@ describe('Cloud Storage Integration', () => {
 ## Phase 2: Authentication & User Management
 
 **Goal:** Replace guest IDs with real user accounts  
-**Status:** 📋 Planned — Not yet started  
-**Prerequisites:** Phase 1 complete (cloud save working with guestId)  
+**Status:** � In Progress — Step 1 (Prisma migration) complete  
+**Prerequisites:** Phase 1 complete (cloud save working with guestId) ✅  
 **Estimated effort:** 3–4 weeks
 
 ### 2.0 What Already Exists (Inventory)
@@ -675,11 +676,18 @@ This means a database dump does **not** reveal usable refresh tokens.
 #### 2.4.1 New Prisma Models
 
 ```prisma
+enum UserRole {
+  USER
+  EDITOR
+  ADMIN
+}
+
 model User {
   id           String    @id @default(uuid())
   email        String    @unique @db.VarChar(255)
   passwordHash String    @map("password_hash") @db.VarChar(255)
   displayName  String?   @map("display_name") @db.VarChar(255)
+  role         UserRole  @default(USER)
   createdAt    DateTime  @default(now()) @map("created_at")
   lastLogin    DateTime? @map("last_login")
 
@@ -1234,7 +1242,7 @@ Update `.env.example` and `docker-compose.yml` with these new variables.
 ### 2.13 Implementation Order
 
 ```
-Step 1:  Prisma schema migration (User, RefreshToken, Project changes)     ~ 0.5 day
+Step 1:  Prisma schema migration (User, RefreshToken, Project changes)     ~ 0.5 day  ✅ DONE (Feb 28, 2026)
 Step 2:  Encryption service (encrypt/decrypt/deriveKey)                     ~ 1 day
 Step 3:  Auth service (register, login, token generation, rotation)         ~ 2 days
 Step 4:  Auth routes + requireAuth middleware                               ~ 1 day
@@ -1269,35 +1277,41 @@ Step 13: Update SETUP_GUIDE.md + README                                     ~ 0.
 
 **Triggered by:** Decision #2 — admin-based password reset instead of email-based self-service.
 
-#### 2.15.1 Admin Flag
+#### 2.15.1 User Roles
 
-Add an `isAdmin` boolean to the `User` model:
+The `User` model uses a `UserRole` enum instead of a boolean flag,
+allowing future expansion of access levels:
 
 ```prisma
+enum UserRole {
+  USER       // Default — standard user
+  EDITOR     // Reserved for future use (e.g., editorial permissions)
+  ADMIN      // Full admin access — user management, password resets
+}
+
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  displayName  String?   @map("display_name") @db.VarChar(255)
-  isAdmin      Boolean   @default(false) @map("is_admin")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  lastLogin    DateTime? @map("last_login")
-  // ... relations
+  // ...
+  role         UserRole  @default(USER)
+  // ...
 }
 ```
 
+**Role hierarchy:** `ADMIN` > `EDITOR` > `USER`. Middleware checks use
+"minimum role" logic — e.g., `requireRole('ADMIN')` allows ADMIN only,
+`requireRole('EDITOR')` allows EDITOR and ADMIN.
+
 **First admin creation:** Seed script or direct SQL:
 ```sql
-UPDATE users SET is_admin = TRUE WHERE email = 'admin@example.com';
+UPDATE users SET role = 'ADMIN' WHERE email = 'admin@example.com';
 ```
 
-The access token payload gains an `isAdmin` field:
+The access token payload includes the `role` field:
 ```json
 {
   "sub": "user-uuid",
   "email": "admin@example.com",
   "displayName": "Admin",
-  "isAdmin": true,
+  "role": "ADMIN",
   "type": "access"
 }
 ```
@@ -1310,7 +1324,7 @@ GET    /api/admin/users/:id          # Get user profile (minimal)
 PUT    /api/admin/users/:id/password # Reset user's password
 ```
 
-All gated by `requireAdmin` middleware (checks `req.user.isAdmin === true`).
+All gated by `requireRole('ADMIN')` middleware (checks `req.user.role` meets minimum level).
 
 **`GET /api/admin/users`** query params:
 - `search` — filter by email (LIKE '%search%')
@@ -1325,7 +1339,7 @@ Response:
       "id": "uuid",
       "email": "user@example.com",
       "displayName": "Jane Doe",
-      "isAdmin": false,
+      "role": "USER",
       "createdAt": "2026-02-28T...",
       "lastLogin": "2026-02-28T...",
       "projectCount": 3
@@ -1362,7 +1376,7 @@ TopBar (when logged in as admin):
 └──────────────────────────────────────────────────────────┘
                                               ▲
                                               │
-                              Only visible when isAdmin=true
+                              Only visible when role === 'ADMIN'
                               Opens AdminUsersModal
 ```
 
@@ -1409,7 +1423,7 @@ TopBar (when logged in as admin):
 Backend:
   src/routes/admin.ts                    # Admin route definitions
   src/controllers/adminController.ts     # Admin business logic
-  src/middleware/requireAdmin.ts          # isAdmin check middleware
+  src/middleware/requireRole.ts           # Role-based access check middleware
   tests/integration/admin.test.ts        # Admin endpoint tests
 
 Frontend:
@@ -1420,10 +1434,10 @@ Frontend:
 
 #### 2.15.6 Security Considerations for Admin
 
-- `requireAdmin` is a separate middleware, not just a route guard — defense in depth
+- `requireRole('ADMIN')` is a separate middleware, not just a route guard — defense in depth
 - Admin actions are logged with admin userId + target userId + timestamp
 - Admin cannot delete users in v1 (only reset passwords) — prevents accidental data loss
-- Admin cannot change their own admin status via API — must be done via SQL
+- Admin cannot change their own role via API — must be done via SQL
 - Rate limit admin password resets: 10 per minute per admin (prevent bulk resets)
 
 ---
@@ -2971,7 +2985,7 @@ For questions about this implementation plan, refer to:
 |-------|--------|------------|----------|-------|
 | Planning | ✅ Complete | Feb 1, 2026 | Feb 1, 2026 | This document |
 | Phase 1 | 🚧 In Progress | Feb 2026 | - | Backend + cloud save done; cloud load UX pending |
-| Phase 2 | 📋 Detailed plan ready | - | - | Authentication — fully elaborated, ready to implement |
+| Phase 2 | � In Progress | Feb 28, 2026 | - | Step 1 (Prisma migration) complete. UserRole enum (USER/EDITOR/ADMIN). |
 | Phase 2.5 | 📋 Detailed plan ready | - | - | Image storage & media management — move images out of JSON blob |
 | Phase 3 | 📋 Planned | - | - | Collaboration |
 | Phase 4 | 📋 Planned | - | - | Real-time sync |
@@ -2979,6 +2993,6 @@ For questions about this implementation plan, refer to:
 ---
 
 **Last Updated:** February 28, 2026  
-**Document Version:** 2.1  
+**Document Version:** 2.2  
 **Author:** Development Team  
-**Next Review:** Before starting Phase 2 implementation — resolve open questions in §2.14
+**Next Review:** After completing Phase 2 Step 5 (backend tests) — validate auth flow before frontend work
