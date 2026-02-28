@@ -13,6 +13,8 @@ interface SaveSettingsModalProps {
 export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, onClose }) => {
   const { state, dispatch } = useStore();
   const [isManualSaving, setIsManualSaving] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [exportFileName, setExportFileName] = useState('');
 
   if (!isOpen) return null;
 
@@ -43,10 +45,8 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
     setIsManualSaving(true);
     
     try {
-      // Save to local if enabled
-      if (settings.saveToLocal) {
-        saveToLocal(state);
-      }
+      // Always save locally
+      saveToLocal(state);
 
       // Save to cloud if enabled
       if (settings.saveToCloud) {
@@ -76,7 +76,13 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
   };
 
   const handleExport = () => {
-    exportFile(state, state.meta.title);
+    if (!showExport) {
+      setExportFileName(state.meta.title || 'Untitled');
+      setShowExport(true);
+      return;
+    }
+    exportFile(state, exportFileName || 'Untitled');
+    setShowExport(false);
   };
 
   const formatLastSynced = (timestamp: string | null) => {
@@ -113,12 +119,8 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
           <h3>Storage Location</h3>
           <div className={styles.checkboxGroup}>
             <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={settings.saveToLocal}
-                onChange={(e) => handleSettingChange('saveToLocal', e.target.checked)}
-              />
-              <span>Save to Browser (Local Storage)</span>
+              <input type="checkbox" checked={true} disabled />
+              <span>Always save to Browser (Local Storage)</span>
             </label>
             
             <label className={styles.checkboxLabel}>
@@ -127,7 +129,7 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
                 checked={settings.saveToCloud}
                 onChange={(e) => handleSettingChange('saveToCloud', e.target.checked)}
               />
-              <span>Save to Cloud (MariaDB)</span>
+              <span>Also save to Cloud (MariaDB) when clicking Save Now</span>
             </label>
           </div>
 
@@ -222,13 +224,39 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
 
         <div className={styles.section}>
           <h3>Export</h3>
+          {showExport && (
+            <div className={styles.exportField}>
+              <label className={styles.exportLabel}>File Name</label>
+              <input
+                type="text"
+                value={exportFileName}
+                onChange={(e) => setExportFileName(e.target.value)}
+                className={styles.exportInput}
+                placeholder="My Novel"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleExport();
+                  if (e.key === 'Escape') setShowExport(false);
+                }}
+                autoFocus
+              />
+            </div>
+          )}
           <button
             className={`${styles.button} ${styles.secondary} ${styles.exportButton}`}
             onClick={handleExport}
           >
             <Download size={16} style={{ marginRight: '8px' }} />
-            Export to .maria File
+            {showExport ? 'Download .maria' : 'Export to .maria File'}
           </button>
+          {showExport && (
+            <button
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={() => setShowExport(false)}
+              style={{ marginTop: '4px' }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
 
         <div className={styles.buttonGroup}>

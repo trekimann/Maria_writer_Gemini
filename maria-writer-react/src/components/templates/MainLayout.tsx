@@ -8,6 +8,7 @@ import { Codex } from '../organisms/Codex';
 import { MetadataModal } from '../organisms/MetadataModal';
 import { SaveModal } from '../organisms/SaveModal';
 import { SaveSettingsModal } from '../organisms/SaveSettingsModal';
+import { LoadProjectModal } from '../organisms/LoadProjectModal';
 import { CharacterModal } from '../organisms/CharacterModal';
 import { EventModal } from '../organisms/EventModal';
 import { RelationshipModal } from '../organisms/RelationshipModal';
@@ -34,6 +35,7 @@ export const MainLayout: React.FC = () => {
           isOpen={state.activeModal === 'save-settings'} 
           onClose={() => dispatch({ type: 'CLOSE_MODAL' })} 
         />
+        <LoadProjectModal />
         <CharacterModal />
         <EventModal />
         <RelationshipModal />

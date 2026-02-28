@@ -32,24 +32,7 @@ export const TopBar: React.FC = () => {
   };
 
   const handleOpen = () => {
-    document.getElementById('file-input')?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const json = JSON.parse(ev.target?.result as string);
-        dispatch({ type: 'LOAD_STATE', payload: json });
-      } catch (err) {
-        alert('Failed to load file: Invalid JSON');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+    dispatch({ type: 'OPEN_MODAL', payload: { type: 'load-project' } });
   };
 
   const handleMetadata = () => {
@@ -85,14 +68,6 @@ export const TopBar: React.FC = () => {
         <ThemeToggle />
         
         <Button variant="ghost" size="sm" icon={Palette} onClick={handleThemeConfig} title="Theme Configuration" />
-        <input 
-          type="file" 
-          id="file-input" 
-          className={styles.hiddenInput} 
-          accept=".maria,.json" 
-          onChange={handleFileChange}
-        />
-
         <div className={styles.divider}></div>
 
         <div className={styles.formatting}>

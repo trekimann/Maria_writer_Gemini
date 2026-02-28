@@ -3,6 +3,7 @@ import { saveToLocal, loadFromLocal } from './storage';
 import { AppState } from '../types';
 import { initialState } from '../context/StoreContext';
 import { v4 as uuidv4 } from 'uuid';
+import { APP_VERSION } from '../constants/version';
 
 describe('Storage - Comment Persistence', () => {
   const STORAGE_KEY = 'maria_autosave';
@@ -213,6 +214,49 @@ describe('Storage - Comment Persistence', () => {
   });
 
   describe('loadFromLocal with comments', () => {
+    it('should migrate legacy meta.version to bookVersion and set appVersion', () => {
+      const savedState = {
+        ...initialState,
+        meta: {
+          title: 'Legacy Book',
+          author: 'Legacy Author',
+          description: 'legacy',
+          tags: [],
+          version: '0.9.0',
+        },
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+
+      const loaded = loadFromLocal();
+
+      expect(loaded).not.toBeNull();
+      expect(loaded!.meta?.bookVersion).toBe('0.9.0');
+      expect(loaded!.meta?.bookRevision).toBe('0');
+      expect(loaded!.meta?.appVersion).toBe(APP_VERSION);
+    });
+
+    it('should preserve explicit new metadata version fields', () => {
+      const savedState = {
+        ...initialState,
+        meta: {
+          ...initialState.meta,
+          bookVersion: '2.3.0',
+          bookRevision: '7',
+          appVersion: '2.2.0',
+        },
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+
+      const loaded = loadFromLocal();
+
+      expect(loaded).not.toBeNull();
+      expect(loaded!.meta?.bookVersion).toBe('2.3.0');
+      expect(loaded!.meta?.bookRevision).toBe('7');
+      expect(loaded!.meta?.appVersion).toBe('2.2.0');
+    });
+
     it('should load comments from localStorage', () => {
       const commentId = 'test-comment';
       const chapterId = 'chapter-id';

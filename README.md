@@ -14,7 +14,7 @@ This project is maintained primarily through AI-assisted development, demonstrat
 
 ## 🎯 Quick Start
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose — Local Development
 
 ```bash
 cd c:\Source\Maria_writer_Gemini
@@ -25,7 +25,16 @@ docker-compose up -d
 
 Open http://localhost - you're ready to write!
 
-### Manual Setup
+### Using Docker Compose — Unraid Deployment
+
+See `docker-compose.unraid.yml` for a production-ready compose file that pulls pre-built images from your private registry (`memoryalpha:5000`). Use with Unraid's Docker Compose Manager plugin.
+
+### VS Code Debugging
+
+Pre-configured debug profiles in `.vscode/launch.json`:
+- **Debug Backend (local)** — Node.js debugger attached to Express
+- **Debug Frontend (Chrome)** — Chrome with source maps for React/TypeScript
+- **Full Stack Debug** — Launches both simultaneously
 
 See **[SETUP_GUIDE.md](SETUP_GUIDE.md)** for detailed instructions.
 
@@ -53,10 +62,12 @@ See **[SETUP_GUIDE.md](SETUP_GUIDE.md)** for detailed instructions.
 
 ## 📖 Documentation
 
-- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup and troubleshooting
-- **[FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md](FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md)** - Multi-user roadmap
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup, debugging, and deployment
+- **[FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md](FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md)** - Multi-user roadmap (auth, encryption, admin)
 - **[maria-writer-backend/README.md](maria-writer-backend/README.md)** - Backend API docs
 - **[LLM_REFERENCE/](LLM_REFERENCE/)** - Developer guides
+- **[docker-compose.unraid.yml](docker-compose.unraid.yml)** - Unraid deployment compose file
+- **[build-and-push.sh](build-and-push.sh)** - Build & push images to private registry
 
 ## 🛠️ Technology Stack
 

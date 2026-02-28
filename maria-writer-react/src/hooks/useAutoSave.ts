@@ -25,10 +25,8 @@ export const useAutoSave = ({
     console.log(`[AutoSave] Saving due to: ${reason}`);
 
     try {
-      // Save to local storage if enabled
-      if (settings?.saveToLocal) {
-        saveToLocal(state);
-      }
+      // Always save to local storage
+      saveToLocal(state);
 
       // Save to cloud if enabled
       if (settings?.saveToCloud) {

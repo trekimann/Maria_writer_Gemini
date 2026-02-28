@@ -6,6 +6,7 @@ import { DateTimeInput } from '../molecules/DateTimeInput';
 import { Button } from '../atoms/Button';
 import { Check } from 'lucide-react';
 import styles from './MetadataModal.module.scss';
+import { APP_VERSION } from '../../constants/version';
 
 export const MetadataModal: React.FC = () => {
   const { state, dispatch } = useStore();
@@ -14,6 +15,8 @@ export const MetadataModal: React.FC = () => {
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [currentDate, setCurrentDate] = useState('');
+  const [bookVersion, setBookVersion] = useState('1.0.0');
+  const [bookRevision, setBookRevision] = useState('0');
 
   const isOpen = state.activeModal === 'metadata';
 
@@ -24,6 +27,8 @@ export const MetadataModal: React.FC = () => {
       setDescription(state.meta.description);
       setTags(state.meta.tags);
       setCurrentDate(state.meta.currentDate || '');
+      setBookVersion(state.meta.bookVersion || '1.0.0');
+      setBookRevision(state.meta.bookRevision || '0');
     }
   }, [isOpen, state.meta]);
 
@@ -34,7 +39,16 @@ export const MetadataModal: React.FC = () => {
   const handleSave = () => {
     dispatch({
       type: 'SET_META',
-      payload: { title, author, description, tags, currentDate: currentDate || undefined }
+      payload: {
+        title,
+        author,
+        description,
+        tags,
+        currentDate: currentDate || undefined,
+        bookVersion,
+        bookRevision,
+        appVersion: APP_VERSION,
+      }
     });
     handleClose();
   };
@@ -88,6 +102,35 @@ export const MetadataModal: React.FC = () => {
       <div className={styles.field}>
         <label>Tags</label>
         <TagInput tags={tags} onChange={setTags} color="emerald" />
+      </div>
+      <div className={styles.field}>
+        <label>Book Version</label>
+        <input
+          type="text"
+          value={bookVersion}
+          onChange={(e) => setBookVersion(e.target.value)}
+          className={styles.input}
+          placeholder="e.g. 1.0.0"
+        />
+      </div>
+      <div className={styles.field}>
+        <label>Book Revision</label>
+        <input
+          type="text"
+          value={bookRevision}
+          onChange={(e) => setBookRevision(e.target.value)}
+          className={styles.input}
+          placeholder="e.g. 0"
+        />
+      </div>
+      <div className={styles.field}>
+        <label>App Version (used for compatibility)</label>
+        <input
+          type="text"
+          value={APP_VERSION}
+          className={styles.input}
+          readOnly
+        />
       </div>
       <div className={styles.field}>
         <label>Current Story Date (optional)</label>

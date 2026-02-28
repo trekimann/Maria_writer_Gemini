@@ -39,8 +39,13 @@ class ProjectController {
   async getProject(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
+      const { guestId } = req.query;
 
-      const project = await projectService.getProject(id as string);
+      if (!guestId || typeof guestId !== 'string') {
+        throw new AppError('guestId is required', 400);
+      }
+
+      const project = await projectService.getProject(id as string, guestId);
       
       if (!project) {
         throw new AppError('Project not found', 404);
@@ -55,9 +60,14 @@ class ProjectController {
   async updateProject(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
+      const { guestId } = req.query;
       const { title, data } = req.body;
 
-      const project = await projectService.updateProject(id as string, { title, data });
+      if (!guestId || typeof guestId !== 'string') {
+        throw new AppError('guestId is required', 400);
+      }
+
+      const project = await projectService.updateProject(id as string, guestId, { title, data });
       
       res.json({
         id: project.id,
@@ -76,8 +86,13 @@ class ProjectController {
   async deleteProject(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
+      const { guestId } = req.query;
 
-      await projectService.deleteProject(id as string);
+      if (!guestId || typeof guestId !== 'string') {
+        throw new AppError('guestId is required', 400);
+      }
+
+      await projectService.deleteProject(id as string, guestId);
       
       res.json({ success: true, message: 'Project deleted' });
     } catch (error) {

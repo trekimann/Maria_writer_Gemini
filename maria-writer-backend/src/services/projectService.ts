@@ -86,10 +86,10 @@ class ProjectService {
     }
   }
 
-  async getProject(id: string) {
+  async getProject(id: string, guestId: string) {
     try {
-      const project = await prisma.project.findUnique({
-        where: { id },
+      const project = await prisma.project.findFirst({
+        where: { id, guestId },
       });
       return project;
     } catch (error) {
@@ -98,10 +98,19 @@ class ProjectService {
     }
   }
 
-  async updateProject(id: string, updates: { title?: string; data: AppState }) {
+  async updateProject(id: string, guestId: string, updates: { title?: string; data: AppState }) {
     try {
+      const existing = await prisma.project.findFirst({
+        where: { id, guestId },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        throw new Error('Record to update not found');
+      }
+
       const updated = await prisma.project.update({
-        where: { id },
+        where: { id: existing.id },
         data: {
           ...(updates.title && { title: updates.title }),
           data: updates.data as any,
@@ -116,10 +125,19 @@ class ProjectService {
     }
   }
 
-  async deleteProject(id: string) {
+  async deleteProject(id: string, guestId: string) {
     try {
+      const existing = await prisma.project.findFirst({
+        where: { id, guestId },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        throw new Error('Record to delete does not exist');
+      }
+
       await prisma.project.delete({
-        where: { id },
+        where: { id: existing.id },
       });
       logger.info(`Project deleted: ${id}`);
       return true;

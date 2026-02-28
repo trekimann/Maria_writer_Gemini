@@ -75,7 +75,7 @@ class CloudStorageService {
   }
 
   async loadFromCloud(projectId: string): Promise<any> {
-    const response = await fetch(`${API_URL}/api/projects/${projectId}`);
+    const response = await fetch(`${API_URL}/api/projects/${projectId}?guestId=${this.getGuestId()}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -87,7 +87,7 @@ class CloudStorageService {
   }
 
   async deleteFromCloud(projectId: string): Promise<boolean> {
-    const response = await fetch(`${API_URL}/api/projects/${projectId}`, {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}?guestId=${this.getGuestId()}`, {
       method: 'DELETE',
     });
 
@@ -100,7 +100,7 @@ class CloudStorageService {
   }
 
   async updateProject(projectId: string, title: string, data: any): Promise<{ id: string; updatedAt: string }> {
-    const response = await fetch(`${API_URL}/api/projects/${projectId}`, {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}?guestId=${this.getGuestId()}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
