@@ -1,8 +1,10 @@
-# Maria Writer - Setup Guide for Multi-User Support
+# Maria Writer - Setup Guide
 
-This guide will help you set up the Maria Writer application with MariaDB backend and cloud storage support.
+This guide covers local development, VS Code debugging, and Unraid deployment.
 
-## Quick Start with Docker Compose (Recommended)
+---
+
+## Quick Start with Docker Compose (Local Development)
 
 ### Prerequisites
 - Docker and Docker Compose installed
@@ -22,8 +24,8 @@ copy .env.example .env
 
 3. **Edit `.env` with secure passwords:**
 ```env
-DB_ROOT_PASSWORD=your_secure_root_password
-DB_PASSWORD=your_secure_db_password
+DB_ROOT_PASSWORD=root_password_2026
+DB_PASSWORD=maria_password_2026
 JWT_SECRET=your_jwt_secret_at_least_32_characters_long
 ```
 
@@ -58,80 +60,81 @@ docker-compose down -v
 
 ---
 
-## Manual Setup (Development)
+## Development Setup (Recommended for Debugging)
 
-### Backend Setup
+Run only the database in Docker; run frontend and backend natively for hot-reload and VS Code debugging.
 
-1. **Install Node.js dependencies:**
+### 1. Start the Database
+
+```bash
+docker-compose up -d db
+```
+
+### 2. Backend Setup
+
 ```bash
 cd maria-writer-backend
 npm install
 ```
 
-2. **Set up environment variables:**
-```bash
-copy ..\.env.example .env
-```
-
-Edit `.env`:
+The backend `.env` should already exist with:
 ```env
-DATABASE_URL="mysql://maria_user:your_password@localhost:3306/maria_writer"
+DATABASE_URL="mysql://maria_user:maria_password_2026@localhost:3306/maria_writer"
 NODE_ENV=development
 PORT=3000
-CORS_ORIGIN=http://localhost
+CORS_ORIGIN="http://localhost:5173"
+JWT_SECRET=your_jwt_secret_change_in_production
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 ```
 
-3. **Start MariaDB:**
-
-Option A - Using Docker:
+Run the database migration (first time only — use root for shadow DB permissions):
 ```bash
-docker run -d \
-  --name maria-writer-db \
-  -e MYSQL_ROOT_PASSWORD=root_password \
-  -e MYSQL_DATABASE=maria_writer \
-  -e MYSQL_USER=maria_user \
-  -e MYSQL_PASSWORD=your_password \
-  -p 3306:3306 \
-  mariadb:11
+$env:DATABASE_URL = 'mysql://root:root_password_2026@localhost:3306/maria_writer'
+npx prisma migrate dev --name init
 ```
 
-Option B - Local MariaDB installation:
-- Install MariaDB 11+
-- Create database: `CREATE DATABASE maria_writer;`
-- Create user: `CREATE USER 'maria_user'@'localhost' IDENTIFIED BY 'your_password';`
-- Grant permissions: `GRANT ALL PRIVILEGES ON maria_writer.* TO 'maria_user'@'localhost';`
-
-4. **Run database migrations:**
+Generate the Prisma client:
 ```bash
-npm run prisma:migrate
+npx prisma generate
 ```
 
-5. **Start backend server:**
-```bash
-npm run dev
-```
+### 3. Frontend Setup
 
-Backend will run on http://localhost:3000
-
-### Frontend Setup
-
-1. **Install dependencies:**
 ```bash
 cd maria-writer-react
 npm install
 ```
 
-2. **Create `.env.local`:**
+Create `.env.local`:
 ```env
 VITE_API_URL=http://localhost:3000
 ```
 
-3. **Start development server:**
+Start the dev server:
 ```bash
 npm run dev
 ```
 
 Frontend will run on http://localhost:5173
+
+### 4. VS Code Debugging
+
+Pre-configured debug profiles are in `.vscode/launch.json`:
+
+| Profile | What It Does |
+|---------|-------------|
+| **Debug Backend (local)** | Launches Express with Node debugger. Set breakpoints in `.ts` files. |
+| **Debug Frontend (Chrome)** | Opens Chrome with debugger. Set breakpoints in `.tsx` files. Auto-starts Vite via a pre-launch task. |
+| **Full Stack Debug** | Launches both backend + Chrome together. |
+
+**To debug:**
+1. Start the database: `docker-compose up -d db`
+2. Press **Ctrl+Shift+D** → select **"Full Stack Debug"** → press **F5**
+3. Vite dev server starts automatically, backend starts with debugger, Chrome opens
+4. Set breakpoints anywhere in the TypeScript source — both frontend and backend
+
+**Note:** The Vite dev server is started via a VS Code task defined in `.vscode/tasks.json`. If Vite is already running in a terminal, the task will detect it and skip re-launching.
 
 ---
 
@@ -250,26 +253,60 @@ backend:
     - "8080:3000"  # Change 8080 to your preferred port
 ```
 
-### Production Deployment
+### Building & Pushing Images
 
-1. Build frontend:
+A build script is provided to build both frontend and backend images and push them to the private registry:
+
 ```bash
-cd maria-writer-react
-npm run build
+./build-and-push.sh           # Build and push both images
+./build-and-push.sh --no-cache  # Force full rebuild
 ```
 
-2. Build backend:
-```bash
-cd maria-writer-backend
-npm run build
-```
+This pushes:
+- `memoryalpha:5000/maria-writer:latest` (frontend)
+- `memoryalpha:5000/maria-writer-backend:latest` (backend)
 
-3. Use production docker-compose:
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
+MariaDB uses the official `mariadb:11` image from Docker Hub (no build needed).
 
-4. Set up SSL/TLS (nginx proxy, Let's Encrypt, etc.)
+### Unraid Deployment
+
+Maria Writer is deployed on Unraid using the Docker Compose Manager plugin.
+
+1. **Build and push images** from your dev machine:
+   ```bash
+   ./build-and-push.sh
+   ```
+
+2. **On Unraid:** Go to Docker → Compose → **ADD NEW STACK**
+
+3. **Name:** `maria-writer`
+
+4. **Paste** the contents of `docker-compose.unraid.yml` into the compose editor
+
+5. **Edit environment values** before deploying:
+   - `CORS_ORIGIN` — must match how you access the frontend (e.g. `http://192.168.1.x:8084`)
+   - `JWT_SECRET` — change to a real random string (32+ characters)
+   - Database passwords — change from defaults if desired
+
+6. Click **Compose Up**
+
+The backend automatically runs `prisma migrate deploy` on startup, creating all database tables on first boot.
+
+**Unraid compose file differences from development:**
+
+| Setting | Dev (`docker-compose.yml`) | Unraid (`docker-compose.unraid.yml`) |
+|---------|---------------------------|--------------------------------------|
+| Images | Built locally (`build:`) | Pulled from registry (`image:`) |
+| Frontend port | 80 | 8084 (avoids conflicts) |
+| DB port | 3306 | 3307 (avoids conflicts) |
+| DB volume | Docker named volume | `/mnt/user/appdata/maria-writer/db` |
+| Env vars | `.env` file references | Inline in compose file |
+
+### Other Production Deployment
+
+1. Build and push images using `build-and-push.sh`
+2. Deploy with `docker-compose.yml` or `docker-compose.unraid.yml`
+3. Set up SSL/TLS (nginx reverse proxy, Let's Encrypt, etc.)
 
 ---
 
