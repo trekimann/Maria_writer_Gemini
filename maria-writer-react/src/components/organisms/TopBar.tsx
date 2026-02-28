@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
 import { ThemeToggle } from '../atoms/ThemeToggle';
-import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette } from 'lucide-react';
+import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette, Cloud } from 'lucide-react';
 import { HelpButton } from '../atoms/HelpButton';
 import styles from './TopBar.module.scss';
 
@@ -104,7 +104,13 @@ export const TopBar: React.FC = () => {
       </div>
 
       <div className={styles.right}>
-        <span className={styles.saveStatus}>Saved locally</span>
+        <span className={styles.saveStatus}>
+          {state.cloudSync?.isSyncing
+            ? <><Cloud size={12} style={{ marginRight: 4 }} /> Saving to cloud...</>
+            : state.saveSettings?.saveToCloud && state.cloudSync?.lastSyncedAt
+              ? <><Cloud size={12} style={{ marginRight: 4 }} /> Saved to cloud</>
+              : 'Saved locally'}
+        </span>
         <div className={styles.viewModes}>
           <Button 
             variant={state.viewMode === 'write' ? 'primary' : 'ghost'}
