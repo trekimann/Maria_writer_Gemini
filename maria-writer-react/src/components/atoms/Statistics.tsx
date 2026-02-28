@@ -5,12 +5,14 @@ interface StatisticsProps {
   wordCount: number;
   characterCount: number;
   readingTime: string;
+  pageEstimate?: string;
 }
 
 export const Statistics: React.FC<StatisticsProps> = ({
   wordCount,
   characterCount,
-  readingTime
+  readingTime,
+  pageEstimate = '0 pages'
 }) => {
   return (
     <div className={styles.statisticsContainer}>
@@ -27,6 +29,11 @@ export const Statistics: React.FC<StatisticsProps> = ({
       <div className={styles.statItem}>
         <span className={styles.statLabel}>Read Time</span>
         <span className={styles.statValue}>{readingTime}</span>
+      </div>
+      <div className={styles.divider}></div>
+      <div className={styles.statItem}>
+        <span className={styles.statLabel}>Page Estimate</span>
+        <span className={styles.statValue}>{pageEstimate}</span>
       </div>
     </div>
   );

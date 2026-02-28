@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractCleanText, calculateWordCount, calculateCharacterCount, formatReadingTime } from './statistics';
+import {
+  extractCleanText,
+  calculateWordCount,
+  calculateCharacterCount,
+  formatReadingTime,
+  formatPageEstimate
+} from './statistics';
 
 describe('Statistics Utils', () => {
   beforeEach(() => {
@@ -82,6 +88,22 @@ describe('Statistics Utils', () => {
     it('should show single value if min and max match', () => {
         // 150 words: 150/300 = 0.5 (1), 150/150 = 1 (1) -> 1 min
         expect(formatReadingTime(150)).toBe('1 min');
+    });
+  });
+
+  describe('formatPageEstimate', () => {
+    it('should show 0 pages for no words', () => {
+      expect(formatPageEstimate(0)).toBe('0 pages');
+    });
+
+    it('should show singular page for tight one-page estimates and range near boundaries', () => {
+      expect(formatPageEstimate(230)).toBe('1 page');
+      expect(formatPageEstimate(300)).toBe('1-2 pages');
+    });
+
+    it('should show range for larger counts', () => {
+      // 500 words: min ceil(500/300)=2, max ceil(500/230)=3
+      expect(formatPageEstimate(500)).toBe('2-3 pages');
     });
   });
 });

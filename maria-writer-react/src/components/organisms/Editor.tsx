@@ -47,7 +47,7 @@ export const Editor: React.FC = () => {
     dispatch
   });
 
-  const { wordCount, characterCount, readingTime } = useEditorStatistics(content);
+  const { wordCount, characterCount, readingTime, pageEstimate } = useEditorStatistics(content);
 
   const {
     mentionQuery,
@@ -312,6 +312,7 @@ export const Editor: React.FC = () => {
           wordCount={wordCount}
           characterCount={characterCount}
           readingTime={readingTime}
+          pageEstimate={pageEstimate}
         />
       </div>
 

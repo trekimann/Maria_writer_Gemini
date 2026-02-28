@@ -66,3 +66,19 @@ export function formatReadingTime(wordCount: number): string {
 
   return `${minTime}-${maxTime} min`;
 }
+
+/**
+ * Format page estimate using a 230-300 words per page range.
+ */
+export function formatPageEstimate(wordCount: number): string {
+  if (wordCount === 0) return '0 pages';
+
+  const minPages = Math.ceil(wordCount / 300); // denser page
+  const maxPages = Math.ceil(wordCount / 230); // less dense page
+
+  if (minPages === maxPages) {
+    return `${minPages} page${minPages === 1 ? '' : 's'}`;
+  }
+
+  return `${minPages}-${maxPages} pages`;
+}
