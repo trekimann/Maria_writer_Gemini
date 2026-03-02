@@ -1,6 +1,6 @@
 # Multi-User Implementation Plan for Maria Writer
 
-**Status:** Phase 2 In Progress (Steps 1–2 + 2a Complete)  
+**Status:** Phase 2 In Progress (Steps 1–2 + 2a Complete; UI enhancements shipped)  
 **Last Updated:** March 2, 2026  
 **Decision:** JWT Authentication + WebSockets + MariaDB
 
@@ -388,8 +388,12 @@ describe('Cloud Storage Integration', () => {
 - ✅ Implemented: Frontend cloud-save integration in save settings and auto-save flow
 - ✅ Implemented: Health checks, Prisma schema, and Docker Compose stack
 - ✅ Implemented: "Load from Cloud" UI — `LoadProjectModal.tsx` has a two-tab interface ("Local File" / "Cloud"). The Cloud tab lists all guest projects via `cloudStorageService.listProjects()`, lets the user select via radio button, validates the loaded state (structure + version compatibility warnings), and dispatches `LOAD_STATE`. Full round-trip complete.
-- 🟡 Partial: WebSocket server initialized but only connection/disconnection placeholder logic
-- 🚧 In Progress: Phase 2 auth — Step 1 (Prisma migration) applied Feb 28, 2026. Users, RefreshTokens tables created; Projects table updated.
+- ✅ Implemented: Encryption wired into guest cloud save/load (`projectService.ts`). AES-256-GCM keyed by `guestId`. Lazy migration — pre-2.3.0 rows fallback to plaintext on load and are re-encrypted on next save. `APP_VERSION` bumped to `2.3.0`; version compatibility warning shown inline in Load modal for older projects.
+- ✅ Implemented: Auto-save of current project before cloud load (`LoadProjectModal.tsx`). Saves to localStorage always, pushes to cloud if cloud sync is enabled.
+- ✅ Implemented: Help system — `HelpButton` added to `SaveSettingsModal` and `LoadProjectModal`. New help files: `save-settings.md`, `load-project.md`. z-index layering fixed so `HelpModal` renders above custom modals (z-index 1100 > 1000).
+- ✅ Implemented: Guest ID recovery — `GuestRecoveryModal` accessible only via a link inside `load-project.md`. Validates UUID format before applying. `cloudStorageService.setGuestId()` persists to localStorage. Browser `window.confirm` shown before replacing current ID.
+- 🟡 Partial: WebSocket server initialized but only connection/disconnection placeholder logic.
+- 🚧 In Progress: Phase 2 auth — Steps 1 (Prisma migration Feb 28), 2 (encryptionService Mar 2), 2a (encryption wired into save/load Mar 2) complete. Next: Step 3 (auth service).
 - ❌ Not started: Phase 3 collaboration permissions/invites, Phase 4 real-time sync events
 
 **Phase 1 is fully complete.** All user-facing deliverables are shipped. Remaining 🟡 items (test coverage, docs) are polish, not blockers for Phase 2.

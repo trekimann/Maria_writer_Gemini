@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal } from './Modal';
+import { GuestRecoveryModal } from './GuestRecoveryModal';
 import { useHelp } from '../../context/HelpContext';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -10,6 +11,7 @@ export const HelpModal: React.FC = () => {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   useEffect(() => {
     if (isOpen && helpId) {
@@ -38,25 +40,41 @@ export const HelpModal: React.FC = () => {
     }
   }, [isOpen, helpId]);
 
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (e.target as HTMLElement).closest('a');
+    if (anchor?.getAttribute('href') === '#recover-guest-id') {
+      e.preventDefault();
+      setShowRecovery(true);
+    }
+  };
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={closeHelp}
-      title="Help"
-      headerColor="indigo"
-    >
-      <div className={styles.helpContainer}>
-        {loading && <div className={styles.loading}>Loading help content...</div>}
-        
-        {error && <div className={styles.error}>{error}</div>}
-        
-        {!loading && !error && (
-          <div 
-            className={styles.helpContent}
-            dangerouslySetInnerHTML={{ __html: content }} 
-          />
-        )}
-      </div>
-    </Modal>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={closeHelp}
+        title="Help"
+        headerColor="indigo"
+      >
+        <div className={styles.helpContainer}>
+          {loading && <div className={styles.loading}>Loading help content...</div>}
+
+          {error && <div className={styles.error}>{error}</div>}
+
+          {!loading && !error && (
+            <div
+              className={styles.helpContent}
+              onClick={handleContentClick}
+              dangerouslySetInnerHTML={{ __html: content }}
+            />
+          )}
+        </div>
+      </Modal>
+
+      <GuestRecoveryModal
+        isOpen={showRecovery}
+        onClose={() => setShowRecovery(false)}
+      />
+    </>
   );
 };

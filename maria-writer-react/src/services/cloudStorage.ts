@@ -41,6 +41,11 @@ class CloudStorageService {
     return this.guestId || this.getOrCreateGuestId();
   }
 
+  setGuestId(id: string): void {
+    this.guestId = id;
+    localStorage.setItem(this.GUEST_ID_KEY, id);
+  }
+
   async saveToCloud(title: string, data: any): Promise<{ id: string; updatedAt: string }> {
     const response = await fetch(`${API_URL}/api/projects`, {
       method: 'POST',

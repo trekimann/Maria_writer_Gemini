@@ -45,3 +45,15 @@ If the selected cloud project was saved with an older app version that introduce
 - To transfer a project to another device, export it as a `.maria` file from **Save Settings → Export**, then use **Load Project → Local File** on the other device.
 - Cloud projects are tied to your **Guest ID** (visible in Save Settings). If your Guest ID changes (e.g. after clearing browser data), previously saved cloud projects will not appear in the list.
 - Loading a project does not delete the previous project from the cloud — it only replaces what is currently loaded in the editor.
+
+---
+
+## Recovering Projects from Another Browser or Device
+
+If you have cleared your browser data, switched to a new device, or otherwise lost access to your original session, you can restore access to your cloud-saved projects by entering the Guest ID from the original session.
+
+[Recover my Guest ID](#recover-guest-id)
+
+Once applied, open **Load Project → Cloud** and click **Refresh List** to see the projects saved under that ID.
+
+> **Keep your Guest ID safe.** It is the only way to identify your cloud-saved projects until account login is available. Note it down from **Save Settings** while your projects are still accessible.
