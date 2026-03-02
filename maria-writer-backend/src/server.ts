@@ -13,6 +13,48 @@ import adminRoutes from './routes/admin';
 
 dotenv.config();
 
+// ---------------------------------------------------------------------------
+// Startup environment validation — fail fast with a clear message if required
+// vars are missing rather than crashing deep inside a request.
+// ---------------------------------------------------------------------------
+const REQUIRED_ENV_VARS = [
+  'JWT_SECRET',
+  'JWT_REFRESH_SECRET',
+  'DATA_ENCRYPTION_KEY',
+  'DATABASE_URL',
+];
+
+function validateEnv(): void {
+  const missing: string[] = [];
+  const present: string[] = [];
+
+  for (const key of REQUIRED_ENV_VARS) {
+    const value = process.env[key];
+    if (!value || value.trim() === '') {
+      missing.push(key);
+    } else {
+      present.push(`${key}=<set, ${value.length} chars>`);
+    }
+  }
+
+  // Always log what we found so it's visible in container logs
+  for (const entry of present) {
+    console.log(`[env-check] ✓ ${entry}`);
+  }
+  for (const key of missing) {
+    console.error(`[env-check] ✗ MISSING: ${key}`);
+  }
+
+  if (missing.length > 0) {
+    console.error(`[env-check] FATAL: ${missing.length} required environment variable(s) not set. Exiting.`);
+    process.exit(1);
+  }
+
+  console.log('[env-check] All required environment variables are set.');
+}
+
+validateEnv();
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
