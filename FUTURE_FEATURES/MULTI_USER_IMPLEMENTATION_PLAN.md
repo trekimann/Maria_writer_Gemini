@@ -560,7 +560,7 @@ User password  ──►  bcrypt.hash(password, 12)  ──►  $2b$12$... store
   - At least 1 digit
   - Maximum 128 characters (prevent bcrypt DoS with very long inputs)
 
-#### 2.3.2 Encryption of User Data at Rest
+#### 2.3.2 Encryption of User Data at Rest ✅ IMPLEMENTED (v2.3.0)
 
 Novel content is personal/creative data and should be encrypted in the database
 so that a database breach does not expose raw manuscript text.
@@ -573,64 +573,52 @@ so that a database breach does not expose raw manuscript text.
 │                                                              │
 │  SAVE:                                                       │
 │  JSON.stringify(appState)                                    │
-│    ──► compress (optional, gzip)                             │
-│    ──► AES-256-GCM encrypt with per-row IV                   │
+│    ──► AES-256-GCM encrypt with fresh 96-bit IV per row      │
 │    ──► base64 encode                                         │
 │    ──► store in projects.data_encrypted (LONGTEXT)           │
 │    ──► store IV + authTag in projects.encryption_meta (JSON) │
+│    ──► projects.data set to NULL                             │
 │                                                              │
 │  LOAD:                                                       │
 │    ◄── read data_encrypted + encryption_meta                 │
 │    ◄── base64 decode                                         │
 │    ◄── AES-256-GCM decrypt using IV + authTag                │
-│    ◄── decompress (if compressed)                            │
 │    ◄── JSON.parse → AppState                                 │
+│    ◄── fallback: read projects.data plaintext if no          │
+│        data_encrypted (lazy migration for pre-2.3.0 rows)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key management options (decide before implementation):**
+**Key management — implemented approach:**
 
-| Option | Pros | Cons | Recommendation |
-|--------|------|------|----------------|
-| **A) Single server key** (`DATA_ENCRYPTION_KEY` env var) | Simple, one key to manage | Key compromise = all data exposed | Good for self-hosted / v1 |
-| **B) Per-user derived key** (HKDF from master key + userId) | Different key per user, limits blast radius | Slightly more complex | Better for multi-tenant |
-| **C) User-password-derived key** (PBKDF2 from user password) | True zero-knowledge — server can't read data | Password change = re-encrypt everything. Password reset = data loss. | Too complex for v1 |
+| Option | Pros | Cons | Status |
+|--------|------|------|--------|
+| **A) Single server key** (`DATA_ENCRYPTION_KEY` env var) | Simple, one key to manage | Key compromise = all data exposed | Skipped |
+| **B) Per-user derived key** (HMAC-SHA256 from master key + keyId) | Different key per user, limits blast radius | Slightly more complex | **✅ IMPLEMENTED** |
+| **C) User-password-derived key** (PBKDF2 from user password) | True zero-knowledge — server can't read data | Password change = re-encrypt everything. Password reset = data loss. | Not planned for v1 |
 
-**Recommendation for v1:** Option **B — per-user derived key**.
+**Implemented:** Option **B — per-user derived key** via HMAC-SHA256.
 
-```typescript
-import { createCipheriv, createDecipheriv, randomBytes, createHmac } from 'crypto';
+The full implementation lives in `maria-writer-backend/src/services/encryptionService.ts` (42 unit tests, all passing). Key points:
 
-// Derive per-user key from master key
-function deriveUserKey(masterKey: Buffer, userId: string): Buffer {
-  return createHmac('sha256', masterKey).update(userId).digest();
-  // Returns 32-byte key unique to this user
-}
+- `getMasterKey()` — reads and validates `DATA_ENCRYPTION_KEY` env var (must be 64 hex chars = 32 bytes); throws if not set or wrong length
+- `deriveUserKey(masterKey, keyId)` — `HMAC-SHA256(masterKey, keyId)` → 32-byte Buffer, unique per user
+- `encryptData(plaintext, userKey)` — AES-256-GCM, fresh 96-bit IV on every call; returns `{ ciphertext, iv, authTag }` as base64 strings
+- `decryptData(payload, userKey)` — verifies GCM auth tag before returning plaintext; throws on tampering
+- `encryptForUser(plaintext, keyId)` / `decryptForUser(payload, keyId)` — convenience wrappers that call `getMasterKey()` internally
+- `isEncryptedPayload(value)` — type guard to detect encrypted vs legacy plaintext rows
+- `safeEquals(a, b)` — timing-safe string comparison for token checks
 
-// Encrypt
-function encryptData(plaintext: string, userKey: Buffer): { ciphertext: string; iv: string; authTag: string } {
-  const iv = randomBytes(12); // 96-bit IV for GCM
-  const cipher = createCipheriv('aes-256-gcm', userKey, iv);
-  let encrypted = cipher.update(plaintext, 'utf8', 'base64');
-  encrypted += cipher.final('base64');
-  return {
-    ciphertext: encrypted,
-    iv: iv.toString('base64'),
-    authTag: cipher.getAuthTag().toString('base64'),
-  };
-}
+**Phase 1 key identity:** `keyId = guestId` (UUID stored in browser localStorage).  
+**Phase 2 auth key identity:** `keyId` will be replaced by `userId` (from DB) with no code changes to `encryptionService.ts` — only the call-site in `projectService.ts` changes.
 
-// Decrypt
-function decryptData(ciphertext: string, iv: string, authTag: string, userKey: Buffer): string {
-  const decipher = createDecipheriv('aes-256-gcm', userKey, Buffer.from(iv, 'base64'));
-  decipher.setAuthTag(Buffer.from(authTag, 'base64'));
-  let decrypted = decipher.update(ciphertext, 'base64', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
-```
+**Lazy migration strategy (no one-time migration script):**
+- Pre-2.3.0 rows have `data` populated and `data_encrypted = NULL`
+- On load: if `data_encrypted` is present → decrypt; otherwise fall back to `data` plaintext
+- On next cloud save: row is re-written encrypted (plaintext `data` becomes NULL, `data_encrypted` populated)
+- App version check in `versionCompatibility.ts` shows an amber warning on the Load modal for projects saved before v2.3.0
 
-**New env var required:**
+**`DATA_ENCRYPTION_KEY` env var (now live in docker-compose files):**
 ```env
 DATA_ENCRYPTION_KEY=<64-hex-char-random-key>  # 32 bytes = 256 bits
 ```

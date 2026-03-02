@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, Cloud, Download } from 'lucide-react';
+import { HelpButton } from '../atoms/HelpButton';
 import { useStore } from '../../context/StoreContext';
 import { cloudStorageService } from '../../services/cloudStorage';
 import { saveToLocal, exportFile } from '../../utils/storage';
@@ -110,6 +111,7 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2>Save Settings</h2>
+          <HelpButton helpId="save-settings" size={18} />
           <button className={styles.closeButton} onClick={onClose}>
             <X size={24} />
           </button>

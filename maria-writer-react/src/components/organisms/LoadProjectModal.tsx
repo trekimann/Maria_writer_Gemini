@@ -303,6 +303,7 @@ export const LoadProjectModal: React.FC = () => {
       title="Load Project"
       headerColor="indigo"
       size="lg"
+      helpId="load-project"
       footer={
         <>
           <Button variant="secondary" onClick={closeModal}>Cancel</Button>
