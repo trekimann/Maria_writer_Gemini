@@ -1046,7 +1046,51 @@ App mounts
 - On success → auto-login → check for existing guestId projects → offer migration
 - After success, if `localStorage` has `maria_guest_id` → redirect to Claim Projects page
 
-#### 2.7.5 Claim Projects Page (Guest → User Migration)
+#### 2.7.5 Login Prompts in Save & Load Modals
+
+When the user is **not authenticated** (guest mode), the Save Settings modal and
+Load Project modal both show an unobtrusive inline banner encouraging account
+creation. Cloud functionality is gated — the banner replaces (or sits above) the
+cloud save/load controls.
+
+**SaveSettingsModal — guest banner (in the cloud sync section):**
+```
+┌──────────────────────────────────────────────────────┐
+│  ☁ Cloud Sync                                        │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐    │
+│  │  🔒 Cloud save requires an account.          │    │
+│  │  Sign in  or  Create a free account           │    │
+│  │  to enable cloud backup across devices.      │    │
+│  └──────────────────────────────────────────────┘    │
+│                                                      │
+│  (cloud sync toggle + last saved info hidden)        │
+└──────────────────────────────────────────────────────┘
+```
+
+**LoadProjectModal — guest banner (in the Cloud tab):**
+```
+┌──────────────────────────────────────────────────────┐
+│  [Local File]  [Cloud ☁]                             │
+│  ─────────────────────────────────────────────────   │
+│  ┌──────────────────────────────────────────────┐    │
+│  │  🔒 Sign in to access your cloud projects.   │    │
+│  │  Sign in  or  Create a free account           │    │
+│  └──────────────────────────────────────────────┘    │
+│                                                      │
+│  (project list hidden — replaced by banner above)    │
+└──────────────────────────────────────────────────────┘
+```
+
+**Behaviour:**
+- "Sign in" link → navigates to `/login` (closes modal first)
+- "Create a free account" link → navigates to `/register`
+- Links use React Router navigation (`useNavigate`), not hard page reloads
+- Banner styling uses existing modal info/warning colour tokens to stay themed
+- After login the user returns to the same modal context (store the intended
+  destination in `AuthContext` so post-login redirect reopens the right modal)
+
+#### 2.7.6 Claim Projects Page (Guest → User Migration)
 
 ```
 ┌──────────────────────────────────────────┐
@@ -1235,6 +1279,10 @@ Update `.env.example` and `docker-compose.yml` with these new variables.
 
 ### 2.13 Implementation Order
 
+Steps are sequenced to reach a **prod-deployable milestone** as early as possible.
+The login UI (Steps 6–8) is pulled forward to sit immediately after the backend
+auth routes so a working login screen ships before tests and migration tooling.
+
 ```
 Step 1:  Prisma schema migration (User, RefreshToken, Project changes)     ~ 0.5 day  ✅ DONE (Feb 28, 2026)
 Step 2:  Encryption service (encrypt/decrypt/deriveKey)                     ~ 1 day    ✅ DONE (Mar 2, 2026)
@@ -1248,12 +1296,22 @@ Step 2a: Wire encryption into guest cloud save/load (lazy migration)        ~ 0.
          - DATA_ENCRYPTION_KEY added to docker-compose.yml, docker-compose.unraid.yml,
            and .env.example
 Step 3:  Auth service (register, login, token generation, rotation)         ~ 2 days
-Step 4:  Auth routes + requireAuth middleware                               ~ 1 day
-Step 5:  Backend tests for auth + encryption                                ~ 1.5 days
-Step 6:  Frontend AuthContext + authService                                 ~ 1 day
-Step 7:  LoginPage + RegisterPage components + styles                       ~ 2 days
-Step 8:  Wire up ProtectedRoute, update App.tsx routing                     ~ 0.5 day
-Step 9:  Update cloudStorage.ts to use Bearer tokens                        ~ 0.5 day
+Step 4:  Auth routes + requireAuth middleware (dual-mode: Bearer OR guestId) ~ 1 day
+Step 5:  Frontend AuthContext + authService                                 ~ 1 day
+Step 6:  LoginPage + RegisterPage components + styles                       ~ 2 days
+         - Includes login prompt banners in SaveSettingsModal + LoadProjectModal
+           for unauthenticated users (see §2.7.5)
+Step 7:  Wire up React Router, update App.tsx routing                       ~ 0.5 day
+
+         ╔══════════════════════════════════════════════════════════╗
+         ║  🚀 PROD-DEPLOYABLE MILESTONE after Step 7              ║
+         ║  Users can register, log in, and use the app.           ║
+         ║  Guests continue working as before (local-only).        ║
+         ║  Cloud save/load still uses guestId flow until Step 9.  ║
+         ╚══════════════════════════════════════════════════════════╝
+
+Step 8:  Backend tests for auth (unit + integration)                        ~ 1.5 days
+Step 9:  Update cloudStorage.ts to use Bearer tokens (authenticated users)  ~ 0.5 day
 Step 10: ClaimProjectsPage + guest migration API                            ~ 1 day
 Step 11: Frontend tests                                                     ~ 1.5 days
 Step 12: End-to-end manual testing in Docker                                ~ 1 day
@@ -1442,6 +1500,70 @@ Frontend:
 - Admin cannot delete users in v1 (only reset passwords) — prevents accidental data loss
 - Admin cannot change their own role via API — must be done via SQL
 - Rate limit admin password resets: 10 per minute per admin (prevent bulk resets)
+
+---
+
+### 2.16 Guest Cloud Limits (Deferred — Implement After Step 7 Prod Deploy)
+
+**Status:** 📋 Planned — Not yet started  
+**Goal:** Prevent unbounded cloud storage by unauthenticated guests  
+**When to implement:** After the prod-deployable milestone (post Step 7). Can ship as a hotfix to prod once auth is live.
+
+#### 2.16.1 Limits
+
+| Limit | Value | Configurable via env? |
+|-------|-------|----------------------|
+| Max cloud projects per guest | **2** | `GUEST_MAX_PROJECTS=2` |
+| Max project data size (JSON) | **5 MB** | `GUEST_MAX_PROJECT_SIZE_MB=5` |
+| Max total cloud storage per guest | 10 MB (2 × 5MB) | derived from above |
+
+Authenticated users have higher (or no) limits — TBD in Phase 3.
+
+#### 2.16.2 Backend Enforcement
+
+**Project count check** — in `projectService.createOrUpdateProject` (guest path only):
+```typescript
+// Before creating a NEW project (not an upsert to an existing title)
+const count = await prisma.project.count({ where: { guestId } });
+const max = parseInt(process.env.GUEST_MAX_PROJECTS || '2', 10);
+if (count >= max) {
+  throw new AppError(
+    `Guest accounts are limited to ${max} cloud projects. Sign in for unlimited storage.`,
+    403
+  );
+}
+```
+
+**Project size check** — in `projectService` before encryption/storage:
+```typescript
+const serialised = JSON.stringify(data);
+const maxBytes = parseInt(process.env.GUEST_MAX_PROJECT_SIZE_MB || '5', 10) * 1024 * 1024;
+if (Buffer.byteLength(serialised, 'utf8') > maxBytes) {
+  throw new AppError(
+    `Project exceeds the ${process.env.GUEST_MAX_PROJECT_SIZE_MB || 5} MB guest limit. Sign in for larger projects.`,
+    413
+  );
+}
+```
+
+Both checks are **guest-path-only** — they live inside the `if (!ownerId)` branch
+added in Step 4's dual-mode controller, so authenticated users are unaffected.
+
+#### 2.16.3 Frontend Feedback
+
+- `cloudStorage.ts` catches 403 / 413 responses and surfaces a user-friendly error
+- The error toast/message includes a "Sign in for more" link → `/register`
+- The Save Settings modal shows current guest project count vs limit when cloud sync is on:
+  `"1 of 2 guest projects used — Sign in for unlimited"`
+
+#### 2.16.4 Env Vars to Add
+
+```env
+GUEST_MAX_PROJECTS=2
+GUEST_MAX_PROJECT_SIZE_MB=5
+```
+
+Add to `docker-compose.yml`, `docker-compose.unraid.yml`, and `.env.example`.
 
 ---
 
