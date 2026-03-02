@@ -8,6 +8,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { authApiService, AuthUser, LoginPayload, RegisterPayload } from '../services/authService';
+import { cloudStorageService } from '../services/cloudStorage';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -145,6 +146,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async () => {
     await authApiService.logout();
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    // Rotate the guest ID so this browser session cannot see the
+    // logged-out user's guest-path cloud projects.
+    cloudStorageService.rotateGuestId();
     setState({
       user: null,
       accessToken: null,

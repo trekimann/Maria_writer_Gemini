@@ -32,6 +32,20 @@ Load a project previously saved to the cloud.
 2. Select a project from the list — each entry shows the project title, last updated time, and saved app version.
 3. Click **Load Selected** to load it.
 
+### Deleting a cloud project
+
+Each row in the cloud project list has a **trash icon** on the right. Click it to open an inline confirmation panel directly below that row.
+
+Because deletion is permanent and cannot be undone, you must:
+
+1. Read the warning.
+2. Tick the checkbox: **"I understand this project will be lost forever"**.
+3. Click **Delete Permanently**.
+
+Click **Cancel** (inside the confirmation panel) at any point to dismiss the panel without deleting.
+
+> **Tip:** Export your project to a `.maria` file from **Save Settings → Export** before deleting if you want a local backup.
+
 ### Guest upsell notice
 
 If you are not signed in, a notice will appear above the project list encouraging you to create a free account or sign in. Your projects are **not blocked** — this is just a reminder that linking projects to an account keeps them safe if your browser data is ever cleared.
@@ -64,6 +78,10 @@ Cloud projects saved as a guest are stored under your Guest ID. When you **creat
 - Your projects are still encrypted at rest
 
 Use the **Sign in** or **Create a free account** links in the Cloud tab notice, or navigate to them from the main menu.
+
+### Signing out
+
+When you sign out, your **Guest ID is automatically rotated** to a new value. This ensures that a subsequent guest session cannot access the projects that were saved under the previous account session. If you sign back in, your account projects are still safely linked to your profile.
 
 ---
 

@@ -393,7 +393,7 @@ describe('Cloud Storage Integration', () => {
 - ✅ Implemented: Help system — `HelpButton` added to `SaveSettingsModal` and `LoadProjectModal`. New help files: `save-settings.md`, `load-project.md`. z-index layering fixed so `HelpModal` renders above custom modals (z-index 1100 > 1000).
 - ✅ Implemented: Guest ID recovery — `GuestRecoveryModal` accessible only via a link inside `load-project.md`. Validates UUID format before applying. `cloudStorageService.setGuestId()` persists to localStorage. Browser `window.confirm` shown before replacing current ID.
 - 🟡 Partial: WebSocket server initialized but only connection/disconnection placeholder logic.
-- 🚧 In Progress: Phase 2 auth — Steps 1 (Prisma migration Feb 28), 2 (encryptionService Mar 2), 2a (encryption wired into save/load Mar 2) complete. Next: Step 3 (auth service).
+- 🚧 In Progress: Phase 2 auth — Steps 1–9 complete. Next: Step 10 (ClaimProjectsPage + guest migration API).
 - ❌ Not started: Phase 3 collaboration permissions/invites, Phase 4 real-time sync events
 
 **Phase 1 is fully complete.** All user-facing deliverables are shipped. Remaining 🟡 items (test coverage, docs) are polish, not blockers for Phase 2.
@@ -411,7 +411,7 @@ describe('Cloud Storage Integration', () => {
 ## Phase 2: Authentication & User Management
 
 **Goal:** Replace guest IDs with real user accounts  
-**Status:**  In Progress  Steps 1, 2, 2a complete (encryption shipped); next: Step 3 (auth service)    
+**Status:**  In Progress  Steps 1–9 complete; next: Step 10 (ClaimProjectsPage + guest migration)    
 **Prerequisites:** Phase 1 complete (cloud save working with guestId) ✅  
 **Estimated effort:** 3–4 weeks
 
@@ -1311,7 +1311,12 @@ Step 7:  Wire up React Router, update App.tsx routing                       ~ 0.
          ╚══════════════════════════════════════════════════════════╝
 
 Step 8:  Backend tests for auth (unit + integration)                        ~ 1.5 days
-Step 9:  Update cloudStorage.ts to use Bearer tokens (authenticated users)  ~ 0.5 day
+Step 9:  Update cloudStorage.ts to use Bearer tokens (authenticated users)  ~ 0.5 day  ✅ DONE (Mar 2, 2026)
+         - authApiService imported into CloudStorageService; authHeaders() + guestParam() helpers
+         - All 5 methods (save, list, load, delete, update) send Bearer token when authed, guestId when guest
+         - rotateGuestId() added; called in AuthContext.logout() so post-logout session cannot see previous user's projects
+         - Delete UI added to LoadProjectModal cloud tab: trash icon per row, inline confirm panel with
+           red warning, checkbox gate, and Delete Permanently button; Refresh List + Load Selected disabled during delete
 Step 10: ClaimProjectsPage + guest migration API                            ~ 1 day
 Step 11: Frontend tests                                                     ~ 1.5 days
 Step 12: End-to-end manual testing in Docker                                ~ 1 day
@@ -3257,7 +3262,7 @@ For questions about this implementation plan, refer to:
 |-------|--------|------------|----------|-------|
 | Planning | ✅ Complete | Feb 1, 2026 | Feb 1, 2026 | This document |
 | Phase 1 | ✅ Complete | Feb 2026 | Mar 2, 2026 | Backend + frontend fully shipped; encryption, help system, guest ID recovery all live |
-| Phase 2 | 🚧 In Progress | Feb 28, 2026 | - | Steps 1 (Prisma migration), 2 (encryptionService, 42 tests), 2a (encryption live in save/load) complete. Next: Step 3 (auth service). |
+| Phase 2 | 🚧 In Progress | Feb 28, 2026 | - | Steps 1–9 complete. Step 9: cloudStorage.ts now auth-aware (Bearer token when logged in, guestId when guest); rotateGuestId on logout; delete UI in LoadProjectModal. Next: Step 10 (ClaimProjectsPage). |
 | Phase 2.5 | 📋 Detailed plan ready | - | - | Image storage & media management — move images out of JSON blob |
 | Phase 3 | 📋 Planned | - | - | Collaboration |
 | Phase 4 | 📋 Planned | - | - | Real-time sync |
@@ -3267,4 +3272,4 @@ For questions about this implementation plan, refer to:
 **Last Updated:** March 2, 2026  
 **Document Version:** 2.3  
 **Author:** Development Team  
-**Next Review:** After completing Phase 2 Step 3 (auth service) — validate register/login/refresh before adding middleware
+**Next Review:** After completing Phase 2 Step 10 (ClaimProjectsPage) — validate guest-to-user project migration flow

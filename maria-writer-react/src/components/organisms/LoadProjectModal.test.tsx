@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LoadProjectModal } from './LoadProjectModal';
 import type { AppState, CloudSyncState } from '../../types';
 
@@ -225,5 +225,150 @@ describe('LoadProjectModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Cloud Book')).toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Delete cloud project
+// ---------------------------------------------------------------------------
+
+describe('LoadProjectModal — delete cloud project', () => {
+  const projects = [
+    { id: 'p1', title: 'Book One', version: '2.3', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'p2', title: 'Book Two', version: '2.3', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  ];
+
+  beforeEach(() => {
+    mockDispatch.mockClear();
+    mockCloudService.listProjects.mockReset();
+    mockCloudService.deleteFromCloud.mockReset();
+    mockState = { ...baseState };
+    mockCloudService.listProjects.mockResolvedValue(projects);
+  });
+
+  const openCloudTab = async () => {
+    render(<LoadProjectModal />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cloud' }));
+    await waitFor(() => expect(screen.getByText('Book One')).toBeInTheDocument());
+  };
+
+  it('renders a delete button for each cloud project row', async () => {
+    await openCloudTab();
+    expect(screen.getByRole('button', { name: 'Delete Book One' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Book Two' })).toBeInTheDocument();
+  });
+
+  it('clicking trash shows the confirmation panel for that project', async () => {
+    await openCloudTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    expect(screen.getByText(/Permanent deletion/i)).toBeInTheDocument();
+    expect(screen.getByText(/I understand this project will be lost forever/i)).toBeInTheDocument();
+  });
+
+  it('clicking trash on a different row switches the panel and resets checkbox', async () => {
+    await openCloudTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    const checkbox = screen.getByRole('checkbox', { name: /I understand/i });
+    fireEvent.click(checkbox); // check it
+    expect(checkbox).toBeChecked();
+
+    // Click trash on the other project
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book Two' }));
+    // Checkbox for the new panel starts unchecked
+    const newCheckbox = screen.getByRole('checkbox', { name: /I understand/i });
+    expect(newCheckbox).not.toBeChecked();
+  });
+
+  it('Cancel hides the confirmation panel', async () => {
+    await openCloudTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    expect(screen.getByText(/Permanent deletion/i)).toBeInTheDocument();
+
+    // The delete-panel Cancel is the first Cancel in the DOM (before the footer Cancel)
+    const cancelBtns = screen.getAllByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelBtns[0]);
+    expect(screen.queryByText(/Permanent deletion/i)).not.toBeInTheDocument();
+  });
+
+  it('Delete Permanently button is disabled until checkbox is checked', async () => {
+    await openCloudTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Permanently' });
+    expect(deleteBtn).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand/i }));
+    expect(deleteBtn).not.toBeDisabled();
+  });
+
+  it('successful delete removes the project from the list', async () => {
+    mockCloudService.deleteFromCloud.mockResolvedValueOnce(true);
+    await openCloudTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Permanently' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Book One')).not.toBeInTheDocument();
+    });
+    expect(mockCloudService.deleteFromCloud).toHaveBeenCalledWith('p1');
+    expect(screen.getByText('Book Two')).toBeInTheDocument();
+  });
+
+  it('clears the radio selection if the deleted project was selected', async () => {
+    mockCloudService.deleteFromCloud.mockResolvedValueOnce(true);
+    await openCloudTab();
+
+    // Select Book One via the radio
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+
+    // Delete Book One
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Permanently' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Book One')).not.toBeInTheDocument();
+    });
+
+    // Clicking Load Selected with no selection shows an inline error
+    const loadBtn = screen.getByRole('button', { name: 'Load Selected' });
+    fireEvent.click(loadBtn);
+    await waitFor(() => {
+      expect(screen.getByText('Select a cloud project first.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows an inline error when delete fails', async () => {
+    mockCloudService.deleteFromCloud.mockRejectedValueOnce(new Error('Server error'));
+    await openCloudTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Permanently' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Server error')).toBeInTheDocument();
+    });
+    // Project still in list
+    expect(screen.getByText('Book One')).toBeInTheDocument();
+  });
+
+  it('disables Refresh List while a delete is in progress', async () => {
+    let resolveDelete!: () => void;
+    mockCloudService.deleteFromCloud.mockReturnValueOnce(
+      new Promise<boolean>((res) => { resolveDelete = () => res(true); }),
+    );
+    await openCloudTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Book One' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Permanently' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Refreshing|Refresh List/i })).toBeDisabled();
+    });
+
+    await act(async () => { resolveDelete(); });
   });
 });

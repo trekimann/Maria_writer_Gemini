@@ -17,6 +17,8 @@ Enable **"Also save to Cloud"** to back up your project to the server database. 
 
 Cloud save is available to **all users** — no account required. Guests save under their Guest ID; signed-in users save under their account profile.
 
+> **Authentication:** When you are signed in, cloud requests are sent with your session credentials so the server links them to your account. Guest requests are identified by your Guest ID instead. Switching between guest and signed-in state is handled automatically — you do not need to change any setting.
+
 > **Encryption:** As of v2.3.0, cloud-saved project data is encrypted at rest using AES-256-GCM with a per-user derived key. Your manuscript text is never stored as plaintext in the database.
 
 #### Cloud Identity
@@ -45,6 +47,10 @@ Creating an account upgrades your cloud save from Guest ID–based to profile-ba
 - Your display name, profile picture, and genre preferences are stored
 
 Use the **Sign in** or **Create Account** links in the app header or in the cloud save notice. Your existing guest projects can be migrated by loading them and re-saving while signed in.
+
+### Signing out
+
+When you sign out, your **Guest ID is automatically rotated** to a new random value. This prevents a new guest session from accidentally seeing or overwriting projects that belonged to your previous signed-in session. Your account projects are unaffected and remain accessible the next time you sign in.
 
 ---
 

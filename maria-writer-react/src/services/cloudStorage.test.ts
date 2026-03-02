@@ -4,11 +4,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// Stable mock reference — vi.hoisted runs before vi.mock factories so the
+// factory can close over it, and the same fn survives vi.resetModules() cycles.
+const mockGetAccessToken = vi.hoisted(() => vi.fn<() => string | null>(() => null));
+
+vi.mock('./authService', () => ({
+  authApiService: { getAccessToken: mockGetAccessToken },
+}));
+
 // We need to reset localStorage and re-import for each test group
 describe('CloudStorageService', () => {
   beforeEach(() => {
     localStorage.clear();
     mockFetch.mockReset();
+    mockGetAccessToken.mockReturnValue(null); // default: guest (no token)
   });
 
   // Dynamically import so each test gets a fresh module with cleared localStorage
@@ -104,7 +113,7 @@ describe('CloudStorageService', () => {
 
       const result = await service.listProjects();
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/projects?guestId=guest-456');
+      expect(mockFetch).toHaveBeenCalledWith('/api/projects?guestId=guest-456', { headers: {} });
       expect(result).toEqual(projects);
     });
 
@@ -134,7 +143,7 @@ describe('CloudStorageService', () => {
 
       const result = await service.loadFromCloud('proj-1');
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/projects/proj-1?guestId=guest-789');
+      expect(mockFetch).toHaveBeenCalledWith('/api/projects/proj-1?guestId=guest-789', { headers: {} });
       expect(result).toEqual(projectData);
     });
 
@@ -164,6 +173,7 @@ describe('CloudStorageService', () => {
 
       expect(mockFetch).toHaveBeenCalledWith('/api/projects/proj-del?guestId=guest-del', {
         method: 'DELETE',
+        headers: {},
       });
       expect(result).toBe(true);
     });
@@ -212,6 +222,143 @@ describe('CloudStorageService', () => {
       });
 
       await expect(service.updateProject('p', 'T', {})).rejects.toThrow('Failed to update project');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // rotateGuestId
+  // ---------------------------------------------------------------------------
+
+  describe('rotateGuestId', () => {
+    it('returns a valid UUID v4', async () => {
+      const service = await getService();
+      const newId = service.rotateGuestId();
+      expect(newId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    });
+
+    it('replaces the previous guest ID in localStorage', async () => {
+      localStorage.setItem('maria_guest_id', 'old-id');
+      const service = await getService();
+      const newId = service.rotateGuestId();
+      expect(localStorage.getItem('maria_guest_id')).toBe(newId);
+      expect(newId).not.toBe('old-id');
+    });
+
+    it('getGuestId returns the new ID after rotation', async () => {
+      const service = await getService();
+      const before = service.getGuestId();
+      const rotated = service.rotateGuestId();
+      const after = service.getGuestId();
+      expect(after).toBe(rotated);
+      expect(after).not.toBe(before);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Authenticated paths (Bearer token present)
+  // ---------------------------------------------------------------------------
+
+  describe('saveToCloud (authenticated)', () => {
+    it('sends Bearer token and omits guestId from body', async () => {
+      mockGetAccessToken.mockReturnValue('mock-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 'proj-auth-1', updatedAt: '2026-03-01T00:00:00Z' }),
+      });
+
+      await service.saveToCloud('Auth Novel', { chapters: [] });
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/projects');
+      expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer mock-token');
+      const body = JSON.parse(init.body as string);
+      expect(body.guestId).toBeUndefined();
+      expect(body.title).toBe('Auth Novel');
+    });
+  });
+
+  describe('listProjects (authenticated)', () => {
+    it('uses no guestId query param and sends Bearer token', async () => {
+      mockGetAccessToken.mockReturnValue('mock-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ projects: [] }),
+      });
+
+      await service.listProjects();
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/projects');
+      expect(url).not.toContain('guestId');
+      expect((init?.headers as Record<string, string>)['Authorization']).toBe('Bearer mock-token');
+    });
+  });
+
+  describe('loadFromCloud (authenticated)', () => {
+    it('uses no guestId query param and sends Bearer token', async () => {
+      mockGetAccessToken.mockReturnValue('mock-token');
+      const service = await getService();
+      const projectData = { meta: { title: 'Auth Book' }, chapters: [] };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ project: { data: projectData } }),
+      });
+
+      const result = await service.loadFromCloud('proj-auth-2');
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/projects/proj-auth-2');
+      expect(url).not.toContain('guestId');
+      expect((init?.headers as Record<string, string>)['Authorization']).toBe('Bearer mock-token');
+      expect(result).toEqual(projectData);
+    });
+  });
+
+  describe('deleteFromCloud (authenticated)', () => {
+    it('uses no guestId query param and sends Bearer token', async () => {
+      mockGetAccessToken.mockReturnValue('mock-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      const result = await service.deleteFromCloud('proj-auth-3');
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/projects/proj-auth-3');
+      expect(url).not.toContain('guestId');
+      expect(init.method).toBe('DELETE');
+      expect((init?.headers as Record<string, string>)['Authorization']).toBe('Bearer mock-token');
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('updateProject (authenticated)', () => {
+    it('uses no guestId query param and sends Bearer token', async () => {
+      mockGetAccessToken.mockReturnValue('mock-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 'proj-auth-4', updatedAt: '2026-03-01T00:00:00Z' }),
+      });
+
+      await service.updateProject('proj-auth-4', 'Updated Title', { chapters: [] });
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/projects/proj-auth-4');
+      expect(url).not.toContain('guestId');
+      expect(init.method).toBe('PUT');
+      expect((init?.headers as Record<string, string>)['Authorization']).toBe('Bearer mock-token');
+      const body = JSON.parse(init.body as string);
+      expect(body.title).toBe('Updated Title');
     });
   });
 });

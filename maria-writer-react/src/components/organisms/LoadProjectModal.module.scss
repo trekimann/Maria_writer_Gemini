@@ -103,13 +103,131 @@
 
 .cloudItem {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   padding: 0.625rem;
   cursor: pointer;
   background: var(--color-surface);
+}
+
+.cloudItemBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.cloudItemDeleteBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+
+  &:hover:not(:disabled) {
+    color: #b91c1c;
+    background: color-mix(in srgb, #b91c1c 10%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.deleteConfirmPanel {
+  border: 1px solid #f87171;
+  border-top: none;
+  border-radius: 0 0 0.375rem 0.375rem;
+  background: color-mix(in srgb, #b91c1c 6%, var(--color-surface));
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.deleteWarning {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.5;
+
+  code {
+    font-size: 0.8em;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+}
+
+.deleteError {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.deleteCheckRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+}
+
+.deleteActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.deleteCancelBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--color-text);
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-secondary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.deleteConfirmBtn {
+  background: #b91c1c;
+  border: 1px solid #b91c1c;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: white;
+  font-weight: 600;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #991b1b;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
 .cloudTitle {

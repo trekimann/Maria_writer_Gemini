@@ -31,6 +31,19 @@ vi.mock('../services/authService', () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Mock cloudStorageService
+// ---------------------------------------------------------------------------
+
+const mockRotateGuestId = vi.fn();
+
+vi.mock('../services/cloudStorage', () => ({
+  cloudStorageService: {
+    rotateGuestId: (...args: unknown[]) => mockRotateGuestId(...args),
+    getGuestId: () => 'mock-guest-id',
+  },
+}));
+
+// ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
@@ -189,6 +202,20 @@ describe('AuthProvider – logout()', () => {
     expect(result.current.isAuthenticated).toBe(false);
     expect(result.current.user).toBeNull();
     expect(result.current.accessToken).toBeNull();
+  });
+
+  it('rotates the guest ID on logout', async () => {
+    const at = fakeJwt();
+    mockRefresh.mockResolvedValueOnce({ user: MOCK_USER, accessToken: at });
+    mockLogout.mockResolvedValueOnce(undefined);
+    mockRotateGuestId.mockClear();
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    await act(async () => { await result.current.logout(); });
+
+    expect(mockRotateGuestId).toHaveBeenCalledTimes(1);
   });
 });
 

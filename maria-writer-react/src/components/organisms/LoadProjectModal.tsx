@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, RefreshCw, Cloud } from 'lucide-react';
+import { Upload, RefreshCw, Cloud, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, initialState } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -104,6 +104,11 @@ export const LoadProjectModal: React.FC = () => {
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [isSavingCurrent, setIsSavingCurrent] = useState(false);
 
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const importedVersion = useMemo(() => {
@@ -142,6 +147,10 @@ export const LoadProjectModal: React.FC = () => {
     setParsedLocalState(null);
     setCloudError(null);
     setSelectedCloudProjectId(null);
+    setDeletingProjectId(null);
+    setDeleteConfirmChecked(false);
+    setIsDeleting(false);
+    setDeleteError(null);
   }, [isOpen]);
 
   useEffect(() => {
@@ -151,6 +160,37 @@ export const LoadProjectModal: React.FC = () => {
 
   const closeModal = () => {
     dispatch({ type: 'CLOSE_MODAL' });
+  };
+
+  const startDeleteProject = (projectId: string) => {
+    setDeletingProjectId(projectId);
+    setDeleteConfirmChecked(false);
+    setDeleteError(null);
+  };
+
+  const cancelDelete = () => {
+    setDeletingProjectId(null);
+    setDeleteConfirmChecked(false);
+    setDeleteError(null);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!deletingProjectId) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await cloudStorageService.deleteFromCloud(deletingProjectId);
+      setCloudProjects((prev) => prev.filter((p) => p.id !== deletingProjectId));
+      if (selectedCloudProjectId === deletingProjectId) {
+        setSelectedCloudProjectId(null);
+      }
+      setDeletingProjectId(null);
+      setDeleteConfirmChecked(false);
+    } catch (error: any) {
+      setDeleteError(error?.message || 'Failed to delete project.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const refreshCloudProjects = async () => {
@@ -314,7 +354,7 @@ export const LoadProjectModal: React.FC = () => {
           <Button
             variant="primary"
             onClick={executeLoad}
-            disabled={isReadingFile || isLoadingCloud || isLoadingProject || isSavingCurrent}
+            disabled={isReadingFile || isLoadingCloud || isLoadingProject || isSavingCurrent || isDeleting}
           >
             {isSavingCurrent
               ? 'Saving current...'
@@ -416,7 +456,7 @@ export const LoadProjectModal: React.FC = () => {
               variant="secondary"
               icon={RefreshCw}
               onClick={refreshCloudProjects}
-              disabled={isLoadingCloud}
+              disabled={isLoadingCloud || isDeleting}
               type="button"
             >
               {isLoadingCloud ? 'Refreshing...' : 'Refresh List'}
@@ -432,20 +472,73 @@ export const LoadProjectModal: React.FC = () => {
           {cloudProjects.length > 0 && (
             <div className={styles.cloudList}>
               {cloudProjects.map((project) => (
-                <label key={project.id} className={styles.cloudItem}>
-                  <input
-                    type="radio"
-                    name="cloudProject"
-                    checked={selectedCloudProjectId === project.id}
-                    onChange={() => setSelectedCloudProjectId(project.id)}
-                  />
-                  <div>
-                    <div className={styles.cloudTitle}>{project.title}</div>
-                    <div className={styles.cloudMeta}>
-                      Updated {new Date(project.updatedAt).toLocaleString()} · v{project.version}
+                <div key={project.id}>
+                  <div className={styles.cloudItem}>
+                    <input
+                      type="radio"
+                      name="cloudProject"
+                      checked={selectedCloudProjectId === project.id}
+                      onChange={() => setSelectedCloudProjectId(project.id)}
+                      disabled={isDeleting}
+                    />
+                    <div className={styles.cloudItemBody}>
+                      <div className={styles.cloudTitle}>{project.title}</div>
+                      <div className={styles.cloudMeta}>
+                        Updated {new Date(project.updatedAt).toLocaleString()} · v{project.version}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      className={styles.cloudItemDeleteBtn}
+                      aria-label={`Delete ${project.title}`}
+                      onClick={() => startDeleteProject(project.id)}
+                      disabled={isDeleting || isLoadingProject || isSavingCurrent}
+                      title="Delete from cloud"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
-                </label>
+
+                  {deletingProjectId === project.id && (
+                    <div className={styles.deleteConfirmPanel}>
+                      <div className={styles.deleteWarning}>
+                        <strong>⚠ Permanent deletion</strong><br />
+                        This project will be <strong>permanently removed from the cloud</strong>. This cannot be undone.
+                        Export a <code>.maria</code> file first if you want a local backup before deleting.
+                      </div>
+                      {deleteError && (
+                        <div className={styles.deleteError}>{deleteError}</div>
+                      )}
+                      <label className={styles.deleteCheckRow}>
+                        <input
+                          type="checkbox"
+                          checked={deleteConfirmChecked}
+                          onChange={(e) => setDeleteConfirmChecked(e.target.checked)}
+                          disabled={isDeleting}
+                        />
+                        <span>I understand this project will be lost forever</span>
+                      </label>
+                      <div className={styles.deleteActions}>
+                        <button
+                          type="button"
+                          className={styles.deleteCancelBtn}
+                          onClick={cancelDelete}
+                          disabled={isDeleting}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.deleteConfirmBtn}
+                          onClick={handleDeleteProject}
+                          disabled={!deleteConfirmChecked || isDeleting}
+                        >
+                          {isDeleting ? 'Deleting…' : 'Delete Permanently'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
