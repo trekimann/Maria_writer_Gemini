@@ -61,19 +61,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const expiresInMs = payload.exp * 1000 - Date.now() - 60_000; // 60s early
       if (expiresInMs > 0) {
         refreshTimerRef.current = setTimeout(async () => {
-          const result = await authApiService.refresh();
-          if (result) {
-            authApiService.setAccessToken(result.accessToken);
-            setState((prev) => ({ ...prev, user: result.user, accessToken: result.accessToken }));
-            scheduleRefresh(result.accessToken);
-          } else {
-            // Refresh failed — session ended
-            setState((prev) => ({
-              ...prev,
-              user: null,
-              accessToken: null,
-              isAuthenticated: false,
-            }));
+          try {
+            const result = await authApiService.refresh();
+            if (result) {
+              authApiService.setAccessToken(result.accessToken);
+              setState((prev) => ({ ...prev, user: result.user, accessToken: result.accessToken }));
+              scheduleRefresh(result.accessToken);
+            } else {
+              // Refresh failed — session ended
+              setState((prev) => ({
+                ...prev,
+                user: null,
+                accessToken: null,
+                isAuthenticated: false,
+              }));
+            }
+          } catch {
+            // Network error during background refresh — keep current session,
+            // will retry on next tab focus or navigation.
           }
         }, expiresInMs);
       }
@@ -84,21 +89,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // On mount: attempt silent refresh to restore session after page reload
   useEffect(() => {
-    authApiService.refresh().then((result) => {
-      if (result) {
-        authApiService.setAccessToken(result.accessToken);
-        setState({
-          user: result.user,
-          accessToken: result.accessToken,
-          isAuthenticated: true,
-          isLoading: false,
-          returnTo: null,
-        });
-        scheduleRefresh(result.accessToken);
-      } else {
+    authApiService
+      .refresh()
+      .then((result) => {
+        if (result) {
+          authApiService.setAccessToken(result.accessToken);
+          setState({
+            user: result.user,
+            accessToken: result.accessToken,
+            isAuthenticated: true,
+            isLoading: false,
+            returnTo: null,
+          });
+          scheduleRefresh(result.accessToken);
+        } else {
+          // No valid session (cookie missing/expired)
+          setState((prev) => ({ ...prev, isLoading: false }));
+        }
+      })
+      .catch(() => {
+        // Network error (e.g. backend not reachable) — treat as logged out
         setState((prev) => ({ ...prev, isLoading: false }));
-      }
-    });
+      });
 
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);

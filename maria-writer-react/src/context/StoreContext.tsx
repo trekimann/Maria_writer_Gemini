@@ -95,7 +95,8 @@ type Action =
   | { type: 'CLOUD_SYNC_START' }
   | { type: 'CLOUD_SYNC_SUCCESS'; payload: { projectId: string; timestamp: string } }
   | { type: 'CLOUD_SYNC_ERROR'; payload: string }
-  | { type: 'SET_PREFILLED_EVENT_DATA'; payload: Partial<Event> | undefined };
+  | { type: 'SET_PREFILLED_EVENT_DATA'; payload: Partial<Event> | undefined }
+  | { type: 'RESET_PROJECT'; payload: { meta: Partial<BookMetadata>; overwriteProjectId?: string } };
 
 // Reducer
 export const reducer = (state: AppState, action: Action): AppState => {
@@ -312,8 +313,42 @@ export const reducer = (state: AppState, action: Action): AppState => {
           syncError: action.payload
         } as any
       };
-    case 'SET_PREFILLED_EVENT_DATA':
-      return { ...state, prefilledEventData: action.payload };
+    case 'RESET_PROJECT': {
+      const freshChapterId = uuidv4();
+      return {
+        ...initialState,
+        // Preserve user preferences
+        saveSettings: state.saveSettings,
+        themeCustomizations: state.themeCustomizations,
+        // Apply new book metadata
+        meta: {
+          ...initialState.meta,
+          ...action.payload.meta,
+          appVersion: APP_VERSION,
+        },
+        chapters: [
+          {
+            id: freshChapterId,
+            title: 'Chapter 1',
+            content: '# Chapter 1\n\nIt was a dark and stormy night...',
+            order: 0,
+            relatedEvents: [],
+            mentionedCharacters: [],
+            date: '',
+          },
+        ],
+        activeChapterId: freshChapterId,
+        // If overwriting a cloud slot, carry its project ID forward so the
+        // next auto-save overwrites that slot; otherwise start fresh.
+        cloudSync: {
+          ...(initialState.cloudSync as any),
+          guestId: state.cloudSync?.guestId ?? null,
+          projectId: action.payload.overwriteProjectId ?? null,
+        },
+        activeModal: 'none',
+        editingItemId: null,
+      };
+    }
     default:
       return state;
   }

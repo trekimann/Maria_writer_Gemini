@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, SaveSettings } from '../types';
 import { saveToLocal } from '../utils/storage';
 import { cloudStorageService } from '../services/cloudStorage';
+import { APP_VERSION } from '../constants/version';
 
 interface UseAutoSaveOptions {
   state: AppState;
@@ -34,7 +35,7 @@ export const useAutoSave = ({
         
         const result = await cloudStorageService.saveToCloud(
           state.meta.title || 'Untitled Novel',
-          state
+          { ...state, meta: { ...state.meta, appVersion: APP_VERSION } }
         );
         
         onCloudSyncSuccess(result.id, new Date().toISOString());

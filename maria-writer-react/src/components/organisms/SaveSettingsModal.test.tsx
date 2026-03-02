@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SaveSettingsModal } from './SaveSettingsModal';
 import type { AppState, CloudSyncState, SaveSettings } from '../../types';
+import { APP_VERSION } from '../../constants/version';
 
 // Mock the dependencies
 vi.mock('../../services/cloudStorage', () => ({
@@ -236,7 +237,10 @@ describe('SaveSettingsModal', () => {
       });
 
       await waitFor(() => {
-        expect(mockCloudService.saveToCloud).toHaveBeenCalledWith('Test Novel', mockState);
+        expect(mockCloudService.saveToCloud).toHaveBeenCalledWith(
+          'Test Novel',
+          { ...mockState, meta: { ...mockState.meta, appVersion: APP_VERSION } }
+        );
       });
 
       await waitFor(() => {

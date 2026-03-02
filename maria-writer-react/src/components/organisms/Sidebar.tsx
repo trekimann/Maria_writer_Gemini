@@ -4,13 +4,28 @@ import { useStore } from '../../context/StoreContext';
 import { ChapterItem } from '../molecules/ChapterItem';
 import { Button } from '../atoms/Button';
 import { HelpButton } from '../atoms/HelpButton';
-import { Plus, PenTool, Book, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, PenTool, Book, ChevronLeft, ChevronRight, MoreVertical, BookPlus } from 'lucide-react';
 import styles from './Sidebar.module.scss';
 
 export const Sidebar: React.FC = () => {
   const { state, dispatch } = useStore();
   const listRef = useRef<HTMLUListElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showManuscriptMenu, setShowManuscriptMenu] = useState(false);
+  const manuscriptMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the manuscript dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (manuscriptMenuRef.current && !manuscriptMenuRef.current.contains(e.target as Node)) {
+        setShowManuscriptMenu(false);
+      }
+    };
+    if (showManuscriptMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showManuscriptMenu]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -89,14 +104,42 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className={styles.nav}>
-        <div 
-          className={`${styles.navItem} ${state.context === 'writer' ? styles.active : ''}`}
-          onClick={() => dispatch({ type: 'SET_CONTEXT_MODE', payload: 'writer' })}
-        >
-          <PenTool size={16} />
-          <span>Manuscript</span>
+        {/* Manuscript nav item with ⋮ menu */}
+        <div className={styles.navItemWrapper} ref={manuscriptMenuRef}>
+          <div
+            className={`${styles.navItem} ${state.context === 'writer' ? styles.active : ''}`}
+            onClick={() => dispatch({ type: 'SET_CONTEXT_MODE', payload: 'writer' })}
+          >
+            <PenTool size={16} />
+            <span>Manuscript</span>
+            <button
+              className={styles.navItemMenu}
+              title="Manuscript options"
+              aria-label="Manuscript options"
+              onClick={e => { e.stopPropagation(); setShowManuscriptMenu(v => !v); }}
+              data-testid="manuscript-menu-btn"
+            >
+              <MoreVertical size={14} />
+            </button>
+          </div>
+          {showManuscriptMenu && (
+            <div className={styles.navDropdown} data-testid="manuscript-dropdown">
+              <button
+                className={styles.navDropdownItem}
+                onClick={() => {
+                  setShowManuscriptMenu(false);
+                  dispatch({ type: 'OPEN_MODAL', payload: { type: 'new-book' } });
+                }}
+                data-testid="new-book-menu-item"
+              >
+                <BookPlus size={14} />
+                <span>New Book</span>
+              </button>
+            </div>
+          )}
         </div>
-        <div 
+
+        <div
           className={`${styles.navItem} ${state.context === 'codex' ? styles.active : ''}`}
           onClick={() => dispatch({ type: 'SET_CONTEXT_MODE', payload: 'codex' })}
         >

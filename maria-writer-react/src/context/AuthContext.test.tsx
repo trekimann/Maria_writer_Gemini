@@ -93,6 +93,18 @@ describe('AuthProvider – initial state', () => {
     expect(result.current.user).toEqual(MOCK_USER);
     expect(result.current.accessToken).toBe(at);
   });
+
+  it('sets isLoading=false and isAuthenticated=false when refresh throws (e.g. backend down)', async () => {
+    // Simulate a network error — fetch itself throws rather than returning a non-OK response
+    mockRefresh.mockRejectedValueOnce(new Error('Network Error'));
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    // Should not stay stuck on isLoading=true forever
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.user).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

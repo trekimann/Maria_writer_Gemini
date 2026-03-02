@@ -6,6 +6,7 @@ import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { cloudStorageService } from '../../services/cloudStorage';
 import { saveToLocal, exportFile } from '../../utils/storage';
+import { APP_VERSION } from '../../constants/version';
 import styles from './SaveSettingsModal.module.scss';
 
 interface SaveSettingsModalProps {
@@ -59,7 +60,7 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
         
         const result = await cloudStorageService.saveToCloud(
           state.meta.title || 'Untitled Novel',
-          state
+          { ...state, meta: { ...state.meta, appVersion: APP_VERSION } }
         );
         
         dispatch({
