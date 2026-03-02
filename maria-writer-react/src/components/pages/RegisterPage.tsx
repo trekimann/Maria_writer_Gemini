@@ -162,7 +162,7 @@ export const RegisterPage: React.FC = () => {
             />
             <div className={styles.avatarHint}>
               <span className={styles.avatarHintTitle}>Profile Picture</span>
-              <span className={styles.avatarHintSub}>Optional � JPG, PNG, GIF � cropped to square</span>
+              <span className={styles.avatarHintSub}>Optional · JPG, PNG, GIF · cropped to square</span>
             </div>
           </div>
 
@@ -200,7 +200,7 @@ export const RegisterPage: React.FC = () => {
               disabled={isSubmitting}
               placeholder="your_unique_handle"
             />
-            <p className={styles.hint}>Letters, numbers, underscores, hyphens � 3�64 chars � must be unique</p>
+            <p className={styles.hint}>Letters, numbers, underscores, hyphens · 3–64 chars · must be unique</p>
           </div>
 
           {/* ── Email ── */}
@@ -252,7 +252,7 @@ export const RegisterPage: React.FC = () => {
                 )}
               </div>
             )}
-            <p className={styles.hint}>Min 8 chars � at least 1 uppercase � 1 special character</p>
+            <p className={styles.hint}>Min 8 chars · at least 1 uppercase · 1 special character</p>
           </div>
 
           {/* ── Confirm Password ── */}
@@ -293,7 +293,7 @@ export const RegisterPage: React.FC = () => {
               disabled={isSubmitting}
               placeholder="Fantasy, Sci-Fi, Romance, Thriller"
             />
-            <p className={styles.hint}>Comma-separated � helps personalise your experience</p>
+            <p className={styles.hint}>Comma-separated · helps personalise your experience</p>
           </div>
 
           <Button type="submit" variant="primary" size="lg" className={styles.submitButton}
