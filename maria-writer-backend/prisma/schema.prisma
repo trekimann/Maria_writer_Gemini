@@ -20,21 +20,30 @@ enum UserRole {
   ADMIN
 }
 
+enum UserTier {
+  DEFAULT
+}
+
 // --- Models ---
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  displayName  String?   @map("display_name") @db.VarChar(255)
-  role         UserRole  @default(USER)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  lastLogin    DateTime? @map("last_login")
+  id             String    @id @default(uuid())
+  email          String    @unique @db.VarChar(255)
+  username       String    @unique @db.VarChar(64)
+  passwordHash   String    @map("password_hash") @db.VarChar(255)
+  displayName    String?   @map("display_name") @db.VarChar(255)
+  role           UserRole  @default(USER)
+  tier           UserTier  @default(DEFAULT)
+  genreTags      String?   @map("genre_tags") @db.VarChar(1000)
+  profilePicture String?   @map("profile_picture") @db.LongText
+  createdAt      DateTime  @default(now()) @map("created_at")
+  lastLogin      DateTime? @map("last_login")
 
   projects      Project[]
   refreshTokens RefreshToken[]
 
   @@index([email])
+  @@index([username])
   @@map("users")
 }
 

@@ -24,11 +24,17 @@ If the file has no app version metadata (older exports), it will be assigned the
 
 ## Cloud
 
-Load a project previously saved to the cloud by this browser/device.
+Load a project previously saved to the cloud.
+
+> **Guest or signed-in — both work.** If you are using the app as a guest, your projects are identified by your **Guest ID**. If you are signed in to an account, your projects are linked to your profile. Either way, click **Refresh List** to see what's saved.
 
 1. Click **Refresh List** to fetch your saved cloud projects.
 2. Select a project from the list — each entry shows the project title, last updated time, and saved app version.
 3. Click **Load Selected** to load it.
+
+### Guest upsell notice
+
+If you are not signed in, a notice will appear above the project list encouraging you to create a free account or sign in. Your projects are **not blocked** — this is just a reminder that linking projects to an account keeps them safe if your browser data is ever cleared.
 
 ### Before loading
 
@@ -43,8 +49,21 @@ If the selected cloud project was saved with an older app version that introduce
 ## Tips
 
 - To transfer a project to another device, export it as a `.maria` file from **Save Settings → Export**, then use **Load Project → Local File** on the other device.
-- Cloud projects are tied to your **Guest ID** (visible in Save Settings). If your Guest ID changes (e.g. after clearing browser data), previously saved cloud projects will not appear in the list.
+- **Signed-in users:** your cloud projects follow your account — accessible from any device after logging in.
+- **Guests:** cloud projects are tied to your **Guest ID** (visible in Save Settings). If your Guest ID changes (e.g. after clearing browser data), previously saved cloud projects will not appear in the list. Creating an account protects against this.
 - Loading a project does not delete the previous project from the cloud — it only replaces what is currently loaded in the editor.
+
+---
+
+## Accounts
+
+Cloud projects saved as a guest are stored under your Guest ID. When you **create an account or sign in**, future saves are linked to your profile instead, which means:
+
+- Your projects are accessible from any browser or device after signing in
+- You no longer risk losing access if browser data is cleared
+- Your projects are still encrypted at rest
+
+Use the **Sign in** or **Create a free account** links in the Cloud tab notice, or navigate to them from the main menu.
 
 ---
 
@@ -56,4 +75,4 @@ If you have cleared your browser data, switched to a new device, or otherwise lo
 
 Once applied, open **Load Project → Cloud** and click **Refresh List** to see the projects saved under that ID.
 
-> **Keep your Guest ID safe.** It is the only way to identify your cloud-saved projects until account login is available. Note it down from **Save Settings** while your projects are still accessible.
+> **Tip:** Create an account to avoid this entirely — signed-in users access their projects by logging in, not by tracking a Guest ID.

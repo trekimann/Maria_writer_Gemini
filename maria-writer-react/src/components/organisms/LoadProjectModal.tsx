@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, RefreshCw, Cloud } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useStore, initialState } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../molecules/Modal';
 import { Button } from '../atoms/Button';
 import { cloudStorageService, CloudProject } from '../../services/cloudStorage';
@@ -84,6 +86,8 @@ function buildLoadedState(raw: any, currentState: AppState, cloudProjectId?: str
 
 export const LoadProjectModal: React.FC = () => {
   const { state, dispatch } = useStore();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const isOpen = state.activeModal === 'load-project';
 
   const [activeTab, setActiveTab] = useState<LoadTab>('local');
@@ -387,6 +391,26 @@ export const LoadProjectModal: React.FC = () => {
 
       {activeTab === 'cloud' && (
         <div className={styles.panel}>
+          {!isAuthenticated && (
+            <div className={styles.upsellBanner}>
+              <span>
+                Saving as guest.{' '}
+                <button
+                  type="button"
+                  className={styles.authLink}
+                  onClick={() => { closeModal(); navigate('/register'); }}
+                >Create a free account</button>
+                {' or '}
+                <button
+                  type="button"
+                  className={styles.authLink}
+                  onClick={() => { closeModal(); navigate('/login'); }}
+                >sign in</button>
+                {' for unlimited projects & no data loss.'}
+              </span>
+            </div>
+          )}
+
           <div className={styles.cloudHeader}>
             <Button
               variant="secondary"
@@ -402,7 +426,7 @@ export const LoadProjectModal: React.FC = () => {
           {cloudError && <div className={styles.error}>{cloudError}</div>}
 
           {!cloudError && !isLoadingCloud && cloudProjects.length === 0 && (
-            <div className={styles.info}>No cloud projects found for this user.</div>
+            <div className={styles.info}>No cloud projects found.</div>
           )}
 
           {cloudProjects.length > 0 && (

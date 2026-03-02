@@ -19,6 +19,8 @@ services:
       - PORT=3000
       - CORS_ORIGIN=${CORS_ORIGIN}
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
       - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]

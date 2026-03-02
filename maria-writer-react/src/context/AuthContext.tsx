@@ -1,0 +1,164 @@
+/**
+ * AuthContext — Phase 2
+ *
+ * Manages authentication state for the whole app.
+ * On mount, attempts a silent refresh so logged-in users don't see the
+ * login screen after a page reload.
+ */
+
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { authApiService, AuthUser, LoginPayload, RegisterPayload } from '../services/authService';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface AuthState {
+  user: AuthUser | null;
+  accessToken: string | null;
+  isAuthenticated: boolean;
+  /** true while the initial silent refresh is in-flight */
+  isLoading: boolean;
+  /** Destination to return to after login (modal type or path) */
+  returnTo: string | null;
+}
+
+interface AuthContextType extends AuthState {
+  login: (payload: LoginPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<{ isNewUser: boolean }>;
+  logout: () => Promise<void>;
+  setReturnTo: (destination: string | null) => void;
+}
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    accessToken: null,
+    isAuthenticated: false,
+    isLoading: true,
+    returnTo: null,
+  });
+
+  // Timer reference for proactive token refresh (fires 60s before expiry)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleRefresh = useCallback((accessToken: string) => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+
+    try {
+      // Decode exp from JWT payload (base64 middle segment)
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const expiresInMs = payload.exp * 1000 - Date.now() - 60_000; // 60s early
+      if (expiresInMs > 0) {
+        refreshTimerRef.current = setTimeout(async () => {
+          const result = await authApiService.refresh();
+          if (result) {
+            authApiService.setAccessToken(result.accessToken);
+            setState((prev) => ({ ...prev, user: result.user, accessToken: result.accessToken }));
+            scheduleRefresh(result.accessToken);
+          } else {
+            // Refresh failed — session ended
+            setState((prev) => ({
+              ...prev,
+              user: null,
+              accessToken: null,
+              isAuthenticated: false,
+            }));
+          }
+        }, expiresInMs);
+      }
+    } catch {
+      // Malformed token — ignore, will expire naturally
+    }
+  }, []);
+
+  // On mount: attempt silent refresh to restore session after page reload
+  useEffect(() => {
+    authApiService.refresh().then((result) => {
+      if (result) {
+        authApiService.setAccessToken(result.accessToken);
+        setState({
+          user: result.user,
+          accessToken: result.accessToken,
+          isAuthenticated: true,
+          isLoading: false,
+          returnTo: null,
+        });
+        scheduleRefresh(result.accessToken);
+      } else {
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+    });
+
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, [scheduleRefresh]);
+
+  const login = useCallback(async (payload: LoginPayload) => {
+    const result = await authApiService.login(payload);
+    authApiService.setAccessToken(result.accessToken);
+    setState((prev) => ({
+      ...prev,
+      user: result.user,
+      accessToken: result.accessToken,
+      isAuthenticated: true,
+    }));
+    scheduleRefresh(result.accessToken);
+  }, [scheduleRefresh]);
+
+  const register = useCallback(async (payload: RegisterPayload) => {
+    const result = await authApiService.register(payload);
+    authApiService.setAccessToken(result.accessToken);
+    setState((prev) => ({
+      ...prev,
+      user: result.user,
+      accessToken: result.accessToken,
+      isAuthenticated: true,
+    }));
+    scheduleRefresh(result.accessToken);
+    return { isNewUser: true };
+  }, [scheduleRefresh]);
+
+  const logout = useCallback(async () => {
+    await authApiService.logout();
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    setState({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      isLoading: false,
+      returnTo: null,
+    });
+  }, []);
+
+  const setReturnTo = useCallback((destination: string | null) => {
+    setState((prev) => ({ ...prev, returnTo: destination }));
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ ...state, login, register, logout, setReturnTo }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
+export function useAuth(): AuthContextType {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+}

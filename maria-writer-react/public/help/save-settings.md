@@ -15,17 +15,36 @@ Enable **"Also save to Cloud"** to back up your project to the server database. 
 - Happen automatically if any auto-save option is enabled
 - Allow you to load the project from any device via **Load Project → Cloud**
 
+Cloud save is available to **all users** — no account required. Guests save under their Guest ID; signed-in users save under their account profile.
+
 > **Encryption:** As of v2.3.0, cloud-saved project data is encrypted at rest using AES-256-GCM with a per-user derived key. Your manuscript text is never stored as plaintext in the database.
 
 #### Cloud Identity
 
-When cloud save is enabled, you'll see:
+When cloud save is enabled, the panel shows your current identity:
 
-| Field | Description |
-|-------|-------------|
-| **Guest ID** | Your unique anonymous identifier — generated on first use and stored in your browser. This is used as your encryption key identity. Keep a note of it if you want to recover your project on a new device before accounts are available. |
-| **Last Synced** | When the project was last successfully saved to the cloud. |
-| **Project ID** | A short preview of the cloud record's ID (for debugging purposes). |
+| State | Shown | Description |
+|-------|-------|-------------|
+| **Guest** | Guest ID | Your unique anonymous identifier — generated on first use and stored in your browser. Projects are tied to this ID. |
+| **Signed in** | Linked to your profile | Projects are stored against your account — accessible from any device after logging in. |
+| **Both** | Last Synced | When the project was last successfully saved to the cloud. |
+| **Both** | Project ID | A short preview of the cloud record ID (for debugging). |
+
+#### Guest upsell notice
+
+If cloud save is enabled and you are not signed in, a notice will appear below the checkbox with links to **Create a free account** or **Sign in**. Your saves are not blocked — this is a reminder that an account provides permanent, device-independent access to your projects.
+
+---
+
+## Account & Sign In
+
+Creating an account upgrades your cloud save from Guest ID–based to profile-based:
+
+- Access your projects from **any browser or device** by signing in
+- No risk of losing projects if browser data is cleared
+- Your display name, profile picture, and genre preferences are stored
+
+Use the **Sign in** or **Create Account** links in the app header or in the cloud save notice. Your existing guest projects can be migrated by loading them and re-saving while signed in.
 
 ---
 

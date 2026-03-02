@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { X, Save, Cloud, Download } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { HelpButton } from '../atoms/HelpButton';
 import { useStore } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { cloudStorageService } from '../../services/cloudStorage';
 import { saveToLocal, exportFile } from '../../utils/storage';
 import styles from './SaveSettingsModal.module.scss';
@@ -13,6 +15,8 @@ interface SaveSettingsModalProps {
 
 export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, onClose }) => {
   const { state, dispatch } = useStore();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [isManualSaving, setIsManualSaving] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [exportFileName, setExportFileName] = useState('');
@@ -133,11 +137,34 @@ export const SaveSettingsModal: React.FC<SaveSettingsModalProps> = ({ isOpen, on
               />
               <span>Also save to Cloud (MariaDB) when clicking Save Now</span>
             </label>
+
+            {!isAuthenticated && settings.saveToCloud && (
+              <div className={styles.upsellBanner}>
+                <span>
+                  Saving as guest.{' '}
+                  <button
+                    type="button"
+                    className={styles.authLink}
+                    onClick={() => { onClose(); navigate('/register'); }}
+                  >Create a free account</button>
+                  {' or '}
+                  <button
+                    type="button"
+                    className={styles.authLink}
+                    onClick={() => { onClose(); navigate('/login'); }}
+                  >sign in</button>
+                  {' to keep your work permanently linked to your account.'}
+                </span>
+              </div>
+            )}
           </div>
 
           {settings.saveToCloud && (
             <div className={styles.cloudInfo}>
-              <p><strong>Guest ID:</strong> {cloudStorageService.getGuestId()}</p>
+              {isAuthenticated
+                ? <p><strong>Account:</strong> Linked to your profile</p>
+                : <p><strong>Guest ID:</strong> {cloudStorageService.getGuestId()}</p>
+              }
               <p><strong>Last Synced:</strong> {formatLastSynced(cloudSync.lastSyncedAt)}</p>
               {cloudSync.projectId && (
                 <p><strong>Project ID:</strong> {cloudSync.projectId.substring(0, 8)}...</p>

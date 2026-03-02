@@ -18,7 +18,7 @@ function isEncryptionEnabled(): boolean {
 }
 
 /**
- * Encrypts AppState JSON for the given key ID (guestId or future userId).
+ * Encrypts AppState JSON for the given key ID (guestId or userId).
  * Returns Prisma-ready column values.
  * Falls back to plaintext storage when DATA_ENCRYPTION_KEY is not configured.
  */
@@ -90,6 +90,112 @@ export interface AppState {
 }
 
 class ProjectService {
+  // ---------------------------------------------------------------------------
+  // Authenticated (userId) paths
+  // ---------------------------------------------------------------------------
+
+  async createOrUpdateProjectByUser(userId: string, title: string, data: AppState) {
+    try {
+      const storage = buildStoragePayload(data, userId);
+      const appVersion = data.meta?.appVersion || '2.2.0';
+
+      const existing = await prisma.project.findFirst({
+        where: { ownerId: userId, title },
+      });
+
+      if (existing) {
+        const updated = await prisma.project.update({
+          where: { id: existing.id },
+          data: { ...storage, version: appVersion, updatedAt: new Date() },
+        });
+        logger.info(`Project updated (user): ${updated.id}`);
+        return { project: updated, isNew: false };
+      } else {
+        const created = await prisma.project.create({
+          data: { ownerId: userId, title, ...storage, version: appVersion },
+        });
+        logger.info(`Project created (user): ${created.id}`);
+        return { project: created, isNew: true };
+      }
+    } catch (error) {
+      logger.error('Error creating/updating project (user):', error);
+      throw error;
+    }
+  }
+
+  async listProjectsByUser(userId: string) {
+    try {
+      return await prisma.project.findMany({
+        where: { ownerId: userId },
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true, title: true, version: true, createdAt: true, updatedAt: true },
+      });
+    } catch (error) {
+      logger.error('Error listing projects (user):', error);
+      throw error;
+    }
+  }
+
+  async getProjectByUser(id: string, userId: string) {
+    try {
+      const project = await prisma.project.findFirst({ where: { id, ownerId: userId } });
+      if (!project) return null;
+      return restoreData(project, userId);
+    } catch (error) {
+      logger.error('Error getting project (user):', error);
+      throw error;
+    }
+  }
+
+  async updateProjectByUser(id: string, userId: string, updates: { title?: string; data: AppState }) {
+    try {
+      const existing = await prisma.project.findFirst({
+        where: { id, ownerId: userId },
+        select: { id: true },
+      });
+      if (!existing) throw new Error('Record to update not found');
+
+      const storage = buildStoragePayload(updates.data, userId);
+      const appVersion = updates.data.meta?.appVersion || '2.2.0';
+
+      const updated = await prisma.project.update({
+        where: { id: existing.id },
+        data: {
+          ...(updates.title && { title: updates.title }),
+          ...storage,
+          version: appVersion,
+          updatedAt: new Date(),
+        },
+      });
+      logger.info(`Project updated (user): ${updated.id}`);
+      return updated;
+    } catch (error) {
+      logger.error('Error updating project (user):', error);
+      throw error;
+    }
+  }
+
+  async deleteProjectByUser(id: string, userId: string) {
+    try {
+      const existing = await prisma.project.findFirst({
+        where: { id, ownerId: userId },
+        select: { id: true },
+      });
+      if (!existing) throw new Error('Record to delete does not exist');
+
+      await prisma.project.delete({ where: { id: existing.id } });
+      logger.info(`Project deleted (user): ${id}`);
+      return true;
+    } catch (error) {
+      logger.error('Error deleting project (user):', error);
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Guest (guestId) paths — unchanged from Phase 1
+  // ---------------------------------------------------------------------------
+
   async createOrUpdateProject(guestId: string, title: string, data: AppState) {
     try {
       const storage = buildStoragePayload(data, guestId);

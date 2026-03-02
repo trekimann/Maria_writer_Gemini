@@ -3,11 +3,12 @@ import { projectController } from '../controllers/projectController';
 import { validate, validateQuery } from '../middleware/validator';
 import { CreateProjectSchema, UpdateProjectSchema, ProjectQuerySchema } from '../utils/validation';
 import { apiLimiter, writeLimiter } from '../middleware/rateLimit';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-// Apply rate limiting
-router.use(apiLimiter);
+// Apply rate limiting and dual-mode auth on all project routes
+router.use(apiLimiter, requireAuth);
 
 // GET /api/projects?guestId={uuid} - List all projects for a guest
 router.get('/', validateQuery(ProjectQuerySchema), projectController.listProjects);

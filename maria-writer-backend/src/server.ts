@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -7,6 +8,8 @@ import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import healthRoutes from './routes/health';
 import projectRoutes from './routes/projects';
+import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
@@ -28,6 +31,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // Request logging
 app.use((req, res, next) => {
@@ -37,6 +41,8 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/projects', projectRoutes);
 
 // WebSocket connection (Phase 4 - placeholder for now)

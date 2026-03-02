@@ -1567,6 +1567,153 @@ Add to `docker-compose.yml`, `docker-compose.unraid.yml`, and `.env.example`.
 
 ---
 
+### 2.17 E2E Test Suite (Playwright)
+
+**Goal:** Automated browser tests that cover critical user journeys — auth flows, navigation routing, and cloud save/load — before the codebase grows more UI complexity.  
+**Status:** 📋 Planned — Not yet started  
+**Prerequisites:** Login/Register pages live (✅ done), BrowserRouter wired (✅ done)  
+**Estimated effort:** 2–3 days initial suite; ongoing additions per feature
+
+#### 2.17.1 Why Playwright (not Selenium)
+
+| | Playwright | Selenium |
+|-|------------|----------|
+| Install & config | Single `npm install` + `npx playwright install` | WebDriver setup per browser |
+| Speed | Runs in the same process; fast by default | Separate WebDriver process |
+| Auto-wait | Built-in smart waiting | Manual `WebDriverWait` |
+| TypeScript support | First-class | Via wrappers (WebDriverIO etc.) |
+| Test isolation | Each test gets a fresh browser context | Shared session by default |
+| Verdict | ✅ Use this | ❌ Extra infra for no benefit |
+
+#### 2.17.2 Scope — Initial Suite
+
+**Auth flows (highest priority — new navigation, easy to break):**
+
+| Test | Description |
+|------|-------------|
+| Guest → editor loads | Visiting `/` while logged out opens the editor without redirect |
+| `/login` page renders | Email, password, remember-me, and "Continue as Guest" are all present |
+| `/register` page renders | Display name, email, password strength meter, confirm field |
+| Successful login → redirect | Login with valid credentials → lands on `/` |
+| Failed login shows error | Wrong password → inline error banner appears |
+| Successful register → redirect | Register new account → lands on `/` |
+| Register with mismatched passwords | Confirm-password mismatch → button stays disabled and field turns red |
+| Logout | Clicking logout clears session; revisiting protected cloud feature shows auth banner |
+| Silent refresh on reload | Log in, reload page, user stays authenticated (silent refresh cycle) |
+| Navigate to `/login` while logged in | Should redirect to `/` (optional UX nicety) |
+
+**Modal auth banners:**
+
+| Test | Description |
+|------|-------------|
+| Save modal — guest sees lock banner | Open Save Settings as guest → cloud checkbox is replaced by auth banner |
+| Load modal — guest sees lock banner | Open Load modal → Cloud tab shows auth banner, not project list |
+| Banner "Sign in" link navigates | Clicking "Sign in" in a banner closes modal and goes to `/login` |
+
+**Cloud project CRUD (requires auth — add after Step 7 prod milestone):**
+
+| Test | Description |
+|------|-------------|
+| Save to cloud | Log in, enable cloud save, Save Now → project appears in Load modal Cloud tab |
+| Load from cloud | Select cloud project → editor loads with its data |
+| Overwrite existing cloud project | Save twice → only one entry updated, not duplicated |
+
+#### 2.17.3 File Structure
+
+```
+maria-writer-react/
+  e2e/
+    auth/
+      login.spec.ts
+      register.spec.ts
+      logout.spec.ts
+      silent-refresh.spec.ts
+    modals/
+      save-modal-auth-banner.spec.ts
+      load-modal-auth-banner.spec.ts
+    cloud/
+      cloud-save-load.spec.ts       ← gated on Step 7 milestone
+    fixtures/
+      auth.ts                       ← login helper, createUser helper
+      testUser.ts                   ← shared test credentials
+  playwright.config.ts
+```
+
+#### 2.17.4 playwright.config.ts (draft)
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  retries: process.env.CI ? 2 : 0,
+  reporter: 'html',
+  use: {
+    baseURL: 'http://localhost:5173',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+  ],
+  // Spin up Vite dev server automatically before running tests
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    cwd: './',
+  },
+});
+```
+
+#### 2.17.5 Auth Fixture (shared helper)
+
+```typescript
+// e2e/fixtures/auth.ts
+import { Page } from '@playwright/test';
+
+export async function loginAs(page: Page, email: string, password: string) {
+  await page.goto('/login');
+  await page.fill('#email', email);
+  await page.fill('#password', password);
+  await page.click('button[type=submit]');
+  await page.waitForURL('/');
+}
+```
+
+#### 2.17.6 CI Integration
+
+Add a GitHub Actions job (or extend the existing one if present):
+
+```yaml
+- name: Install Playwright browsers
+  run: npx playwright install --with-deps
+  working-directory: maria-writer-react
+
+- name: Run E2E tests
+  run: npx playwright test
+  working-directory: maria-writer-react
+  env:
+    VITE_API_URL: http://localhost:3000
+```
+
+The backend test database should be seeded with a known test user before the E2E run.
+
+#### 2.17.7 Implementation Steps
+
+1. `npm install -D @playwright/test` in `maria-writer-react`
+2. Run `npx playwright install chromium firefox` to download browsers
+3. Create `playwright.config.ts`
+4. Write auth fixtures (`loginAs`, `registerAs`)
+5. Implement the 10 auth-flow specs listed in §2.17.2
+6. Implement modal auth-banner specs
+7. Add `"test:e2e": "playwright test"` script to `package.json`
+8. Wire into CI
+9. Cloud CRUD specs added after Step 7 prod milestone
+
+---
+
 ## Phase 2.5: Image Storage & Media Management
 
 **Goal:** Move images out of the JSON data blob into dedicated storage; enable images throughout the application  
