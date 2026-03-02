@@ -24,6 +24,10 @@ vi.mock('lucide-react', () => ({
   Plus: () => <div data-testid="plus-icon" />,
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: false, user: null })),
+}));
+
 // Setup safe defaults for window.getSelection
 beforeEach(() => {
   window.getSelection = vi.fn().mockReturnValue({

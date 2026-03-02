@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Camera, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -33,7 +33,7 @@ function getPasswordStrength(pwd: string): PasswordStrength {
 }
 
 // ---------------------------------------------------------------------------
-// Avatar helper â€” resize to 256Ã—256 JPEG via canvas
+// Avatar helper — resize to 256×256 JPEG via canvas
 // ---------------------------------------------------------------------------
 
 function resizeToDataUrl(file: File): Promise<string> {
@@ -128,7 +128,7 @@ export const RegisterPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
 
-          {/* â”€â”€ Avatar â”€â”€ */}
+          {/* ── Avatar ── */}
           <div className={styles.avatarRow}>
             <div
               className={styles.avatarPreview}
@@ -160,11 +160,11 @@ export const RegisterPage: React.FC = () => {
             />
             <div className={styles.avatarHint}>
               <span className={styles.avatarHintTitle}>Profile Picture</span>
-              <span className={styles.avatarHintSub}>Optional · JPG, PNG, GIF · cropped to square</span>
+              <span className={styles.avatarHintSub}>Optional � JPG, PNG, GIF � cropped to square</span>
             </div>
           </div>
 
-          {/* â”€â”€ Display Name â”€â”€ */}
+          {/* ── Display Name ── */}
           <div className={styles.field}>
             <label htmlFor="displayName" className={styles.label}>
               Display Name <span className={styles.optional}>(optional)</span>
@@ -183,7 +183,7 @@ export const RegisterPage: React.FC = () => {
             />
           </div>
 
-          {/* â”€â”€ Username â”€â”€ */}
+          {/* ── Username ── */}
           <div className={styles.field}>
             <label htmlFor="username" className={styles.label}>Username</label>
             <input
@@ -198,10 +198,10 @@ export const RegisterPage: React.FC = () => {
               disabled={isSubmitting}
               placeholder="your_unique_handle"
             />
-            <p className={styles.hint}>Letters, numbers, underscores, hyphens · 3–64 chars · must be unique</p>
+            <p className={styles.hint}>Letters, numbers, underscores, hyphens � 3�64 chars � must be unique</p>
           </div>
 
-          {/* â”€â”€ Email â”€â”€ */}
+          {/* ── Email ── */}
           <div className={styles.field}>
             <label htmlFor="email" className={styles.label}>Email</label>
             <input
@@ -216,7 +216,7 @@ export const RegisterPage: React.FC = () => {
             />
           </div>
 
-          {/* â”€â”€ Password â”€â”€ */}
+          {/* ── Password ── */}
           <div className={styles.field}>
             <label htmlFor="password" className={styles.label}>Password</label>
             <div className={styles.passwordWrapper}>
@@ -230,7 +230,9 @@ export const RegisterPage: React.FC = () => {
                 required
                 disabled={isSubmitting}
               />
-              <button type="button" className={styles.eyeToggle} onClick={() => setShowPassword(v => !v)}
+              <button type="button" className={styles.eyeToggle}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setShowPassword(v => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'} tabIndex={-1}>
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -248,10 +250,10 @@ export const RegisterPage: React.FC = () => {
                 )}
               </div>
             )}
-            <p className={styles.hint}>Min 8 chars · at least 1 uppercase · 1 special character</p>
+            <p className={styles.hint}>Min 8 chars � at least 1 uppercase � 1 special character</p>
           </div>
 
-          {/* â”€â”€ Confirm Password â”€â”€ */}
+          {/* ── Confirm Password ── */}
           <div className={styles.field}>
             <label htmlFor="confirmPassword" className={styles.label}>Confirm Password</label>
             <div className={styles.passwordWrapper}>
@@ -265,15 +267,17 @@ export const RegisterPage: React.FC = () => {
                 required
                 disabled={isSubmitting}
               />
-              <button type="button" className={styles.eyeToggle} onClick={() => setShowConfirm(v => !v)}
+              <button type="button" className={styles.eyeToggle}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setShowConfirm(v => !v)}
                 aria-label={showConfirm ? 'Hide password' : 'Show password'} tabIndex={-1}>
                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            {passwordMismatch && <p className={styles.fieldError}>Passwords don't match</p>}
+            {passwordMismatch && <p className={styles.fieldError} role="alert">Passwords don't match</p>}
           </div>
 
-          {/* â”€â”€ Genre Tags â”€â”€ */}
+          {/* ── Genre Tags ── */}
           <div className={styles.field}>
             <label htmlFor="genreTags" className={styles.label}>
               Favourite Genres <span className={styles.optional}>(optional)</span>
@@ -287,12 +291,12 @@ export const RegisterPage: React.FC = () => {
               disabled={isSubmitting}
               placeholder="Fantasy, Sci-Fi, Romance, Thriller"
             />
-            <p className={styles.hint}>Comma-separated · helps personalise your experience</p>
+            <p className={styles.hint}>Comma-separated � helps personalise your experience</p>
           </div>
 
           <Button type="submit" variant="primary" size="lg" className={styles.submitButton}
             disabled={isSubmitting || passwordMismatch}>
-            {isSubmitting ? 'Creating accountâ€¦' : 'Create Account'}
+            {isSubmitting ? 'Creating account…' : 'Create Account'}
           </Button>
         </form>
 
@@ -300,7 +304,7 @@ export const RegisterPage: React.FC = () => {
 
         <div className={styles.links}>
           <p>Already have an account?{' '}
-            <Link to="/login" className={styles.link}>Sign in →</Link>
+            <Link to="/login" className={styles.link}>Sign in ?</Link>
           </p>
           <p>
             <button type="button" className={styles.guestLink} onClick={() => navigate('/')}>

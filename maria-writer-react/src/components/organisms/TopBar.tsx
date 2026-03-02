@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
 import { ThemeToggle } from '../atoms/ThemeToggle';
-import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette, Cloud } from 'lucide-react';
+import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette, Cloud, MoreVertical } from 'lucide-react';
 import { HelpButton } from '../atoms/HelpButton';
+import { UserProfileModal } from './UserProfileModal';
 import styles from './TopBar.module.scss';
 
 export const TopBar: React.FC = () => {
   const { state, dispatch } = useStore();
   const [showHeadingMenu, setShowHeadingMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const headingMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,11 +54,20 @@ export const TopBar: React.FC = () => {
   };
 
   return (
+    <>
     <header className={styles.topbar}>
       <div className={styles.left}>
         <div className={styles.logo}>
           <Feather className={styles.logoIcon} />
           <span>Maria Writer</span>
+          <button
+            className={styles.profileMenuBtn}
+            onClick={() => setShowProfile(v => !v)}
+            title="Account"
+            aria-label="Open account menu"
+          >
+            <MoreVertical size={16} />
+          </button>
         </div>
         <div className={styles.divider}></div>
         
@@ -142,5 +153,10 @@ export const TopBar: React.FC = () => {
         </div>
       </div>
     </header>
+
+    {showProfile && (
+      <UserProfileModal onClose={() => setShowProfile(false)} />
+    )}
+    </>
   );
 };

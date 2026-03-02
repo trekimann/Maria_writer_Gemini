@@ -48,6 +48,15 @@ vi.mock('../atoms/ThemeToggle', () => ({
   ThemeToggle: () => <button data-testid="theme-toggle">Theme</button>,
 }));
 
+// Mock UserProfileModal
+vi.mock('./UserProfileModal', () => ({
+  UserProfileModal: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="user-profile-modal">
+      <button onClick={onClose}>Close Profile</button>
+    </div>
+  ),
+}));
+
 describe('TopBar', () => {
   beforeEach(() => {
     mockDispatch.mockClear();
@@ -179,6 +188,36 @@ describe('TopBar', () => {
       expect(screen.getByText('Heading 2')).toBeInTheDocument();
       expect(screen.getByText('Heading 3')).toBeInTheDocument();
       expect(screen.getByText('Paragraph')).toBeInTheDocument();
+    });
+  });
+
+  describe('profile menu button', () => {
+    it('renders the account menu button', () => {
+      render(<TopBar />);
+      expect(screen.getByLabelText('Open account menu')).toBeInTheDocument();
+    });
+
+    it('shows UserProfileModal when account button is clicked', () => {
+      render(<TopBar />);
+      expect(screen.queryByTestId('user-profile-modal')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText('Open account menu'));
+      expect(screen.getByTestId('user-profile-modal')).toBeInTheDocument();
+    });
+
+    it('hides UserProfileModal when account button is clicked again (toggle)', () => {
+      render(<TopBar />);
+      fireEvent.click(screen.getByLabelText('Open account menu'));
+      expect(screen.getByTestId('user-profile-modal')).toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText('Open account menu'));
+      expect(screen.queryByTestId('user-profile-modal')).not.toBeInTheDocument();
+    });
+
+    it('hides UserProfileModal when modal calls onClose', () => {
+      render(<TopBar />);
+      fireEvent.click(screen.getByLabelText('Open account menu'));
+      expect(screen.getByTestId('user-profile-modal')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Close Profile' }));
+      expect(screen.queryByTestId('user-profile-modal')).not.toBeInTheDocument();
     });
   });
 });

@@ -70,6 +70,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="button"
                 className={styles.eyeToggle}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 tabIndex={-1}

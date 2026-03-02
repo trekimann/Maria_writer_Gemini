@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "maria-writer-backend",
   "version": "1.0.0",
   "description": "Backend API for Maria Writer with MariaDB persistence",

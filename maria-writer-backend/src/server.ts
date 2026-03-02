@@ -57,10 +57,12 @@ io.on('connection', (socket) => {
 // Error handling
 app.use(errorHandler);
 
-// Start server
-httpServer.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV}`);
-});
+// Start server — skip in test environment (integration tests import `app` directly)
+if (process.env.NODE_ENV !== 'test') {
+  httpServer.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV}`);
+  });
+}
 
 export { app, io };

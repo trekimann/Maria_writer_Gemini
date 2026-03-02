@@ -4,7 +4,8 @@ import {
   filterCharactersByQuery,
   detectMentionInTextarea,
   getTextareaMentionPosition,
-  findCharactersInPlainText
+  findCharactersInPlainText,
+  autoTagCharacters
 } from './editorMentions';
 import { Character } from '../types';
 
@@ -147,6 +148,123 @@ describe('editorMentions', () => {
       const result = findCharactersInPlainText(text, mockCharacters);
       expect(result).toContain('c1');
       expect(result).not.toContain('c2'); // bobby != Bob
+    });
+
+    it('detects possessive with straight apostrophe: "Alice\'s"', () => {
+      const text = "Alice's hat was red.";
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c1');
+    });
+
+    it('detects possessive with smart/curly apostrophe: \u201cAlice\u2019s\u201d', () => {
+      const text = 'Alice\u2019s hat was red.';
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c1');
+    });
+
+    it('detects possessive at the start of text', () => {
+      const text = "Bob's horse galloped away.";
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c2');
+    });
+
+    it('detects possessive mid-sentence with smart apostrophe', () => {
+      const text = 'He borrowed Bob\u2019s sword.';
+      const result = findCharactersInPlainText(text, mockCharacters);
+      expect(result).toContain('c2');
+    });
+  });
+
+  describe('autoTagCharacters', () => {
+    it('wraps a bare character name in a mention span', () => {
+      const html = '<p>Alice walked in.</p>';
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toContain('data-character-id="c1"');
+      expect(result).toContain('class="character-mention"');
+    });
+
+    it('wraps possessive with straight apostrophe: "Alice\'s"', () => {
+      const html = "<p>Alice's hat was red.</p>";
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toContain('data-character-id="c1"');
+      // The span should include the full possessive text
+      expect(result).toContain("Alice's");
+    });
+
+    it('wraps possessive with smart/curly apostrophe: \u201cAlice\u2019s\u201d', () => {
+      const html = '<p>Alice\u2019s hat was red.</p>';
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toContain('data-character-id="c1"');
+      expect(result).toContain('Alice\u2019s');
+    });
+
+    it('wraps possessive at the start of the paragraph', () => {
+      const html = "<p>Bob's horse galloped away.</p>";
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toContain('data-character-id="c2"');
+    });
+
+    it('wraps possessive with smart apostrophe mid-sentence', () => {
+      const html = '<p>He borrowed Bob\u2019s sword.</p>';
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toContain('data-character-id="c2"');
+    });
+
+    it('does not double-wrap an already-tagged mention', () => {
+      const html = '<p><span class="character-mention" data-character-id="c1" data-character-name="Alice" contenteditable="false">Alice</span> walked in.</p>';
+      const result = autoTagCharacters(html, mockCharacters);
+      // Exactly one mention span for Alice — no double-wrapping
+      const matches = result.match(/data-character-id="c1"/g);
+      expect(matches).toHaveLength(1);
+    });
+
+    it('does not match partial word substrings (Bob inside Bobby)', () => {
+      const html = '<p>Bobby ran past.</p>';
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).not.toContain('data-character-id="c2"');
+    });
+
+    it('handles multiple characters in the same paragraph', () => {
+      const html = "<p>Alice met Bob's cat.</p>";
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toContain('data-character-id="c1"');
+      expect(result).toContain('data-character-id="c2"');
+    });
+
+    it('handles nicknames with possessive', () => {
+      const charWithNick: Character[] = [{
+        id: 'cn1',
+        name: 'Nicholas',
+        description: '',
+        color: '',
+        picture: '',
+        tags: [],
+        nicknames: ['Nick'],
+      }];
+      const html = "<p>Nick's sword was sharp.</p>";
+      const result = autoTagCharacters(html, charWithNick);
+      expect(result).toContain('data-character-id="cn1"');
+    });
+
+    it('handles nicknames with smart apostrophe possessive', () => {
+      const charWithNick: Character[] = [{
+        id: 'cn1',
+        name: 'Nicholas',
+        description: '',
+        color: '',
+        picture: '',
+        tags: [],
+        nicknames: ['Nick'],
+      }];
+      const html = '<p>Nick\u2019s sword was sharp.</p>';
+      const result = autoTagCharacters(html, charWithNick);
+      expect(result).toContain('data-character-id="cn1"');
+    });
+
+    it('returns unchanged HTML when no characters match', () => {
+      const html = '<p>The sky was blue.</p>';
+      const result = autoTagCharacters(html, mockCharacters);
+      expect(result).toBe(html);
     });
   });
 });

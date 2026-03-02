@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './CommentModal.module.scss';
+import { useAuth } from '../../context/AuthContext';
 
 interface CommentModalProps {
   isOpen: boolean;
@@ -20,18 +21,26 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   onSave,
   selectedText
 }) => {
+  const { user, isAuthenticated } = useAuth();
   const [author, setAuthor] = useState('');
   const [text, setText] = useState('');
   const [isSuggestion, setIsSuggestion] = useState(false);
   const [replacementText, setReplacementText] = useState('');
 
+  // Derive profile name: prefer displayName, fall back to username
+  const profileName = isAuthenticated && user
+    ? (user.displayName ?? user.username)
+    : null;
+
   useEffect(() => {
-    // Load saved author name from localStorage
-    const savedAuthor = localStorage.getItem('maria-comment-author');
-    if (savedAuthor) {
-      setAuthor(savedAuthor);
+    if (profileName) {
+      setAuthor(profileName);
+    } else {
+      // Guest: restore previously typed name from localStorage
+      const savedAuthor = localStorage.getItem('maria-comment-author');
+      if (savedAuthor) setAuthor(savedAuthor);
     }
-  }, []);
+  }, [profileName]);
 
   const handleSave = () => {
     if (!author.trim() || !text.trim()) {
@@ -44,8 +53,10 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       return;
     }
 
-    // Save author name to localStorage
-    localStorage.setItem('maria-comment-author', author);
+    // Only persist the name for guests — authenticated users get it from profile
+    if (!isAuthenticated) {
+      localStorage.setItem('maria-comment-author', author);
+    }
 
     onSave({
       author: author.trim(),
@@ -72,6 +83,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     <div className={styles.overlay} onClick={onClose}>
       <div
         className={styles.modal}
+        data-testid="comment-modal"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -86,7 +98,12 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="author">Your Name</label>
+          <label htmlFor="author">
+            Your Name
+            {isAuthenticated && (
+              <span className={styles.profileHint}> · from your profile</span>
+            )}
+          </label>
           <input
             id="author"
             type="text"
@@ -94,6 +111,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="Enter your name"
             autoFocus
+            readOnly={isAuthenticated}
           />
         </div>
 

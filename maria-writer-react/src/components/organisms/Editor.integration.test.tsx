@@ -14,6 +14,10 @@ vi.mock('lucide-react', () => ({
   FileText: () => <div data-testid="file-text-icon" />,
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: false, user: null })),
+}));
+
 beforeEach(() => {
   window.getSelection = vi.fn().mockReturnValue({
     rangeCount: 0,

@@ -19,6 +19,27 @@ vi.mock('vis-network/standalone', () => {
   };
 });
 
+vi.mock('./context/AuthContext', () => ({
+  AuthProvider: ({ children }: { children: any }) => children,
+  useAuth: vi.fn(() => ({
+    isAuthenticated: false,
+    user: null,
+    isLoading: false,
+    accessToken: null,
+    returnTo: null,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+    setReturnTo: vi.fn(),
+  })),
+}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 // Mock SortableJS
 vi.mock('sortablejs', () => ({
   default: {

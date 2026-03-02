@@ -12,8 +12,9 @@ export function findCharactersInPlainText(text: string, characters: Character[])
       if (!name || !name.trim()) return false;
       // Escape special regex chars
       const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // match word boundaries or common punctuation
-      const regex = new RegExp(`(^|\\s|[.,;!?("'\u201C\u201D-])${escaped}($|\\s|[.,;!?)"'\u201C\u201D-]s?)`, 'i');
+      // match word boundaries or common punctuation;
+      // also allow possessive 's (straight or smart apostrophe) to follow the name
+      const regex = new RegExp(`(^|\\s|[.,;!?("'\u2018\u2019\u201C\u201D-])${escaped}($|\\s|[.,;!?)"'\u2018\u2019\u201C\u201D-]('s|\u2019s|s)?)`, 'i');
       return regex.test(text);
     });
     
@@ -186,9 +187,9 @@ export function autoTagCharacters(htmlContent: string, characters: Character[]):
       const t = rawText.trim();
       // Add literal name/nickname
       terms.push({ text: t, char: c });
-      // Add possessive form (e.g. "Nick's")
+      // Add possessive forms — straight apostrophe and smart/curly (U+2019) apostrophe
       terms.push({ text: t + "'s", char: c });
-      // We could add smart quote '’s' if strictly needed, but standard 's is usually enough for input.
+      terms.push({ text: t + '\u2019s', char: c });
     };
 
     addTerm(c.name);
@@ -237,8 +238,9 @@ export function autoTagCharacters(htmlContent: string, characters: Character[]):
                 const nextChar = (i + term.text.length < text.length) ? text[i + term.text.length] : ' ';
                 
                 // Punctuation characters that indicate a word boundary
-                const isWordStart = /[\s\.,;:!?("'\u201C\u201D-]/.test(prevChar);
-                const isWordEnd = /[\s\.,;:!?)"'\u201C\u201D-]/.test(nextChar);
+                // Include straight and smart/curly single quotes (U+2018, U+2019)
+                const isWordStart = /[\s\.,;:!?("'\u2018\u2019\u201C\u201D-]/.test(prevChar);
+                const isWordEnd = /[\s\.,;:!?)"'\u2018\u2019\u201C\u201D-]/.test(nextChar);
 
                 if (isWordStart && isWordEnd) {
                     bestMatch = term;

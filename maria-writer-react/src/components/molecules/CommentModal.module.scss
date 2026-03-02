@@ -107,12 +107,29 @@
       border-color: #a855f7;
       box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
     }
+
+    &:read-only {
+      background-color: #f9fafb;
+      color: #6b7280;
+      cursor: default;
+
+      &:focus {
+        border-color: #d1d5db;
+        box-shadow: none;
+      }
+    }
   }
 
   textarea {
     resize: vertical;
     min-height: 3rem;
   }
+}
+
+.profileHint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #9ca3af;
 }
 
 .checkboxGroup {

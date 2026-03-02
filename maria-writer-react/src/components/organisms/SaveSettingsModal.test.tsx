@@ -58,6 +58,20 @@ vi.mock('./SaveSettingsModal.module.scss', () => ({
   default: new Proxy({}, { get: (_target, prop) => String(prop) }),
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: false, user: null })),
+}));
+
+vi.mock('../atoms/HelpButton', () => ({
+  HelpButton: () => null,
+}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 describe('SaveSettingsModal', () => {
   beforeEach(() => {
     mockDispatch.mockClear();

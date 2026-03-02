@@ -27,6 +27,16 @@ vi.mock('../../services/cloudStorage', () => ({
   },
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: false, user: null })),
+}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 // Import the mock after vi.mock so we can reference it in tests
 import { cloudStorageService } from '../../services/cloudStorage';
 const mockCloudService = vi.mocked(cloudStorageService);
@@ -147,13 +157,13 @@ describe('LoadProjectModal', () => {
     render(<LoadProjectModal />);
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = createValidStateFile('2.1.0', 'legacy.maria');
+    const file = createValidStateFile('2.2.0', 'legacy.maria');
 
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
       expect(
-        screen.getByText(/metadata version model changed between app versions 2.1.0 and 2.2.0/i),
+        screen.getByText(/saved before cloud encryption was enabled/i),
       ).toBeInTheDocument();
     });
   });
@@ -171,7 +181,7 @@ describe('LoadProjectModal', () => {
     });
 
     expect(
-      screen.queryByText(/metadata version model changed between app versions 2.1.0 and 2.2.0/i),
+      screen.queryByText(/saved before cloud encryption was enabled/i),
     ).not.toBeInTheDocument();
   });
 
@@ -183,7 +193,7 @@ describe('LoadProjectModal', () => {
     render(<LoadProjectModal />);
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = createValidStateFile('2.1.0', 'flagged.maria');
+    const file = createValidStateFile('2.2.0', 'flagged.maria');
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
