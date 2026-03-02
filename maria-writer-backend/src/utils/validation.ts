@@ -75,6 +75,15 @@ export const UpdateProjectSchema = z.object({
   data: AppStateSchema,
 });
 
+export const ClaimPreviewQuerySchema = z.object({
+  guestId: z.string().uuid('guestId must be a valid UUID'),
+});
+
+export const ClaimProjectsSchema = z.object({
+  guestId: z.string().uuid('guestId must be a valid UUID'),
+  projectIds: z.array(z.string().uuid()).min(1, 'At least one projectId is required'),
+});
+
 export const ProjectQuerySchema = z.object({
   // guestId optional — authenticated requests don't send it
   guestId: z.string().uuid().optional(),

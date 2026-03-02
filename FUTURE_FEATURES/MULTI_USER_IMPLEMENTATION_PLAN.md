@@ -1,6 +1,6 @@
 ﻿# Multi-User Implementation Plan for Maria Writer
 
-**Status:** Phase 2 In Progress (Steps 1–2 + 2a Complete; UI enhancements shipped)  
+**Status:** Phase 2 In Progress (Steps 1–11 Complete; next: Step 12 E2E manual testing)  
 **Last Updated:** March 2, 2026  
 **Decision:** JWT Authentication + WebSockets + MariaDB
 
@@ -393,7 +393,7 @@ describe('Cloud Storage Integration', () => {
 - ✅ Implemented: Help system — `HelpButton` added to `SaveSettingsModal` and `LoadProjectModal`. New help files: `save-settings.md`, `load-project.md`. z-index layering fixed so `HelpModal` renders above custom modals (z-index 1100 > 1000).
 - ✅ Implemented: Guest ID recovery — `GuestRecoveryModal` accessible only via a link inside `load-project.md`. Validates UUID format before applying. `cloudStorageService.setGuestId()` persists to localStorage. Browser `window.confirm` shown before replacing current ID.
 - 🟡 Partial: WebSocket server initialized but only connection/disconnection placeholder logic.
-- 🚧 In Progress: Phase 2 auth — Steps 1–9 complete. Next: Step 10 (ClaimProjectsPage + guest migration API).
+- ✅ Implemented: Phase 2 auth Steps 1–11 complete. Guest → user migration modal (`ClaimProjectsModal.tsx`), re-encryption under userId key, guestId unlinked after claim, pre-login guest state snapshot saved/restored on logout. All 650 frontend tests passing.
 - ❌ Not started: Phase 3 collaboration permissions/invites, Phase 4 real-time sync events
 
 **Phase 1 is fully complete.** All user-facing deliverables are shipped. Remaining 🟡 items (test coverage, docs) are polish, not blockers for Phase 2.
@@ -411,7 +411,7 @@ describe('Cloud Storage Integration', () => {
 ## Phase 2: Authentication & User Management
 
 **Goal:** Replace guest IDs with real user accounts  
-**Status:**  In Progress  Steps 1–9 complete; next: Step 10 (ClaimProjectsPage + guest migration)    
+**Status:** In Progress — Steps 1–11 complete; next: Step 12 (end-to-end manual testing in Docker)
 **Prerequisites:** Phase 1 complete (cloud save working with guestId) ✅  
 **Estimated effort:** 3–4 weeks
 
@@ -1295,13 +1295,26 @@ Step 2a: Wire encryption into guest cloud save/load (lazy migration)        ~ 0.
            project is selected; appVersion preserved in metadata until next save
          - DATA_ENCRYPTION_KEY added to docker-compose.yml, docker-compose.unraid.yml,
            and .env.example
-Step 3:  Auth service (register, login, token generation, rotation)         ~ 2 days
-Step 4:  Auth routes + requireAuth middleware (dual-mode: Bearer OR guestId) ~ 1 day
-Step 5:  Frontend AuthContext + authService                                 ~ 1 day
-Step 6:  LoginPage + RegisterPage components + styles                       ~ 2 days
+Step 3:  Auth service (register, login, token generation, rotation)         ~ 2 days   ✅ DONE (Mar 2, 2026)
+         - authService.ts: register, login, refreshToken, logout handlers
+         - bcrypt cost 12, JWT access (15 min) + refresh (7 day) pair
+         - Refresh token rotation with replay detection (family-based revocation)
+Step 4:  Auth routes + requireAuth middleware (dual-mode: Bearer OR guestId) ~ 1 day   ✅ DONE (Mar 2, 2026)
+         - src/middleware/auth.ts: requireAuth (strict Bearer), optionalAuth (dual-mode)
+         - src/routes/auth.ts: register, login, refresh, logout, me endpoints
+         - requireAuthenticated alias exported for project routes
+Step 5:  Frontend AuthContext + authService                                 ~ 1 day    ✅ DONE (Mar 2, 2026)
+         - AuthContext.tsx: user, accessToken, isAuthenticated, isLoading state
+         - Silent refresh on mount + proactive timer-based rotation
+         - returnTo / setReturnTo for post-login redirect
+         - hasPendingMigration, pendingMigrationGuestId, clearMigration (Step 10)
+Step 6:  LoginPage + RegisterPage components + styles                       ~ 2 days   ✅ DONE (Mar 2, 2026)
          - Includes login prompt banners in SaveSettingsModal + LoadProjectModal
            for unauthenticated users (see §2.7.5)
-Step 7:  Wire up React Router, update App.tsx routing                       ~ 0.5 day
+         - Password strength meter, confirm field, inline error messages
+         - saveGuestSnapshot() called before login/register to enable logout restore
+Step 7:  Wire up React Router, update App.tsx routing                       ~ 0.5 day  ✅ DONE (Mar 2, 2026)
+         - BrowserRouter added; /login, /register routes; ProtectedRoute guard
 
          ╔══════════════════════════════════════════════════════════╗
          ║  🚀 PROD-DEPLOYABLE MILESTONE after Step 7              ║
@@ -1310,17 +1323,34 @@ Step 7:  Wire up React Router, update App.tsx routing                       ~ 0.
          ║  Cloud save/load still uses guestId flow until Step 9.  ║
          ╚══════════════════════════════════════════════════════════╝
 
-Step 8:  Backend tests for auth (unit + integration)                        ~ 1.5 days
+Step 8:  Backend tests for auth (unit + integration)                        ~ 1.5 days ✅ DONE (Mar 2, 2026)
+         - Unit: authController, authService, encryptionService, adminController
+         - Integration: health, projects endpoints
 Step 9:  Update cloudStorage.ts to use Bearer tokens (authenticated users)  ~ 0.5 day  ✅ DONE (Mar 2, 2026)
          - authApiService imported into CloudStorageService; authHeaders() + guestParam() helpers
          - All 5 methods (save, list, load, delete, update) send Bearer token when authed, guestId when guest
          - rotateGuestId() added; called in AuthContext.logout() so post-logout session cannot see previous user's projects
          - Delete UI added to LoadProjectModal cloud tab: trash icon per row, inline confirm panel with
            red warning, checkbox gate, and Delete Permanently button; Refresh List + Load Selected disabled during delete
-Step 10: ClaimProjectsPage + guest migration API                            ~ 1 day
-Step 11: Frontend tests                                                     ~ 1.5 days
-Step 12: End-to-end manual testing in Docker                                ~ 1 day
-Step 13: Update SETUP_GUIDE.md + README                                     ~ 0.5 day
+Step 10: ClaimProjectsPage + guest migration API                            ~ 1 day    ✅ DONE (Mar 2, 2026)
+         - Backend: GET /api/projects/claim-preview + POST /api/projects/claim
+           (both requireAuthenticated; placed before /:id to avoid param clash)
+         - projectService: previewGuestProjectsForClaim (metadata only) +
+           claimGuestProjects (decrypt with guestId key → re-encrypt with userId key
+           → UPDATE SET owner_id=userId, guest_id=NULL)
+         - Frontend: ClaimProjectsModal.tsx — auto-opens on hasPendingMigration,
+           silently dismisses if no guest projects found, checklist all pre-selected,
+           migrate/skip/success/error phases
+         - saveGuestSnapshot() / loadGuestSnapshot() in storage.ts (key: maria_guest_snapshot)
+         - logout() in UserProfileModal restores snapshot state via LOAD_STATE dispatch
+         - AuthContext: hasPendingMigration + pendingMigrationGuestId + clearMigration
+Step 11: Frontend tests                                                     ~ 1.5 days ✅ DONE (Mar 2, 2026)
+         - 650/650 tests passing across 42 test files
+         - New tests: storage.test.ts (7), cloudStorage.test.ts (4),
+           AuthContext.test.tsx (migration fields + clearMigration),
+           UserProfileModal.test.tsx (snapshot restore), ClaimProjectsModal.test.tsx (15)
+Step 12: End-to-end manual testing in Docker                                ~ 1 day    ⬜ TODO
+Step 13: Update SETUP_GUIDE.md + README                                     ~ 0.5 day  ⬜ TODO
                                                                     Total: ~14 days
 ```
 

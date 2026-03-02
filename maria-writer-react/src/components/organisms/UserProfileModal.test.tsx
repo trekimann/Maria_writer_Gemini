@@ -16,6 +16,12 @@ import { UserProfileModal } from './UserProfileModal';
 const mockLogout   = vi.fn();
 const mockNavigate = vi.fn();
 const mockOnClose  = vi.fn();
+const mockDispatch = vi.fn();
+
+const MOCK_GUEST_SNAPSHOT = {
+  meta: { title: 'Guest Novel', author: 'Guest', description: '', tags: [] },
+  chapters: [],
+};
 
 const MOCK_USER = {
   id: 'u-1',
@@ -32,6 +38,31 @@ const GUEST_ID = 'guest-uuid-1234';
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: vi.fn(),
+}));
+
+vi.mock('../../context/StoreContext', () => ({
+  useStore: vi.fn(() => ({ dispatch: mockDispatch, state: {} })),
+  initialState: {
+    meta: { title: '', author: '', description: '', tags: [], bookVersion: '1.0.0', bookRevision: '0', appVersion: '2.3.0' },
+    chapters: [],
+    activeChapterId: null,
+    characters: [],
+    events: [],
+    relationships: [],
+    comments: {},
+    timeline: {},
+    viewMode: 'write',
+    context: 'writer',
+    activeCodexTab: 'timeline',
+    activeModal: 'none',
+    editingItemId: null,
+    viewingItemId: null,
+    themeCustomizations: [],
+  },
+}));
+
+vi.mock('../../utils/storage', () => ({
+  loadGuestSnapshot: vi.fn(() => MOCK_GUEST_SNAPSHOT),
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -68,10 +99,13 @@ function setAuthState(overrides: Partial<ReturnType<typeof useAuth>>) {
     isLoading: false,
     accessToken: null,
     returnTo: null,
+    hasPendingMigration: false,
+    pendingMigrationGuestId: null,
     login: vi.fn(),
     register: vi.fn(),
     logout: mockLogout,
     setReturnTo: vi.fn(),
+    clearMigration: vi.fn(),
     ...overrides,
   });
 }
@@ -214,6 +248,17 @@ describe('UserProfileModal – logout', () => {
 
     await waitFor(() => expect(mockLogout).toHaveBeenCalled());
     expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it('dispatches LOAD_STATE with guest snapshot after logout', async () => {
+    mockLogout.mockResolvedValueOnce(undefined);
+    render(<UserProfileModal onClose={mockOnClose} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
+
+    await waitFor(() => expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'LOAD_STATE' }),
+    ));
   });
 
   it('disables Sign Out button while logging out', async () => {

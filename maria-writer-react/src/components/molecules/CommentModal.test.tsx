@@ -39,6 +39,9 @@ function setAuthState(overrides: Partial<ReturnType<typeof useAuth>>) {
     register: vi.fn(),
     logout: vi.fn(),
     setReturnTo: vi.fn(),
+    hasPendingMigration: false,
+    pendingMigrationGuestId: null,
+    clearMigration: vi.fn(),
     ...overrides,
   });
 }

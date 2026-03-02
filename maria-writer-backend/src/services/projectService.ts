@@ -193,6 +193,66 @@ class ProjectService {
   }
 
   // ---------------------------------------------------------------------------
+  // Guest migration — claim guest projects into a user account
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the list of unclaimed guest projects available for migration.
+   * Only returns metadata (no encrypted data) so the user can preview before
+   * choosing which projects to claim.
+   */
+  async previewGuestProjectsForClaim(guestId: string) {
+    try {
+      return await prisma.project.findMany({
+        where: { guestId, ownerId: null },
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true, title: true, version: true, createdAt: true, updatedAt: true },
+      });
+    } catch (error) {
+      logger.error('Error previewing guest projects for claim:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Claims the specified guest projects into the user's account.
+   *
+   * For each project:
+   *   1. Decrypt the ciphertext using the guestId-derived key.
+   *   2. Re-encrypt using the userId-derived key.
+   *   3. Set ownerId = userId, guestId = null.
+   *
+   * Only projects that still have ownerId = null and match the provided
+   * guestId are eligible — already-owned or non-existent IDs are silently
+   * skipped so a duplicate request is always safe.
+   */
+  async claimGuestProjects(guestId: string, userId: string, projectIds: string[]) {
+    try {
+      const rows = await prisma.project.findMany({
+        where: { id: { in: projectIds }, guestId, ownerId: null },
+      });
+
+      let claimed = 0;
+      for (const row of rows) {
+        const restored = restoreData(row, guestId);
+        const storage = buildStoragePayload(restored.data as AppState, userId);
+
+        await prisma.project.update({
+          where: { id: row.id },
+          data: { ownerId: userId, guestId: null, ...storage, updatedAt: new Date() },
+        });
+        claimed++;
+      }
+
+      logger.info(`Claimed ${claimed} project(s) from guest ${guestId} to user ${userId}`);
+      return { claimed };
+    } catch (error) {
+      logger.error('Error claiming guest projects:', error);
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Guest (guestId) paths — unchanged from Phase 1
   // ---------------------------------------------------------------------------
 

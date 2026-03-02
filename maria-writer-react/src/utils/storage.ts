@@ -95,3 +95,54 @@ export const exportFile = (state: AppState, fileName?: string) => {
   downloadAnchorNode.remove();
 };
 
+// ---------------------------------------------------------------------------
+// Guest session snapshot — preserved at login, restored at logout
+// ---------------------------------------------------------------------------
+
+const GUEST_SNAPSHOT_KEY = 'maria_guest_snapshot';
+
+/**
+ * Copies the current local-storage project state into a separate snapshot
+ * slot. Call this just before the user logs in or registers so the pre-login
+ * (guest) state can be restored when they later sign out.
+ *
+ * Safe to call even if no local state exists yet — it's a no-op in that case.
+ */
+export const saveGuestSnapshot = (): void => {
+  const current = localStorage.getItem(STORAGE_KEY);
+  if (current) {
+    localStorage.setItem(GUEST_SNAPSHOT_KEY, current);
+  }
+};
+
+/**
+ * Reads the guest snapshot saved by saveGuestSnapshot().
+ * Applies the same defensive normalisation as loadFromLocal() so the
+ * returned object is always safe to spread onto initialState.
+ *
+ * @returns A partial AppState if a snapshot exists, null otherwise.
+ */
+export const loadGuestSnapshot = (): Partial<AppState> | null => {
+  const saved = localStorage.getItem(GUEST_SNAPSHOT_KEY);
+  if (!saved) return null;
+  try {
+    const parsed = JSON.parse(saved);
+
+    if (!parsed.relationships) parsed.relationships = [];
+    if (parsed.characters) {
+      parsed.characters = parsed.characters.map((c: any) => ({
+        ...c,
+        lifeEvents: c.lifeEvents || [],
+      }));
+    }
+    if (!parsed.themeCustomizations) parsed.themeCustomizations = [];
+    if (!parsed.meta) parsed.meta = {};
+    if (!parsed.meta.bookVersion) parsed.meta.bookVersion = parsed.meta.version || '1.0.0';
+    if (!parsed.meta.bookRevision) parsed.meta.bookRevision = '0';
+    if (!parsed.meta.appVersion) parsed.meta.appVersion = APP_VERSION;
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};

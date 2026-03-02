@@ -79,9 +79,24 @@ Cloud projects saved as a guest are stored under your Guest ID. When you **creat
 
 Use the **Sign in** or **Create a free account** links in the Cloud tab notice, or navigate to them from the main menu.
 
+### Migrating guest projects after sign-in
+
+When you log in or create an account, Maria Writer checks whether your previous guest session had any cloud projects saved. If it did, an **Import Guest Projects** dialog appears automatically.
+
+1. The dialog lists your guest projects — all checked by default.
+2. Uncheck any projects you want to leave behind.
+3. Click **Migrate N projects** to move the selected ones to your account.
+   - Each project is re-encrypted under your account key.
+   - The link between those projects and your Guest ID is permanently removed — they can no longer be accessed as a guest.
+4. Click **Skip for now** to dismiss the dialog without migrating. You can always do it manually by loading a guest project and re-saving it while signed in.
+
+> **Why migrate?** Guest projects are tied to a Guest ID stored in your browser. If that ID is ever lost (browser reset, new device, etc.) you lose access. Migrated projects follow your account login instead.
+
 ### Signing out
 
-When you sign out, your **Guest ID is automatically rotated** to a new value. This ensures that a subsequent guest session cannot access the projects that were saved under the previous account session. If you sign back in, your account projects are still safely linked to your profile.
+When you sign out, your **Guest ID is automatically rotated** to a new random value. This prevents a new guest session from accidentally seeing or overwriting projects that belonged to your previous signed-in session. Your account projects are unaffected and remain accessible the next time you sign in.
+
+After signing out, the editor restores the project state from your **last guest session** (the project that was open before you logged in). If no prior guest state exists, a blank new book is shown.
 
 ---
 

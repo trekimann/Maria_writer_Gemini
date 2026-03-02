@@ -361,4 +361,80 @@ describe('CloudStorageService', () => {
       expect(body.title).toBe('Updated Title');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // previewGuestProjects
+  // ---------------------------------------------------------------------------
+
+  describe('previewGuestProjects', () => {
+    it('GETs claim-preview with the supplied guestId and sends Bearer token', async () => {
+      mockGetAccessToken.mockReturnValue('user-token');
+      const service = await getService();
+      const fakeProjects = [{ id: 'g1', title: 'Guest Book', version: '2.3.0', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' }];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ projects: fakeProjects }),
+      });
+
+      const result = await service.previewGuestProjects('old-guest-uuid');
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/api/projects/claim-preview');
+      expect(url).toContain('guestId=old-guest-uuid');
+      expect((init?.headers as Record<string, string>)['Authorization']).toBe('Bearer user-token');
+      expect(result).toEqual(fakeProjects);
+    });
+
+    it('throws on non-ok response', async () => {
+      mockGetAccessToken.mockReturnValue('user-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Unauthorized' }),
+      });
+
+      await expect(service.previewGuestProjects('bad-id')).rejects.toThrow('Unauthorized');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // claimGuestProjects
+  // ---------------------------------------------------------------------------
+
+  describe('claimGuestProjects', () => {
+    it('POSTs to /api/projects/claim with guestId and projectIds in body', async () => {
+      mockGetAccessToken.mockReturnValue('user-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ claimed: 2 }),
+      });
+
+      const result = await service.claimGuestProjects('old-guest-uuid', ['p1', 'p2']);
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/projects/claim');
+      expect(init.method).toBe('POST');
+      expect((init?.headers as Record<string, string>)['Authorization']).toBe('Bearer user-token');
+      const body = JSON.parse(init.body as string);
+      expect(body.guestId).toBe('old-guest-uuid');
+      expect(body.projectIds).toEqual(['p1', 'p2']);
+      expect(result).toEqual({ claimed: 2 });
+    });
+
+    it('throws on non-ok response', async () => {
+      mockGetAccessToken.mockReturnValue('user-token');
+      const service = await getService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Migration failed' }),
+      });
+
+      await expect(service.claimGuestProjects('bad-id', ['p1'])).rejects.toThrow('Migration failed');
+    });
+  });
 });

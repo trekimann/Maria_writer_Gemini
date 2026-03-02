@@ -12,7 +12,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Copy, Check, LogIn, UserPlus, LogOut, User, Shield, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useStore, initialState } from '../../context/StoreContext';
 import { cloudStorageService } from '../../services/cloudStorage';
+import { loadGuestSnapshot } from '../../utils/storage';
 import { Button } from '../atoms/Button';
 import styles from './UserProfileModal.module.scss';
 
@@ -34,6 +36,7 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
 
 export const UserProfileModal: React.FC<Props> = ({ onClose }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { dispatch } = useStore();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -51,6 +54,12 @@ export const UserProfileModal: React.FC<Props> = ({ onClose }) => {
     setIsLoggingOut(true);
     try {
       await logout();
+      // Restore the project state that was loaded before the user logged in
+      const snapshot = loadGuestSnapshot();
+      const restored = snapshot
+        ? { ...initialState, ...snapshot, activeModal: 'none' as const, editingItemId: null, viewingItemId: null }
+        : initialState;
+      dispatch({ type: 'LOAD_STATE', payload: restored });
       onClose();
     } finally {
       setIsLoggingOut(false);

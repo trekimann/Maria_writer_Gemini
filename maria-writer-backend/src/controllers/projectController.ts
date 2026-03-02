@@ -118,6 +118,28 @@ class ProjectController {
       }
     }
   }
+
+  /** GET /api/projects/claim-preview?guestId=:uuid — auth required */
+  async previewGuestProjects(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { guestId } = req.query as { guestId: string };
+      const projects = await projectService.previewGuestProjectsForClaim(guestId);
+      res.json({ projects });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** POST /api/projects/claim — auth required */
+  async claimGuestProjects(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { guestId, projectIds } = req.body as { guestId: string; projectIds: string[] };
+      const result = await projectService.claimGuestProjects(guestId, req.user!.id, projectIds);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const projectController = new ProjectController();

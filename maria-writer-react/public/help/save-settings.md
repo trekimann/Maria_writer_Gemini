@@ -46,7 +46,17 @@ Creating an account upgrades your cloud save from Guest ID–based to profile-ba
 - No risk of losing projects if browser data is cleared
 - Your display name, profile picture, and genre preferences are stored
 
-Use the **Sign in** or **Create Account** links in the app header or in the cloud save notice. Your existing guest projects can be migrated by loading them and re-saving while signed in.
+Use the **Sign in** or **Create Account** links in the app header or in the cloud save notice.
+
+### Migrating existing guest projects
+
+When you log in or register, Maria Writer automatically detects any cloud projects saved under your current Guest ID. An **Import Guest Projects** dialog lets you choose which ones to move to your account.
+
+- Migrated projects are re-encrypted under your account key.
+- The guest ID link is removed — imported projects can no longer be accessed without signing in.
+- Projects you skip remain under the guest ID until the ID is rotated (e.g. on next logout).
+
+If you skip migration at login, you can still transfer a project manually: open it via **Load Project → Cloud** while signed in, then **Save Now** to write it to your account.
 
 ### Signing out
 

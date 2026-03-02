@@ -141,6 +141,22 @@ describe('AuthProvider – login()', () => {
     expect(result.current.user).toEqual(MOCK_USER);
   });
 
+  it('sets hasPendingMigration=true and captures pendingMigrationGuestId on login', async () => {
+    mockRefresh.mockResolvedValueOnce(null);
+    const at = fakeJwt();
+    mockLogin.mockResolvedValueOnce({ user: MOCK_USER, accessToken: at });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.login({ email: 'a@b.com', password: 'pw' });
+    });
+
+    expect(result.current.hasPendingMigration).toBe(true);
+    expect(result.current.pendingMigrationGuestId).toBe('mock-guest-id');
+  });
+
   it('propagates error from authApiService.login', async () => {
     mockRefresh.mockResolvedValueOnce(null);
     mockLogin.mockRejectedValueOnce(new Error('Invalid email or password'));
@@ -182,6 +198,22 @@ describe('AuthProvider – register()', () => {
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.user).toEqual(MOCK_USER);
   });
+
+  it('sets hasPendingMigration=true and captures pendingMigrationGuestId on register', async () => {
+    mockRefresh.mockResolvedValueOnce(null);
+    const at = fakeJwt();
+    mockRegister.mockResolvedValueOnce({ user: MOCK_USER, accessToken: at });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.register({ email: 'a@b.com', username: 'user1', password: 'Secure1!' });
+    });
+
+    expect(result.current.hasPendingMigration).toBe(true);
+    expect(result.current.pendingMigrationGuestId).toBe('mock-guest-id');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -216,6 +248,45 @@ describe('AuthProvider – logout()', () => {
     await act(async () => { await result.current.logout(); });
 
     expect(mockRotateGuestId).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears hasPendingMigration on logout', async () => {
+    const at = fakeJwt();
+    mockRefresh.mockResolvedValueOnce(null);
+    mockLogin.mockResolvedValueOnce({ user: MOCK_USER, accessToken: at });
+    mockLogout.mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => { await result.current.login({ email: 'a@b.com', password: 'pw' }); });
+    expect(result.current.hasPendingMigration).toBe(true);
+
+    await act(async () => { await result.current.logout(); });
+    expect(result.current.hasPendingMigration).toBe(false);
+    expect(result.current.pendingMigrationGuestId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearMigration()
+// ---------------------------------------------------------------------------
+
+describe('AuthProvider – clearMigration()', () => {
+  it('clears hasPendingMigration and pendingMigrationGuestId', async () => {
+    const at = fakeJwt();
+    mockRefresh.mockResolvedValueOnce(null);
+    mockLogin.mockResolvedValueOnce({ user: MOCK_USER, accessToken: at });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => { await result.current.login({ email: 'a@b.com', password: 'pw' }); });
+    expect(result.current.hasPendingMigration).toBe(true);
+
+    act(() => { result.current.clearMigration(); });
+    expect(result.current.hasPendingMigration).toBe(false);
+    expect(result.current.pendingMigrationGuestId).toBeNull();
   });
 });
 

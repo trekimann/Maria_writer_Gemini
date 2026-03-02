@@ -22,6 +22,10 @@ interface AuthState {
   isLoading: boolean;
   /** Destination to return to after login (modal type or path) */
   returnTo: string | null;
+  /** true when the user just logged in/registered and may have guest projects to migrate */
+  hasPendingMigration: boolean;
+  /** the guest ID that was active before login — used to fetch migratable projects */
+  pendingMigrationGuestId: string | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -29,6 +33,7 @@ interface AuthContextType extends AuthState {
   register: (payload: RegisterPayload) => Promise<{ isNewUser: boolean }>;
   logout: () => Promise<void>;
   setReturnTo: (destination: string | null) => void;
+  clearMigration: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: false,
     isLoading: true,
     returnTo: null,
+    hasPendingMigration: false,
+    pendingMigrationGuestId: null,
   });
 
   // Timer reference for proactive token refresh (fires 60s before expiry)
@@ -101,6 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isAuthenticated: true,
             isLoading: false,
             returnTo: null,
+            hasPendingMigration: false,
+            pendingMigrationGuestId: null,
           });
           scheduleRefresh(result.accessToken);
         } else {
@@ -119,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [scheduleRefresh]);
 
   const login = useCallback(async (payload: LoginPayload) => {
+    const preLoginGuestId = cloudStorageService.getGuestId();
     const result = await authApiService.login(payload);
     authApiService.setAccessToken(result.accessToken);
     setState((prev) => ({
@@ -126,11 +136,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user: result.user,
       accessToken: result.accessToken,
       isAuthenticated: true,
+      hasPendingMigration: true,
+      pendingMigrationGuestId: preLoginGuestId,
     }));
     scheduleRefresh(result.accessToken);
   }, [scheduleRefresh]);
 
   const register = useCallback(async (payload: RegisterPayload) => {
+    const preLoginGuestId = cloudStorageService.getGuestId();
     const result = await authApiService.register(payload);
     authApiService.setAccessToken(result.accessToken);
     setState((prev) => ({
@@ -138,6 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user: result.user,
       accessToken: result.accessToken,
       isAuthenticated: true,
+      hasPendingMigration: true,
+      pendingMigrationGuestId: preLoginGuestId,
     }));
     scheduleRefresh(result.accessToken);
     return { isNewUser: true };
@@ -155,6 +170,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated: false,
       isLoading: false,
       returnTo: null,
+      hasPendingMigration: false,
+      pendingMigrationGuestId: null,
     });
   }, []);
 
@@ -162,8 +179,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState((prev) => ({ ...prev, returnTo: destination }));
   }, []);
 
+  const clearMigration = useCallback(() => {
+    setState((prev) => ({ ...prev, hasPendingMigration: false, pendingMigrationGuestId: null }));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, setReturnTo }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, setReturnTo, clearMigration }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../atoms/Button';
+import { saveGuestSnapshot } from '../../utils/storage';
 import styles from './LoginPage.module.scss';
 
 export const LoginPage: React.FC = () => {
@@ -21,6 +22,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     setIsSubmitting(true);
     try {
+      saveGuestSnapshot();
       await login({ email, password, rememberMe });
       navigate(returnTo || '/', { replace: true });
     } catch (err) {

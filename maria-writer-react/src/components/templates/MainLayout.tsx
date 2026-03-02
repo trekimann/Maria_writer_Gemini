@@ -15,6 +15,7 @@ import { RelationshipModal } from '../organisms/RelationshipModal';
 import { ChapterMetadataModal } from '../organisms/ChapterMetadataModal';
 import { ThemeConfigModal } from '../organisms/ThemeConfigModal';
 import { NewBookModal } from '../organisms/NewBookModal';
+import { ClaimProjectsModal } from '../organisms/ClaimProjectsModal';
 import styles from './MainLayout.module.scss';
 
 export const MainLayout: React.FC = () => {
@@ -43,6 +44,7 @@ export const MainLayout: React.FC = () => {
         <ChapterMetadataModal />
         <ThemeConfigModal />
         <NewBookModal />
+        <ClaimProjectsModal />
       </div>
     </ThemeProvider>
   );

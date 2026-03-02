@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadFromLocal, saveToLocal, exportFile } from './storage';
+import { loadFromLocal, saveToLocal, exportFile, saveGuestSnapshot, loadGuestSnapshot } from './storage';
 import { APP_VERSION } from '../constants/version';
 import { AppState } from '../types';
 import { initialState } from '../context/StoreContext';
@@ -231,6 +231,88 @@ describe('Storage - Core Functions', () => {
       expect(parsed._exportedAt).toBeDefined();
 
       document.createElement = origCreate;
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Guest snapshot helpers
+// ---------------------------------------------------------------------------
+
+describe('Storage – Guest snapshot', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  describe('saveGuestSnapshot', () => {
+    it('copies maria_autosave to maria_guest_snapshot', () => {
+      const data = JSON.stringify({ meta: { title: 'My Novel' }, chapters: [] });
+      localStorage.setItem('maria_autosave', data);
+
+      saveGuestSnapshot();
+
+      expect(localStorage.getItem('maria_guest_snapshot')).toBe(data);
+    });
+
+    it('is a no-op when there is no existing autosave', () => {
+      saveGuestSnapshot();
+      expect(localStorage.getItem('maria_guest_snapshot')).toBeNull();
+    });
+
+    it('overwrites an earlier snapshot with the latest autosave', () => {
+      localStorage.setItem('maria_guest_snapshot', JSON.stringify({ meta: { title: 'Old' } }));
+      localStorage.setItem('maria_autosave', JSON.stringify({ meta: { title: 'New' } }));
+
+      saveGuestSnapshot();
+
+      const snap = JSON.parse(localStorage.getItem('maria_guest_snapshot')!);
+      expect(snap.meta.title).toBe('New');
+    });
+  });
+
+  describe('loadGuestSnapshot', () => {
+    it('returns null when no snapshot exists', () => {
+      expect(loadGuestSnapshot()).toBeNull();
+    });
+
+    it('returns null on corrupt JSON', () => {
+      localStorage.setItem('maria_guest_snapshot', 'not-json{{{');
+      expect(loadGuestSnapshot()).toBeNull();
+    });
+
+    it('returns the parsed snapshot with normalised metadata', () => {
+      localStorage.setItem('maria_guest_snapshot', JSON.stringify({
+        meta: { title: 'Saved Novel' },
+        chapters: [{ id: 'c1' }],
+      }));
+
+      const result = loadGuestSnapshot();
+      expect(result).not.toBeNull();
+      expect(result?.meta?.title).toBe('Saved Novel');
+      expect(result?.meta?.bookVersion).toBe('1.0.0');
+      expect(result?.relationships).toEqual([]);
+      expect(result?.themeCustomizations).toEqual([]);
+    });
+
+    it('preserves existing relationships and themeCustomizations', () => {
+      localStorage.setItem('maria_guest_snapshot', JSON.stringify({
+        meta: { title: 'T', bookVersion: '2.0.0' },
+        relationships: [{ id: 'r1' }],
+        themeCustomizations: [{ id: 't1' }],
+      }));
+
+      const result = loadGuestSnapshot();
+      expect(result?.relationships).toEqual([{ id: 'r1' }]);
+      expect(result?.themeCustomizations).toEqual([{ id: 't1' }]);
+    });
+
+    it('round-trips: save then load returns the same autosave data', () => {
+      const state = { meta: { title: 'Round Trip' }, chapters: [{ id: 'c1', title: 'Ch 1' }] };
+      localStorage.setItem('maria_autosave', JSON.stringify(state));
+      saveGuestSnapshot();
+
+      const loaded = loadGuestSnapshot();
+      expect(loaded?.meta?.title).toBe('Round Trip');
     });
   });
 });

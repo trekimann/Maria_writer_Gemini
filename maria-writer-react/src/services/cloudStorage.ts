@@ -165,6 +165,45 @@ class CloudStorageService {
 
     return await response.json();
   }
+
+  /**
+   * Returns the list of unclaimed guest projects available to migrate into
+   * the authenticated user's account. Requires a valid Bearer token.
+   */
+  async previewGuestProjects(guestId: string): Promise<CloudProject[]> {
+    const response = await fetch(
+      `${API_URL}/api/projects/claim-preview?guestId=${encodeURIComponent(guestId)}`,
+      { headers: this.authHeaders() },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error((error as any).error || 'Failed to fetch guest projects');
+    }
+
+    const data = await response.json();
+    return data.projects;
+  }
+
+  /**
+   * Transfers the selected guest projects to the authenticated user's account.
+   * After this call the projects are no longer accessible via the guest ID.
+   * Requires a valid Bearer token.
+   */
+  async claimGuestProjects(guestId: string, projectIds: string[]): Promise<{ claimed: number }> {
+    const response = await fetch(`${API_URL}/api/projects/claim`, {
+      method: 'POST',
+      headers: this.authHeaders(true),
+      body: JSON.stringify({ guestId, projectIds }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error((error as any).error || 'Failed to claim guest projects');
+    }
+
+    return await response.json();
+  }
 }
 
 export const cloudStorageService = new CloudStorageService();

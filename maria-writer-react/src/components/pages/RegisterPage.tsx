@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Camera, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../atoms/Button';
+import { saveGuestSnapshot } from '../../utils/storage';
 import styles from './RegisterPage.module.scss';
 
 // ---------------------------------------------------------------------------
@@ -102,6 +103,7 @@ export const RegisterPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      saveGuestSnapshot();
       await register({
         email,
         username,
