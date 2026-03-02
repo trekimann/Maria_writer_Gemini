@@ -1,4 +1,4 @@
-# Multi-User Implementation Plan for Maria Writer
+﻿# Multi-User Implementation Plan for Maria Writer
 
 **Status:** Phase 2 In Progress (Steps 1–2 + 2a Complete; UI enhancements shipped)  
 **Last Updated:** March 2, 2026  
@@ -411,7 +411,7 @@ describe('Cloud Storage Integration', () => {
 ## Phase 2: Authentication & User Management
 
 **Goal:** Replace guest IDs with real user accounts  
-**Status:** � In Progress — Step 1 (Prisma migration) complete  
+**Status:**  In Progress  Steps 1, 2, 2a complete (encryption shipped); next: Step 3 (auth service)    
 **Prerequisites:** Phase 1 complete (cloud save working with guestId) ✅  
 **Estimated effort:** 3–4 weeks
 
@@ -2987,15 +2987,15 @@ For questions about this implementation plan, refer to:
 | Phase | Status | Start Date | End Date | Notes |
 |-------|--------|------------|----------|-------|
 | Planning | ✅ Complete | Feb 1, 2026 | Feb 1, 2026 | This document |
-| Phase 1 | 🚧 In Progress | Feb 2026 | - | Backend + cloud save done; cloud load UX pending |
-| Phase 2 | � In Progress | Feb 28, 2026 | - | Step 1 (Prisma migration) complete. UserRole enum (USER/EDITOR/ADMIN). |
+| Phase 1 | ✅ Complete | Feb 2026 | Mar 2, 2026 | Backend + frontend fully shipped; encryption, help system, guest ID recovery all live |
+| Phase 2 | 🚧 In Progress | Feb 28, 2026 | - | Steps 1 (Prisma migration), 2 (encryptionService, 42 tests), 2a (encryption live in save/load) complete. Next: Step 3 (auth service). |
 | Phase 2.5 | 📋 Detailed plan ready | - | - | Image storage & media management — move images out of JSON blob |
 | Phase 3 | 📋 Planned | - | - | Collaboration |
 | Phase 4 | 📋 Planned | - | - | Real-time sync |
 
 ---
 
-**Last Updated:** February 28, 2026  
-**Document Version:** 2.2  
+**Last Updated:** March 2, 2026  
+**Document Version:** 2.3  
 **Author:** Development Team  
-**Next Review:** After completing Phase 2 Step 5 (backend tests) — validate auth flow before frontend work
+**Next Review:** After completing Phase 2 Step 3 (auth service) — validate register/login/refresh before adding middleware
