@@ -1,5 +1,67 @@
 import { prisma } from '../config/database';
+import { Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
+import { encryptForUser, decryptForUser, getMasterKey } from './encryptionService';
+
+// ---------------------------------------------------------------------------
+// Encryption helpers
+// ---------------------------------------------------------------------------
+
+/** Returns true when DATA_ENCRYPTION_KEY is set and valid. */
+function isEncryptionEnabled(): boolean {
+  try {
+    getMasterKey();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Encrypts AppState JSON for the given key ID (guestId or future userId).
+ * Returns Prisma-ready column values.
+ * Falls back to plaintext storage when DATA_ENCRYPTION_KEY is not configured.
+ */
+function buildStoragePayload(data: AppState, keyId: string): {
+  data: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+  dataEncrypted: string | null;
+  encryptionMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+} {
+  if (isEncryptionEnabled()) {
+    const payload = encryptForUser(JSON.stringify(data), keyId);
+    return {
+      data: Prisma.JsonNull,
+      dataEncrypted: payload.ciphertext,
+      encryptionMeta: { iv: payload.iv, authTag: payload.authTag },
+    };
+  }
+  // Encryption not configured — store plaintext (dev / un-keyed environments)
+  return { data: data as unknown as Prisma.InputJsonValue, dataEncrypted: null, encryptionMeta: Prisma.JsonNull };
+}
+
+/**
+ * Decrypts a project row's data column back to AppState.
+ * Falls back to the unencrypted `data` column for legacy rows.
+ */
+function restoreData(project: any, keyId: string): any {
+  if (project.dataEncrypted && project.encryptionMeta) {
+    try {
+      const meta = project.encryptionMeta as { iv: string; authTag: string };
+      const plaintext = decryptForUser(
+        { ciphertext: project.dataEncrypted, iv: meta.iv, authTag: meta.authTag },
+        keyId,
+      );
+      return { ...project, data: JSON.parse(plaintext), dataEncrypted: undefined, encryptionMeta: undefined };
+    } catch (err) {
+      logger.error('Failed to decrypt project data', { projectId: project.id, error: err });
+      throw new Error('Failed to decrypt project data. The encryption key may have changed.');
+    }
+  }
+  // Legacy row — unencrypted data column
+  return project;
+}
+
+// ---------------------------------------------------------------------------
 
 export interface AppState {
   meta: {
@@ -7,6 +69,7 @@ export interface AppState {
     author: string;
     description: string;
     tags: string[];
+    appVersion?: string;
     currentDate?: string;
   };
   chapters: any[];
@@ -29,6 +92,9 @@ export interface AppState {
 class ProjectService {
   async createOrUpdateProject(guestId: string, title: string, data: AppState) {
     try {
+      const storage = buildStoragePayload(data, guestId);
+      const appVersion = data.meta?.appVersion || '2.2.0';
+
       // Check if project exists for this guest with this title
       const existing = await prisma.project.findFirst({
         where: {
@@ -42,7 +108,8 @@ class ProjectService {
         const updated = await prisma.project.update({
           where: { id: existing.id },
           data: {
-            data: data as any,
+            ...storage,
+            version: appVersion,
             updatedAt: new Date(),
           },
         });
@@ -54,7 +121,8 @@ class ProjectService {
           data: {
             guestId,
             title,
-            data: data as any,
+            ...storage,
+            version: appVersion,
           },
         });
         logger.info(`Project created: ${created.id}`);
@@ -91,7 +159,8 @@ class ProjectService {
       const project = await prisma.project.findFirst({
         where: { id, guestId },
       });
-      return project;
+      if (!project) return null;
+      return restoreData(project, guestId);
     } catch (error) {
       logger.error('Error getting project:', error);
       throw error;
@@ -109,11 +178,15 @@ class ProjectService {
         throw new Error('Record to update not found');
       }
 
+      const storage = buildStoragePayload(updates.data, guestId);
+      const appVersion = updates.data.meta?.appVersion || '2.2.0';
+
       const updated = await prisma.project.update({
         where: { id: existing.id },
         data: {
           ...(updates.title && { title: updates.title }),
-          data: updates.data as any,
+          ...storage,
+          version: appVersion,
           updatedAt: new Date(),
         },
       });

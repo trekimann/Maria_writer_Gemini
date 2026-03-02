@@ -7,6 +7,7 @@ import { cloudStorageService, CloudProject } from '../../services/cloudStorage';
 import { AppState } from '../../types';
 import { APP_VERSION } from '../../constants/version';
 import { getBreakingMigrationWarning } from '../../constants/versionCompatibility';
+import { saveToLocal } from '../../utils/storage';
 import styles from './LoadProjectModal.module.scss';
 
 type LoadTab = 'local' | 'cloud';
@@ -97,6 +98,7 @@ export const LoadProjectModal: React.FC = () => {
   const [isLoadingCloud, setIsLoadingCloud] = useState(false);
   const [selectedCloudProjectId, setSelectedCloudProjectId] = useState<string | null>(null);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [isSavingCurrent, setIsSavingCurrent] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,6 +120,12 @@ export const LoadProjectModal: React.FC = () => {
     () => getBreakingMigrationWarning(importedVersion?.appVersion, APP_VERSION),
     [importedVersion],
   );
+
+  const cloudBreakingWarning = useMemo(() => {
+    if (!selectedCloudProjectId) return null;
+    const project = cloudProjects.find((p) => p.id === selectedCloudProjectId);
+    return getBreakingMigrationWarning(project?.version || null, APP_VERSION);
+  }, [selectedCloudProjectId, cloudProjects]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -216,10 +224,10 @@ export const LoadProjectModal: React.FC = () => {
   };
 
   const executeLoad = async () => {
-    const confirmed = window.confirm('Loading will replace the current in-memory project. Continue?');
-    if (!confirmed) return;
-
     if (activeTab === 'local') {
+      const confirmed = window.confirm('Loading will replace the current project. Continue?');
+      if (!confirmed) return;
+
       if (!parsedLocalState) {
         setLocalError('Select a valid .maria file first.');
         return;
@@ -242,6 +250,30 @@ export const LoadProjectModal: React.FC = () => {
       return;
     }
 
+    // --- Save current project before replacing it ---
+    setIsSavingCurrent(true);
+    setCloudError(null);
+    try {
+      // Always persist to localStorage
+      saveToLocal(state);
+
+      // Also push to cloud if the current project is already cloud-linked
+      const currentProjectId = state.cloudSync?.projectId;
+      if (state.saveSettings?.saveToCloud && currentProjectId) {
+        await cloudStorageService.updateProject(
+          currentProjectId,
+          state.meta.title || 'Untitled Novel',
+          state,
+        );
+      }
+    } catch {
+      // Non-fatal: log and continue — the user explicitly asked to load a new project
+      console.warn('[LoadProjectModal] Auto-save before load failed — continuing with load.');
+    } finally {
+      setIsSavingCurrent(false);
+    }
+
+    // --- Load the selected cloud project ---
     setIsLoadingProject(true);
     setCloudError(null);
     try {
@@ -250,12 +282,6 @@ export const LoadProjectModal: React.FC = () => {
       if (validationError) {
         setCloudError(`Cloud project is invalid: ${validationError}`);
         return;
-      }
-
-      const cloudWarning = getBreakingMigrationWarning(loaded?.meta?.appVersion || null, APP_VERSION);
-      if (cloudWarning) {
-        const proceed = window.confirm(`${cloudWarning}\n\nContinue loading this cloud project?`);
-        if (!proceed) return;
       }
 
       const nextState = buildLoadedState(loaded, state, selectedCloudProjectId);
@@ -283,9 +309,15 @@ export const LoadProjectModal: React.FC = () => {
           <Button
             variant="primary"
             onClick={executeLoad}
-            disabled={isReadingFile || isLoadingCloud || isLoadingProject}
+            disabled={isReadingFile || isLoadingCloud || isLoadingProject || isSavingCurrent}
           >
-            {isLoadingProject ? 'Loading...' : activeTab === 'local' ? 'Load File' : 'Load Selected'}
+            {isSavingCurrent
+              ? 'Saving current...'
+              : isLoadingProject
+              ? 'Loading...'
+              : activeTab === 'local'
+              ? 'Load File'
+              : 'Load Selected'}
           </Button>
         </>
       }
@@ -398,6 +430,9 @@ export const LoadProjectModal: React.FC = () => {
               <Cloud size={16} />
               Selected: {selectedCloudProject.title}
             </div>
+          )}
+          {cloudBreakingWarning && (
+            <div className={styles.warning}>{cloudBreakingWarning}</div>
           )}
         </div>
       )}

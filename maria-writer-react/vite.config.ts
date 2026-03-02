@@ -5,6 +5,16 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      // Proxy /api requests to the local backend during development.
+      // Matches docker-compose where frontend and backend talk on a shared network.
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
   css: {
     preprocessorOptions: {
       scss: {

@@ -28,6 +28,7 @@ services:
       - PORT=3000
       - CORS_ORIGIN=http://localhost
       - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_change_in_production}
+      - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY:-}
     networks:
       - maria-network
     healthcheck:

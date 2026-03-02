@@ -1,6 +1,6 @@
 # Multi-User Implementation Plan for Maria Writer
 
-**Status:** Phase 2 In Progress (Steps 1–2 Complete)  
+**Status:** Phase 2 In Progress (Steps 1–2 + 2a Complete)  
 **Last Updated:** March 2, 2026  
 **Decision:** JWT Authentication + WebSockets + MariaDB
 
@@ -1246,6 +1246,15 @@ Update `.env.example` and `docker-compose.yml` with these new variables.
 ```
 Step 1:  Prisma schema migration (User, RefreshToken, Project changes)     ~ 0.5 day  ✅ DONE (Feb 28, 2026)
 Step 2:  Encryption service (encrypt/decrypt/deriveKey)                     ~ 1 day    ✅ DONE (Mar 2, 2026)
+Step 2a: Wire encryption into guest cloud save/load (lazy migration)        ~ 0.5 day  ✅ DONE (Mar 2, 2026)
+         - APP_VERSION bumped to 2.3.0
+         - 2.2.0 → 2.3.0 breaking transition added (migration warning on load)
+         - projectService encrypts on write (AES-256-GCM keyed by guestId),
+           decrypts on read, stores meta.appVersion in projects.version column
+         - LoadProjectModal shows inline warning in cloud tab when a pre-encryption
+           project is selected; appVersion preserved in metadata until next save
+         - DATA_ENCRYPTION_KEY added to docker-compose.yml, docker-compose.unraid.yml,
+           and .env.example
 Step 3:  Auth service (register, login, token generation, rotation)         ~ 2 days
 Step 4:  Auth routes + requireAuth middleware                               ~ 1 day
 Step 5:  Backend tests for auth + encryption                                ~ 1.5 days
