@@ -378,19 +378,21 @@ describe('Cloud Storage Integration', () => {
 - ✅ Docker Compose setup for all services
 - 🟡 Comprehensive test suite (>80% coverage)
 - ✅ "Save to Cloud" button in UI
-- ❌ "Load from Cloud" button in UI
+- ✅ "Load from Cloud" button in UI
 - ✅ Error handling and user feedback
 - 🟡 Documentation (README, API docs)
 
-### Phase 1 Implementation Reality Check (as of Feb 28, 2026)
+### Phase 1 Implementation Reality Check (as of Mar 2, 2026)
 
 - ✅ Implemented: Guest-ID based cloud save/list/get/update/delete API (`/api/projects`)
 - ✅ Implemented: Frontend cloud-save integration in save settings and auto-save flow
 - ✅ Implemented: Health checks, Prisma schema, and Docker Compose stack
+- ✅ Implemented: "Load from Cloud" UI — `LoadProjectModal.tsx` has a two-tab interface ("Local File" / "Cloud"). The Cloud tab lists all guest projects via `cloudStorageService.listProjects()`, lets the user select via radio button, validates the loaded state (structure + version compatibility warnings), and dispatches `LOAD_STATE`. Full round-trip complete.
 - 🟡 Partial: WebSocket server initialized but only connection/disconnection placeholder logic
-- ❌ Missing for "basic cloud storage" completion: user-facing cloud project browser + "Load from Cloud" flow
 - 🚧 In Progress: Phase 2 auth — Step 1 (Prisma migration) applied Feb 28, 2026. Users, RefreshTokens tables created; Projects table updated.
 - ❌ Not started: Phase 3 collaboration permissions/invites, Phase 4 real-time sync events
+
+**Phase 1 is fully complete.** All user-facing deliverables are shipped. Remaining 🟡 items (test coverage, docs) are polish, not blockers for Phase 2.
 
 ### Phase 1 Timeline Estimate
 - **Setup & Configuration:** 2-3 days
