@@ -24,6 +24,10 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3000;
 
+// Trust reverse proxy (Nginx, Unraid, etc.) so that express-rate-limit and
+// other middleware can read X-Forwarded-For correctly.
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost',
