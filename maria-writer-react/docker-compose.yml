@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  maria-writer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-localhost:5000}/maria-writer:${TAG:-latest}
+    container_name: maria-writer
+    ports:
+      - "${PORT:-8080}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.docker.compose.project=maria-writer"
+      - "description=Maria Writer - Novel Writing Application"
+    networks:
+      - maria-writer-net
+
+networks:
+  maria-writer-net:
+    driver: bridge

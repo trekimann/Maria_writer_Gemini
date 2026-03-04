@@ -9,6 +9,18 @@ FRONTEND_IMAGE="maria-writer"
 BACKEND_IMAGE="maria-writer-backend"
 TAG="latest"
 
+# Detect container runtime (Docker or Podman with Flatpak support for Bazzite)
+if [ -f /.flatpak-info ]; then
+    CONTAINER_RUNTIME="flatpak-spawn --host podman"
+    echo "Detected Flatpak environment (Bazzite) - using Podman via flatpak-spawn"
+elif command -v podman &> /dev/null; then
+    CONTAINER_RUNTIME="podman"
+    echo "Using Podman"
+else
+    CONTAINER_RUNTIME="docker"
+    echo "Using Docker"
+fi
+
 NO_CACHE=""
 if [ "$1" == "--no-cache" ]; then
   NO_CACHE="--no-cache"
@@ -27,24 +39,24 @@ cd "$SCRIPT_DIR"
 # 1. Build Frontend
 echo ""
 echo "[1/4] Building frontend image..."
-docker build $NO_CACHE -t ${FRONTEND_IMAGE}:${TAG} ./maria-writer-react
-docker tag ${FRONTEND_IMAGE}:${TAG} ${REGISTRY}/${FRONTEND_IMAGE}:${TAG}
+$CONTAINER_RUNTIME build $NO_CACHE -t ${FRONTEND_IMAGE}:${TAG} ./maria-writer-react
+$CONTAINER_RUNTIME tag ${FRONTEND_IMAGE}:${TAG} ${REGISTRY}/${FRONTEND_IMAGE}:${TAG}
 
 # 2. Build Backend
 echo ""
 echo "[2/4] Building backend image..."
-docker build $NO_CACHE -t ${BACKEND_IMAGE}:${TAG} ./maria-writer-backend
-docker tag ${BACKEND_IMAGE}:${TAG} ${REGISTRY}/${BACKEND_IMAGE}:${TAG}
+$CONTAINER_RUNTIME build $NO_CACHE -t ${BACKEND_IMAGE}:${TAG} ./maria-writer-backend
+$CONTAINER_RUNTIME tag ${BACKEND_IMAGE}:${TAG} ${REGISTRY}/${BACKEND_IMAGE}:${TAG}
 
 # 3. Push Frontend
 echo ""
 echo "[3/4] Pushing frontend image..."
-docker push ${REGISTRY}/${FRONTEND_IMAGE}:${TAG}
+$CONTAINER_RUNTIME push ${REGISTRY}/${FRONTEND_IMAGE}:${TAG} --tls-verify=false
 
 # 4. Push Backend
 echo ""
 echo "[4/4] Pushing backend image..."
-docker push ${REGISTRY}/${BACKEND_IMAGE}:${TAG}
+$CONTAINER_RUNTIME push ${REGISTRY}/${BACKEND_IMAGE}:${TAG} --tls-verify=false
 
 echo ""
 echo "=========================================="
