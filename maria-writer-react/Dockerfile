@@ -2,11 +2,7 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
-<<<<<<< Updated upstream
 # Install ALL dependencies (including devDependencies for tsc/vite)
-=======
-# Install dependencies first (better caching)
->>>>>>> Stashed changes
 COPY package.json package-lock.json ./
 RUN npm ci
 

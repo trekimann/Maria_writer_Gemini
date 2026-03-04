@@ -94,7 +94,7 @@ app.use('/api/projects', projectRoutes);
 // WebSocket connection (Phase 4 - placeholder for now)
 io.on('connection', (socket) => {
   logger.info(`WebSocket client connected: ${socket.id}`);
-  
+
   socket.on('disconnect', () => {
     logger.info(`WebSocket client disconnected: ${socket.id}`);
   });
