@@ -8,10 +8,11 @@
 const mockProjectService = {
   listProjects:                  jest.fn(),
   listProjectsByUser:            jest.fn(),
+  listSharedProjectsByUser:      jest.fn(),
   createOrUpdateProject:         jest.fn(),
   createOrUpdateProjectByUser:   jest.fn(),
   getProject:                    jest.fn(),
-  getProjectByUser:              jest.fn(),
+  getProjectByAuthorizedUser:    jest.fn(),
   updateProject:                 jest.fn(),
   updateProjectByUser:           jest.fn(),
   deleteProject:                 jest.fn(),
@@ -81,6 +82,32 @@ describe('ProjectController.listProjects()', () => {
     const next = jest.fn();
     await projectController.listProjects(makeReq(), makeRes(), next as any);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listSharedProjects()
+// ---------------------------------------------------------------------------
+
+describe('ProjectController.listSharedProjects()', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('lists shared projects for the authenticated user', async () => {
+    mockProjectService.listSharedProjectsByUser.mockResolvedValue([MOCK_PROJECT]);
+    const req = makeReq({ user: USER });
+    const res = makeRes();
+
+    await projectController.listSharedProjects(req, res, noop);
+    expect(mockProjectService.listSharedProjectsByUser).toHaveBeenCalledWith(USER.id);
+    expect(res.json).toHaveBeenCalledWith({ projects: [MOCK_PROJECT] });
+  });
+
+  it('forwards listSharedProjects errors to next()', async () => {
+    mockProjectService.listSharedProjectsByUser.mockRejectedValue(new Error('db error'));
+    const next = jest.fn();
+
+    await projectController.listSharedProjects(makeReq({ user: USER }), makeRes(), next as any);
+    expect(next).toHaveBeenCalled();
   });
 });
 
@@ -160,12 +187,12 @@ describe('ProjectController.getProject()', () => {
   });
 
   it('returns project for authenticated user', async () => {
-    mockProjectService.getProjectByUser.mockResolvedValue(MOCK_PROJECT);
+    mockProjectService.getProjectByAuthorizedUser.mockResolvedValue(MOCK_PROJECT);
     const req = makeReq({ params: { id: 'proj-1' }, user: USER });
     const res = makeRes();
 
     await projectController.getProject(req, res, noop);
-    expect(mockProjectService.getProjectByUser).toHaveBeenCalledWith('proj-1', USER.id);
+    expect(mockProjectService.getProjectByAuthorizedUser).toHaveBeenCalledWith('proj-1', USER.id);
   });
 
   it('returns 400 when guestId missing', async () => {

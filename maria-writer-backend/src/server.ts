@@ -10,6 +10,7 @@ import healthRoutes from './routes/health';
 import projectRoutes from './routes/projects';
 import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
+import invitationRoutes from './routes/invitations';
 
 dotenv.config();
 
@@ -89,6 +90,7 @@ app.use((req, res, next) => {
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/invitations', invitationRoutes);
 app.use('/api/projects', projectRoutes);
 
 // WebSocket connection (Phase 4 - placeholder for now)

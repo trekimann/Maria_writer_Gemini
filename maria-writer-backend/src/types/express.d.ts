@@ -3,7 +3,7 @@
  * middleware has verified the access token.
  */
 
-import { UserRole } from '@prisma/client';
+import { ProjectAccessRole, UserRole } from '@prisma/client';
 
 declare global {
   namespace Express {
@@ -12,6 +12,16 @@ declare global {
         id: string;
         email: string;
         role: UserRole;
+      };
+      projectAccess?: {
+        projectId: string;
+        ownerId: string | null;
+        isOwner: boolean;
+        role: 'OWNER' | ProjectAccessRole;
+        canRead: boolean;
+        canComment: boolean;
+        canEditProject: boolean;
+        collaboratorId: string | null;
       };
     }
   }

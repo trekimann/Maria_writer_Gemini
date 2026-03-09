@@ -48,3 +48,19 @@ export const adminResetLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const inviteLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  message: 'Too many collaboration invites sent. Please wait a moment.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const invitationDecisionLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  message: 'Too many invitation actions. Please slow down.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});

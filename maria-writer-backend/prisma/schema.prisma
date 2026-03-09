@@ -24,6 +24,18 @@ enum UserTier {
   DEFAULT
 }
 
+enum ProjectAccessRole {
+  READ
+  COMMENT
+  EDIT
+}
+
+enum ReviewCommentStatus {
+  ACTIVE
+  RESOLVED
+  HIDDEN
+}
+
 // --- Models ---
 
 model User {
@@ -44,8 +56,12 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   lastLogin      DateTime? @map("last_login")
 
-  projects      Project[]
-  refreshTokens RefreshToken[]
+  projects                 Project[]
+  refreshTokens            RefreshToken[]
+  projectCollaborations    ProjectCollaborator[] @relation("ProjectCollaboratorUser")
+  sentProjectInvites       ProjectInvitation[]   @relation("ProjectInvitationSender")
+  receivedProjectComments  ProjectReviewComment[] @relation("ProjectReviewCommentAuthor")
+  invitedCollaborators     ProjectCollaborator[] @relation("ProjectCollaboratorInviter")
 
   @@index([email])
   @@index([username])
@@ -80,9 +96,80 @@ model Project {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  owner User? @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner          User?                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  collaborators  ProjectCollaborator[]
+  invitations    ProjectInvitation[]
+  reviewComments ProjectReviewComment[]
 
   @@index([ownerId])
   @@index([guestId])
   @@map("projects")
+}
+
+model ProjectCollaborator {
+  id         String            @id @default(uuid())
+  projectId  String            @map("project_id") @db.VarChar(36)
+  userId     String            @map("user_id") @db.VarChar(36)
+  role       ProjectAccessRole
+  invitedBy  String            @map("invited_by") @db.VarChar(36)
+  invitedAt  DateTime          @default(now()) @map("invited_at")
+  acceptedAt DateTime?         @map("accepted_at")
+  revokedAt  DateTime?         @map("revoked_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation("ProjectCollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+  inviter User    @relation("ProjectCollaboratorInviter", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@index([invitedBy])
+  @@map("project_collaborators")
+}
+
+model ProjectInvitation {
+  id         String            @id @default(uuid())
+  projectId  String            @map("project_id") @db.VarChar(36)
+  email      String            @db.VarChar(255)
+  role       ProjectAccessRole
+  token      String            @unique @db.VarChar(255)
+  invitedBy  String            @map("invited_by") @db.VarChar(36)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  expiresAt  DateTime          @map("expires_at")
+  acceptedAt DateTime?         @map("accepted_at")
+  declinedAt DateTime?         @map("declined_at")
+  revokedAt  DateTime?         @map("revoked_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  inviter User    @relation("ProjectInvitationSender", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([email])
+  @@index([token])
+  @@index([invitedBy])
+  @@map("project_invitations")
+}
+
+model ProjectReviewComment {
+  id              String              @id @default(uuid())
+  projectId       String              @map("project_id") @db.VarChar(36)
+  chapterId       String              @map("chapter_id") @db.VarChar(36)
+  authorId        String              @map("author_id") @db.VarChar(36)
+  text            String              @db.Text
+  isSuggestion    Boolean             @default(false) @map("is_suggestion")
+  replacementText String?             @map("replacement_text") @db.Text
+  originalText    String              @map("original_text") @db.Text
+  startOffset     Int?                @map("start_offset")
+  endOffset       Int?                @map("end_offset")
+  status          ReviewCommentStatus @default(ACTIVE)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation("ProjectReviewCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([chapterId])
+  @@index([authorId])
+  @@map("project_review_comments")
 }

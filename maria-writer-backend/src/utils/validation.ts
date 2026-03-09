@@ -52,6 +52,8 @@ export const ResetPasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
+const collaborationRoleSchema = z.enum(['READ', 'COMMENT']);
+
 // ---------------------------------------------------------------------------
 // App State validation schema (matches frontend types)
 // ---------------------------------------------------------------------------
@@ -105,4 +107,26 @@ export const ClaimProjectsSchema = z.object({
 export const ProjectQuerySchema = z.object({
   // guestId optional — authenticated requests don't send it
   guestId: z.string().uuid().optional(),
+});
+
+export const CreateProjectInvitationSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  role: collaborationRoleSchema,
+});
+
+export const UpdateProjectCollaboratorSchema = z.object({
+  role: collaborationRoleSchema,
+});
+
+export const ProjectIdParamsSchema = z.object({
+  id: z.string().uuid('Project id must be a valid UUID'),
+});
+
+export const CollaboratorParamsSchema = z.object({
+  id: z.string().uuid('Project id must be a valid UUID'),
+  collaboratorId: z.string().uuid('Collaborator id must be a valid UUID'),
+});
+
+export const InvitationTokenParamsSchema = z.object({
+  token: z.string().min(20, 'Invitation token is invalid').max(255),
 });

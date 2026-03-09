@@ -2,6 +2,7 @@ import { prisma } from '../config/database';
 import { Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
 import { encryptForUser, decryptForUser, getMasterKey } from './encryptionService';
+import { accessService } from './accessService';
 
 // ---------------------------------------------------------------------------
 // Encryption helpers
@@ -136,6 +137,64 @@ class ProjectService {
     }
   }
 
+  async listSharedProjectsByUser(userId: string) {
+    try {
+      const collaborationClient = prisma as typeof prisma & {
+        projectCollaborator: {
+          findMany: (...args: any[]) => Promise<any[]>;
+        };
+      };
+
+      const sharedCollaborations = await collaborationClient.projectCollaborator.findMany({
+        where: {
+          userId,
+          acceptedAt: { not: null },
+          revokedAt: null,
+          project: {
+            ownerId: { not: userId },
+          },
+        },
+        orderBy: { acceptedAt: 'desc' },
+        select: {
+          id: true,
+          role: true,
+          acceptedAt: true,
+          project: {
+            select: {
+              id: true,
+              title: true,
+              version: true,
+              createdAt: true,
+              updatedAt: true,
+              owner: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return sharedCollaborations.map((collaboration: any) => ({
+        ...collaboration.project,
+        collaborators: [
+          {
+            id: collaboration.id,
+            role: collaboration.role,
+            acceptedAt: collaboration.acceptedAt,
+          },
+        ],
+      }));
+    } catch (error) {
+      logger.error('Error listing shared projects (user):', error);
+      throw error;
+    }
+  }
+
   async getProjectByUser(id: string, userId: string) {
     try {
       const project = await prisma.project.findFirst({ where: { id, ownerId: userId } });
@@ -143,6 +202,36 @@ class ProjectService {
       return restoreData(project, userId);
     } catch (error) {
       logger.error('Error getting project (user):', error);
+      throw error;
+    }
+  }
+
+  async getProjectByAuthorizedUser(id: string, userId: string) {
+    try {
+      const access = await accessService.getProjectAccess(id, userId);
+      if (!access) return null;
+
+      const project = await prisma.project.findUnique({ where: { id } });
+      if (!project) return null;
+
+      const encryptionKeyId = access.isOwner ? userId : project.ownerId;
+      if (!encryptionKeyId) {
+        throw new Error('Shared project is missing an owner encryption key');
+      }
+
+      const restored = restoreData(project, encryptionKeyId);
+      return {
+        ...restored,
+        access: {
+          isOwner: access.isOwner,
+          role: access.role,
+          canRead: access.canRead,
+          canComment: access.canComment,
+          canEditProject: access.canEditProject,
+        },
+      };
+    } catch (error) {
+      logger.error('Error getting project (authorized user):', error);
       throw error;
     }
   }

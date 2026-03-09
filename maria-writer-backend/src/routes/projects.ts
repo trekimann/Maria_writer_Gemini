@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { projectController } from '../controllers/projectController';
-import { validate, validateQuery } from '../middleware/validator';
-import { CreateProjectSchema, UpdateProjectSchema, ProjectQuerySchema, ClaimProjectsSchema, ClaimPreviewQuerySchema } from '../utils/validation';
-import { apiLimiter, writeLimiter } from '../middleware/rateLimit';
+import { collaborationController } from '../controllers/collaborationController';
+import { validate, validateParams, validateQuery } from '../middleware/validator';
+import { CollaboratorParamsSchema, CreateProjectInvitationSchema, CreateProjectSchema, ProjectIdParamsSchema, UpdateProjectCollaboratorSchema, UpdateProjectSchema, ProjectQuerySchema, ClaimProjectsSchema, ClaimPreviewQuerySchema } from '../utils/validation';
+import { apiLimiter, inviteLimiter, writeLimiter } from '../middleware/rateLimit';
 import { requireAuth, requireAuthenticated } from '../middleware/auth';
 
 const router = Router();
@@ -15,6 +16,42 @@ router.get('/claim-preview', requireAuthenticated, validateQuery(ClaimPreviewQue
 
 // POST /api/projects/claim — strict auth, transfers selected guest projects to the user account
 router.post('/claim', requireAuthenticated, writeLimiter, validate(ClaimProjectsSchema), projectController.claimGuestProjects);
+
+// GET /api/projects/shared — list projects shared with the authenticated user
+router.get('/shared', requireAuthenticated, projectController.listSharedProjects);
+
+// GET /api/projects/:id/collaborators — owner-only list of accepted collaborators
+router.get('/:id/collaborators', requireAuthenticated, validateParams(ProjectIdParamsSchema), collaborationController.listCollaborators);
+
+// PATCH /api/projects/:id/collaborators/:collaboratorId — owner-only collaborator role update
+router.patch(
+	'/:id/collaborators/:collaboratorId',
+	requireAuthenticated,
+	validateParams(CollaboratorParamsSchema),
+	validate(UpdateProjectCollaboratorSchema),
+	collaborationController.updateCollaborator,
+);
+
+// DELETE /api/projects/:id/collaborators/:collaboratorId — owner-only collaborator revoke
+router.delete(
+	'/:id/collaborators/:collaboratorId',
+	requireAuthenticated,
+	validateParams(CollaboratorParamsSchema),
+	collaborationController.revokeCollaborator,
+);
+
+// GET /api/projects/:id/invitations — owner-only list of pending invites
+router.get('/:id/invitations', requireAuthenticated, validateParams(ProjectIdParamsSchema), collaborationController.listProjectInvitations);
+
+// POST /api/projects/:id/invitations — owner-only invite creation
+router.post(
+	'/:id/invitations',
+	requireAuthenticated,
+	inviteLimiter,
+	validateParams(ProjectIdParamsSchema),
+	validate(CreateProjectInvitationSchema),
+	collaborationController.createInvitation,
+);
 
 // GET /api/projects?guestId={uuid} - List all projects for a guest
 router.get('/', validateQuery(ProjectQuerySchema), projectController.listProjects);

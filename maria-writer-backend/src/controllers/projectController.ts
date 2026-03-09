@@ -4,6 +4,15 @@ import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
 class ProjectController {
+  async listSharedProjects(req: Request, res: Response, next: NextFunction) {
+    try {
+      const projects = await projectService.listSharedProjectsByUser(req.user!.id);
+      res.json({ projects });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listProjects(req: Request, res: Response, next: NextFunction) {
     try {
       if (req.user) {
@@ -53,7 +62,7 @@ class ProjectController {
       const id = String(req.params.id);
 
       if (req.user) {
-        const project = await projectService.getProjectByUser(id, req.user.id);
+        const project = await projectService.getProjectByAuthorizedUser(id, req.user.id);
         if (!project) throw new AppError('Project not found', 404);
         return res.json({ project });
       }

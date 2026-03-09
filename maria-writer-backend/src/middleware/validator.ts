@@ -23,3 +23,14 @@ export const validateQuery = (schema: ZodSchema) => {
     }
   };
 };
+
+export const validateParams = (schema: ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      schema.parse(req.params);
+      next();
+    } catch (error: any) {
+      next(new AppError(`Params validation failed: ${error.message}`, 400));
+    }
+  };
+};

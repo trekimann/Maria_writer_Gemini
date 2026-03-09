@@ -2538,7 +2538,551 @@ Step 15: Docker volume config, .env vars, update SETUP_GUIDE                    
 
 ## Phase 3: Collaboration Features
 
-**Goal:** Allow multiple users to work on same novel
+**Goal:** Allow multiple users to work on the same project safely, starting with async review/comment workflows before real-time co-editing  
+**Status:** 📋 Planned — next recommended milestone after Phase 2 Step 13 docs refresh  
+**Recommended rollout:** Ship **Phase 3A: Project Sharing + Async Review** first, then add live collaborative editing in Phase 4
+
+### Phase 3A: Project Sharing + Async Review (Recommended First Release)
+
+This is the recommended first collaboration release because it fits the current
+architecture without forcing immediate real-time editing, OT/CRDT conflict
+resolution, or a large rewrite of the project storage model.
+
+**Scope for Phase 3A:**
+- Invite creators by email
+- Access levels: **Read** and **Comment** only
+- Accept/decline invite flow
+- Shared project listing and loading
+- Read-only and comment-only UI modes
+- Dedicated review comments API and storage
+- No live chapter editing yet
+- No collaborator project-blob save permission yet
+
+**Out of scope for Phase 3A:**
+- Real-time chapter co-editing
+- Cursor presence
+- WebSocket-driven text sync
+- Edit-level collaborator permissions
+- Conflict resolution on manuscript text
+
+### 3A.1 Why this rollout order is recommended
+
+The current backend stores the manuscript/project as a single encrypted JSON blob
+on `projects`, which works well for owner saves but is not a good foundation for
+comment-only collaboration. If reviewer comments remain embedded inside
+`AppState.comments`, then allowing a commenter to add a comment would also imply
+permission to write the full project blob, which is too broad and creates avoidable
+permission and conflict problems.
+
+**Decision for Phase 3A:**
+- Keep the existing encrypted `Project.dataEncrypted` model for manuscript content
+- Keep full project create/update/delete owner-only
+- Move collaboration metadata and reviewer comments into dedicated relational tables
+
+This preserves the current Phase 2 auth/project work and creates a clean runway
+for Phase 4 live collaboration.
+
+### 3A.2 Collaboration permission model
+
+#### Access roles
+
+Use a forward-compatible enum now so future edit access can be added without a schema redesign:
+
+```prisma
+enum ProjectAccessRole {
+  READ
+  COMMENT
+  EDIT
+}
+```
+
+**Phase 3A UI exposure:**
+- `READ` → can open and view project
+- `COMMENT` → can open, view, and add review comments/suggestions
+- `EDIT` → reserved for later phase; not exposed in the UI yet
+
+#### Permission rules
+
+| Role | View project | Add comments | Edit own comments | Edit manuscript | Invite others |
+|------|--------------|--------------|-------------------|-----------------|---------------|
+| Owner | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Read collaborator | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Comment collaborator | ✅ | ✅ | ✅ (own only) | ❌ | ❌ |
+
+#### Core rule
+
+For Phase 3A, **project blob save remains owner-only**. Collaborators interact
+through collaboration-specific APIs, not the existing project update endpoints.
+
+### 3A.3 Database schema additions
+
+#### `ProjectCollaborator`
+
+Stores accepted project access.
+
+```prisma
+model ProjectCollaborator {
+  id         String            @id @default(uuid())
+  projectId  String            @map("project_id") @db.VarChar(36)
+  userId     String            @map("user_id") @db.VarChar(36)
+  role       ProjectAccessRole
+  invitedBy  String            @map("invited_by") @db.VarChar(36)
+  invitedAt  DateTime          @default(now()) @map("invited_at")
+  acceptedAt DateTime?         @map("accepted_at")
+  revokedAt  DateTime?         @map("revoked_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_collaborators")
+}
+```
+
+#### `ProjectInvitation`
+
+Stores pending invites before acceptance.
+
+```prisma
+model ProjectInvitation {
+  id         String            @id @default(uuid())
+  projectId  String            @map("project_id") @db.VarChar(36)
+  email      String            @db.VarChar(255)
+  role       ProjectAccessRole
+  token      String            @unique @db.VarChar(255)
+  invitedBy  String            @map("invited_by") @db.VarChar(36)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  expiresAt  DateTime          @map("expires_at")
+  acceptedAt DateTime?         @map("accepted_at")
+  declinedAt DateTime?         @map("declined_at")
+  revokedAt  DateTime?         @map("revoked_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([email])
+  @@index([token])
+  @@map("project_invitations")
+}
+```
+
+#### `ProjectReviewComment`
+
+Stores review comments separately from the manuscript blob.
+
+```prisma
+enum ReviewCommentStatus {
+  ACTIVE
+  RESOLVED
+  HIDDEN
+}
+
+model ProjectReviewComment {
+  id              String              @id @default(uuid())
+  projectId       String              @map("project_id") @db.VarChar(36)
+  chapterId       String              @map("chapter_id") @db.VarChar(36)
+  authorId        String              @map("author_id") @db.VarChar(36)
+  text            String              @db.Text
+  isSuggestion    Boolean             @default(false) @map("is_suggestion")
+  replacementText String?             @map("replacement_text") @db.Text
+  originalText    String              @map("original_text") @db.Text
+  startOffset     Int?                @map("start_offset")
+  endOffset       Int?                @map("end_offset")
+  status          ReviewCommentStatus @default(ACTIVE)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([chapterId])
+  @@index([authorId])
+  @@map("project_review_comments")
+}
+```
+
+#### Project relation additions
+
+Extend the existing `Project` and `User` models with collaboration relations.
+
+**Important:** do **not** replace the current `ownerId` model. Ownership stays intact;
+collaborators are an additive access layer.
+
+### 3A.4 Backend architecture work
+
+#### New backend modules
+
+```text
+src/
+├── routes/
+│   ├── collaborations.ts      # collaborator + invitation routes (optional split)
+│   └── invitations.ts         # invitee-facing accept/decline routes
+├── controllers/
+│   ├── collaborationController.ts
+│   └── reviewCommentController.ts
+├── services/
+│   ├── collaborationService.ts
+│   ├── invitationService.ts
+│   ├── accessService.ts
+│   └── reviewCommentService.ts
+├── middleware/
+│   └── projectAccess.ts       # reusable project access guards
+└── utils/
+    └── validation.ts          # collaboration schemas
+```
+
+#### Access service
+
+Add a reusable access resolution layer instead of hardcoding ownership checks inside each controller.
+
+Recommended functions:
+
+```typescript
+getProjectAccess(projectId: string, userId: string)
+isProjectOwner(projectId: string, userId: string)
+requireProjectAccess(minRole: 'READ' | 'COMMENT' | 'EDIT')
+```
+
+These should determine whether the user is:
+- owner
+- accepted collaborator
+- unauthorized
+
+They should also resolve effective capabilities:
+- `canRead`
+- `canComment`
+- `canEditProject`
+- `isOwner`
+
+### 3A.5 Invitation workflow
+
+#### Owner creates invite
+
+**Endpoint:**
+`POST /api/projects/:id/invitations`
+
+**Request:**
+```json
+{
+  "email": "reviewer@example.com",
+  "role": "COMMENT"
+}
+```
+
+**Server flow:**
+1. Verify authenticated user owns the project
+2. Normalize email to lowercase/trimmed form
+3. Reject self-invite
+4. Reject invite if user already has active collaborator access
+5. Reject or replace duplicate active pending invite
+6. Generate secure token
+7. Create invitation with 7-day expiry
+8. Return invitation metadata plus accept URL
+
+#### Invite delivery strategy
+
+Because SMTP/email transport is not part of the current Phase 2 stack, support two modes:
+
+##### Mode A — SMTP configured later
+- Send invite email containing accept link
+
+##### Mode B — no SMTP configured (recommended v1 behavior)
+- Still create the invitation record
+- Return a copyable invite link
+- If the email belongs to an existing account, also surface the invite in-app under pending invitations
+
+This avoids blocking collaboration on email infrastructure.
+
+#### Invitee actions
+
+**Endpoints:**
+- `GET /api/invitations`
+- `POST /api/invitations/:token/accept`
+- `POST /api/invitations/:token/decline`
+
+**Accept flow:**
+1. Verify authenticated user email matches invitation email
+2. Verify invite is not expired, revoked, accepted, or declined
+3. Upsert `ProjectCollaborator`
+4. Mark invite `acceptedAt`
+5. Return shared project summary
+
+### 3A.6 Shared project access rules
+
+#### Shared project listing
+
+Update authenticated project listing to return both:
+- projects owned by the current user
+- projects shared with the current user
+
+Recommended response shape:
+
+```json
+{
+  "ownedProjects": [...],
+  "sharedProjects": [...]
+}
+```
+
+Each shared project entry should include:
+- project ID
+- title
+- owner summary
+- collaborator role
+- updated timestamp
+
+#### Shared project loading
+
+Allow `GET /api/projects/:id` for:
+- owner
+- accepted collaborator with `READ` or above
+
+**Encryption note:**
+No immediate encryption redesign is required for read access. The backend can
+continue to decrypt project data server-side using owner-controlled storage and
+return plaintext JSON only after access is verified.
+
+#### Shared project saving
+
+For Phase 3A, keep these endpoints owner-only:
+- `POST /api/projects`
+- `PUT /api/projects/:id`
+- `DELETE /api/projects/:id`
+
+This is a deliberate boundary between async review and future live editing.
+
+### 3A.7 Review comments architecture
+
+#### Why comments need their own API
+
+The current frontend comment model lives inside `AppState.comments`, but for
+shared review this must move to a server-owned collaboration model so comment
+permission is independent from manuscript write permission.
+
+#### New review comment endpoints
+
+```text
+GET    /api/projects/:id/comments
+POST   /api/projects/:id/comments
+PATCH  /api/projects/:id/comments/:commentId
+DELETE /api/projects/:id/comments/:commentId
+POST   /api/projects/:id/comments/:commentId/resolve   (optional v1)
+```
+
+#### Permission rules for comments
+
+- `READ` users can list comments only
+- `COMMENT` users can create comments/suggestions
+- comment authors can edit/delete their own comments
+- owners can moderate, hide, or resolve all comments
+
+#### Comment data mapping strategy
+
+To minimise frontend churn in the first release:
+- keep the UI rendering close to the current `StoryComment` shape
+- map API comments into the existing frontend comment type where possible
+- avoid a full editor comment system rewrite in the first pass
+
+### 3A.8 Frontend implementation plan
+
+#### New frontend work
+
+```text
+src/
+├── services/
+│   ├── collaborationService.ts
+│   ├── invitationService.ts
+│   └── reviewCommentService.ts
+├── hooks/
+│   └── useProjectAccess.ts
+├── components/
+│   ├── organisms/
+│   │   ├── ShareProjectModal.tsx
+│   │   ├── InvitationsPanel.tsx
+│   │   └── SharedProjectBadge.tsx
+│   └── pages/
+│       └── InvitationsPage.tsx      # optional if not embedded in profile
+```
+
+#### Share UI
+
+Add a **Share** entry point in the editor shell for authenticated owners only.
+
+Recommended first version of the modal:
+- invite by email field
+- permission selector: `Read` / `Comment`
+- current collaborators list
+- pending invitations list
+- revoke and change-role actions
+
+#### Invitations UI
+
+Invitees need a visible place to accept/decline invites.
+
+Recommended first version:
+- lightweight `/invitations` route **or** a profile-page section
+- list pending invitations
+- accept / decline buttons
+
+#### Shared project list UI
+
+Update project load/list screens to show two groups:
+- **Owned by me**
+- **Shared with me**
+
+Each shared row should show:
+- project title
+- owner identity
+- permission badge (`Read` / `Comment`)
+
+#### Read-only / comment-only editor modes
+
+Introduce explicit access state on the frontend, e.g.:
+
+```typescript
+interface ProjectAccessState {
+  isOwner: boolean;
+  role: 'OWNER' | 'READ' | 'COMMENT';
+  canRead: boolean;
+  canComment: boolean;
+  canEditProject: boolean;
+}
+```
+
+Then gate the UI from capability flags instead of ad hoc ownership checks.
+
+##### `READ` mode
+- open and navigate project
+- no chapter content edits
+- no metadata edits
+- no character/event/relationship edits
+- no cloud overwrite actions that save the project blob
+
+##### `COMMENT` mode
+- same restrictions as `READ`
+- add review comment / suggestion UI enabled
+- comment management enabled only for owned comments (plus owner moderation)
+
+### 3A.9 Validation, rate limits, and security
+
+#### Validation schemas to add
+
+- create invitation
+- update collaborator role
+- accept/decline invitation
+- create review comment
+- update review comment
+
+#### Security rules
+
+- only owners can invite or revoke collaborators
+- collaborators cannot re-share projects in Phase 3A
+- invitation tokens expire after 7 days
+- invite acceptance requires matching authenticated email
+- revocation blocks future shared access immediately
+- project blob writes remain owner-only
+- audit-log invite create/accept/revoke and collaborator removal events
+
+#### Rate limits
+
+Add collaboration-specific rate limits:
+- invite create: e.g. 10/min per owner
+- invitation accept/decline: e.g. 30/min
+- comment create/update: align with standard write limits
+
+### 3A.10 Testing plan
+
+#### Backend tests
+
+**Unit:**
+- invitation service token generation and expiry
+- collaborator access resolution
+- review comment permissions
+- owner vs collaborator authorization checks
+
+**Integration:**
+- owner can invite existing/non-existing user email
+- invitee can accept valid invite
+- expired invite is rejected
+- duplicate active invite is blocked or replaced
+- shared `READ` user can load project but cannot comment
+- shared `COMMENT` user can comment but cannot update project blob
+- revoked collaborator loses access
+
+#### Frontend tests
+
+- share modal invite flow
+- pending invitations accept/decline flow
+- shared-project listing and badges
+- read-only UI lockout
+- comment-only UI state
+- hidden/disabled owner-only controls
+
+#### Manual E2E scenarios
+
+1. Owner invites a user as `READ`
+2. Invitee accepts and opens shared project
+3. Invitee sees read-only UI
+4. Owner changes permission to `COMMENT`
+5. Invitee adds review comment/suggestion
+6. Owner sees and manages that comment
+7. Owner revokes collaborator
+8. Invitee loses access immediately
+
+### 3A.11 Implementation order
+
+```text
+Step 1:  Prisma schema migration for collaborators, invitations, review comments
+Step 2:  Access service + reusable project access middleware
+Step 3:  Invitation create/list/accept/decline backend APIs
+Step 4:  Shared project listing + load authorization
+Step 5:  Dedicated review comments backend APIs
+Step 6:  Frontend collaboration services + access state plumbing
+Step 7:  Share Project modal
+Step 8:  Pending invitations UI
+Step 9:  Shared project grouping in load/list UI
+Step 10: Read-only and comment-only editor gating
+Step 11: Backend/frontend automated tests
+Step 12: Manual E2E verification in Docker/local stack
+```
+
+### 3A.12 Estimated effort
+
+| Area | Estimate |
+|------|----------|
+| Schema + migration | 0.5–1 day |
+| Access/invitation backend | 2–3 days |
+| Review comments backend | 1–2 days |
+| Frontend sharing/invitation UI | 2–3 days |
+| Access gating across editor | 2 days |
+| Tests + bug fixing | 2–3 days |
+| **Total** | **9–14 working days** |
+
+### 3A.13 Definition of done
+
+Phase 3A is complete when:
+
+- Owners can invite collaborators by email
+- Invitees can accept/decline in-app
+- Shared projects appear in the authenticated project list
+- Shared projects open successfully for collaborators
+- `READ` collaborators cannot modify manuscript/project data
+- `COMMENT` collaborators can create review comments/suggestions only
+- Owners can revoke collaborator access
+- Collaboration actions are validated and tested
+
+### 3A.14 Deferred to later phases
+
+The following remain intentionally deferred:
+- edit-level collaborator access
+- simultaneous chapter editing
+- websocket presence and room membership
+- cursor sync
+- conflict resolution for manuscript changes
+- OT/CRDT or operational merge logic
 
 ### Features
 
