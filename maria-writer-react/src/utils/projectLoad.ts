@@ -33,6 +33,24 @@ export function validateImportedState(value: unknown): string | null {
 
 export function buildLoadedState(raw: any, currentState: AppState, cloudProjectId?: string): AppState {
   const guestId = currentState.cloudSync?.guestId || cloudStorageService.getGuestId();
+  const nextCloudSync = {
+    ...initialState.cloudSync,
+    ...currentState.cloudSync,
+    guestId,
+    projectId: cloudProjectId ?? null,
+    lastSyncedAt: cloudProjectId ? new Date().toISOString() : null,
+    isSyncing: false,
+    syncError: null,
+  };
+  const nextUiState = {
+    viewMode: currentState.viewMode,
+    context: currentState.context,
+    activeCodexTab: currentState.activeCodexTab,
+    activeModal: 'none' as const,
+    editingItemId: null,
+    viewingItemId: null,
+    prefilledEventData: undefined,
+  };
 
   const merged = {
     ...initialState,
@@ -50,21 +68,8 @@ export function buildLoadedState(raw: any, currentState: AppState, cloudProjectI
       ...(raw.saveSettings || {}),
       saveToLocal: true,
     },
-    cloudSync: {
-      ...initialState.cloudSync,
-      ...currentState.cloudSync,
-      ...(raw.cloudSync || {}),
-      guestId,
-      ...(cloudProjectId
-        ? {
-            projectId: cloudProjectId,
-            lastSyncedAt: new Date().toISOString(),
-            syncError: null,
-          }
-        : {}),
-    },
-    activeModal: 'none',
-    editingItemId: null,
+    cloudSync: nextCloudSync,
+    ...nextUiState,
   } as AppState;
 
   if (!merged.activeChapterId && merged.chapters.length > 0) {

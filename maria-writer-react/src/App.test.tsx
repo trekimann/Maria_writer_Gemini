@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StoreProvider } from './context/StoreContext';
 import { HelpProvider } from './context/HelpContext';
+import { AppThemeProvider } from './components/providers/AppThemeProvider';
 import { MainLayout } from './components/templates/MainLayout';
 
 // Mock vis-network
@@ -58,9 +59,11 @@ describe('App Integration', () => {
     render(
       <MemoryRouter>
         <StoreProvider>
-          <HelpProvider>
-            <MainLayout />
-          </HelpProvider>
+          <AppThemeProvider>
+            <HelpProvider>
+              <MainLayout />
+            </HelpProvider>
+          </AppThemeProvider>
         </StoreProvider>
       </MemoryRouter>
     );
@@ -75,9 +78,11 @@ describe('App Integration', () => {
     render(
       <MemoryRouter>
         <StoreProvider>
-          <HelpProvider>
-            <MainLayout />
-          </HelpProvider>
+          <AppThemeProvider>
+            <HelpProvider>
+              <MainLayout />
+            </HelpProvider>
+          </AppThemeProvider>
         </StoreProvider>
       </MemoryRouter>
     );
@@ -95,9 +100,11 @@ describe('App Integration', () => {
     render(
       <MemoryRouter>
         <StoreProvider>
-          <HelpProvider>
-            <MainLayout />
-          </HelpProvider>
+          <AppThemeProvider>
+            <HelpProvider>
+              <MainLayout />
+            </HelpProvider>
+          </AppThemeProvider>
         </StoreProvider>
       </MemoryRouter>
     );

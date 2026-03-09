@@ -7,6 +7,7 @@ const mockSetReturnTo = vi.fn();
 let mockAuthState = {
   isLoading: false,
   isAuthenticated: false,
+  user: null as { role: 'USER' | 'ADMIN' } | null,
   setReturnTo: mockSetReturnTo,
 };
 
@@ -39,8 +40,16 @@ vi.mock('./components/pages/RegisterPage', () => ({
   RegisterPage: () => <div>Register route</div>,
 }));
 
+vi.mock('./components/pages/ProjectStatisticsPage', () => ({
+  ProjectStatisticsPage: () => <div>Statistics route</div>,
+}));
+
 vi.mock('./components/pages/UserProfilePage', () => ({
   UserProfilePage: () => <div>Profile route</div>,
+}));
+
+vi.mock('./components/pages/AdminPage', () => ({
+  AdminPage: () => <div>Admin route</div>,
 }));
 
 describe('App routes', () => {
@@ -49,6 +58,7 @@ describe('App routes', () => {
     mockAuthState = {
       isLoading: false,
       isAuthenticated: false,
+      user: null,
       setReturnTo: mockSetReturnTo,
     };
   });
@@ -68,11 +78,36 @@ describe('App routes', () => {
     expect(await screen.findByText('Profile route')).toBeInTheDocument();
   });
 
+  it('renders the statistics route', async () => {
+    window.history.pushState({}, '', '/statistics');
+    render(<App />);
+
+    expect(await screen.findByText('Statistics route')).toBeInTheDocument();
+  });
+
   it('redirects unauthenticated profile visits to login and stores returnTo', async () => {
     window.history.pushState({}, '', '/profile');
     render(<App />);
 
     expect(await screen.findByText('Login route')).toBeInTheDocument();
     expect(mockSetReturnTo).toHaveBeenCalledWith('/profile');
+  });
+
+  it('renders the admin route for admin users', async () => {
+    mockAuthState.isAuthenticated = true;
+    mockAuthState.user = { role: 'ADMIN' };
+    window.history.pushState({}, '', '/admin');
+    render(<App />);
+
+    expect(await screen.findByText('Admin route')).toBeInTheDocument();
+  });
+
+  it('redirects non-admin users away from the admin route', async () => {
+    mockAuthState.isAuthenticated = true;
+    mockAuthState.user = { role: 'USER' };
+    window.history.pushState({}, '', '/admin');
+    render(<App />);
+
+    expect(await screen.findByText('Editor route')).toBeInTheDocument();
   });
 });

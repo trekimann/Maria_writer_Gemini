@@ -5,6 +5,7 @@ import { AppPageLayout } from './AppPageLayout';
 
 let mockAuthState = {
   isAuthenticated: false,
+  user: null as { role: 'USER' | 'ADMIN' } | null,
 };
 
 vi.mock('../../context/AuthContext', () => ({
@@ -13,7 +14,7 @@ vi.mock('../../context/AuthContext', () => ({
 
 describe('AppPageLayout', () => {
   beforeEach(() => {
-    mockAuthState = { isAuthenticated: false };
+    mockAuthState = { isAuthenticated: false, user: null };
   });
 
   it('renders the site logo, guest navigation, and injected menu bar', () => {
@@ -34,7 +35,7 @@ describe('AppPageLayout', () => {
   });
 
   it('shows authenticated navigation and marks the active link', () => {
-    mockAuthState = { isAuthenticated: true };
+    mockAuthState = { isAuthenticated: true, user: { role: 'USER' } };
 
     render(
       <MemoryRouter initialEntries={['/profile']}>
@@ -49,5 +50,20 @@ describe('AppPageLayout', () => {
     expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Register' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows the admin navigation link for admin users', () => {
+    mockAuthState = { isAuthenticated: true, user: { role: 'ADMIN' } };
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <AppPageLayout>
+          <div>Admin body</div>
+        </AppPageLayout>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('aria-current', 'page');
   });
 });

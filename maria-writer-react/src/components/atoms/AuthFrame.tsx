@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { LoadingSpinner } from './LoadingSpinner.tsx';
 import styles from './AuthFrame.module.scss';
 
 interface AuthFrameProps {
@@ -28,9 +29,8 @@ export const AuthFrame: React.FC<AuthFrameProps> = ({
   if (isLoading) {
     return (
       <div className={styles.loadingPage}>
-        <div className={styles.loadingCard} role="status" aria-live="polite">
-          <div className={styles.spinner} aria-hidden="true" />
-          <p className={styles.loadingText}>{loadingMessage}</p>
+        <div className={styles.loadingCard}>
+          <LoadingSpinner label={loadingMessage} />
         </div>
       </div>
     );

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useStore } from '../../context/StoreContext';
-import { ThemeProvider } from '../../context/ThemeContext';
 import { AppPageLayout } from './AppPageLayout';
 import { TopBar } from '../organisms/TopBar';
 import { Sidebar } from '../organisms/Sidebar';
@@ -23,29 +22,27 @@ export const MainLayout: React.FC = () => {
   const { state, dispatch } = useStore();
 
   return (
-    <ThemeProvider>
-      <AppPageLayout menuBar={<TopBar showBrand={false} />} contentClassName={styles.layout} flushContent>
-        <div className={styles.body}>
-          <Sidebar />
-          <main className={styles.main}>
-            {state.context === 'writer' ? <Editor key={state.activeChapterId} /> : <Codex />}
-          </main>
-        </div>
-        <MetadataModal />
-        <SaveModal />
-        <SaveSettingsModal 
-          isOpen={state.activeModal === 'save-settings'} 
-          onClose={() => dispatch({ type: 'CLOSE_MODAL' })} 
-        />
-        <LoadProjectModal />
-        <CharacterModal />
-        <EventModal />
-        <RelationshipModal />
-        <ChapterMetadataModal />
-        <ThemeConfigModal />
-        <NewBookModal />
-        <ClaimProjectsModal />
-      </AppPageLayout>
-    </ThemeProvider>
+    <AppPageLayout menuBar={<TopBar showBrand={false} />} contentClassName={styles.layout} flushContent>
+      <div className={styles.body}>
+        <Sidebar />
+        <main className={styles.main}>
+          {state.context === 'writer' ? <Editor key={state.activeChapterId} /> : <Codex />}
+        </main>
+      </div>
+      <MetadataModal />
+      <SaveModal />
+      <SaveSettingsModal 
+        isOpen={state.activeModal === 'save-settings'} 
+        onClose={() => dispatch({ type: 'CLOSE_MODAL' })} 
+      />
+      <LoadProjectModal />
+      <CharacterModal />
+      <EventModal />
+      <RelationshipModal />
+      <ChapterMetadataModal />
+      <ThemeConfigModal />
+      <NewBookModal />
+      <ClaimProjectsModal />
+    </AppPageLayout>
   );
 };

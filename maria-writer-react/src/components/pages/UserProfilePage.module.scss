@@ -4,6 +4,13 @@
   gap: 1.5rem;
 }
 
+.loadingState {
+  min-height: 18rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .headerActions {
   display: flex;
   align-items: center;

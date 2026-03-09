@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Copy, LogOut, Plus, RefreshCw, Save, Sparkles, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -6,11 +6,12 @@ import { useStore, initialState } from '../../context/StoreContext';
 import { addProfileAsCharacter } from '@utils/profileCharacter';
 import { AppPageLayout } from '../templates/AppPageLayout';
 import { Button } from '../atoms/Button';
+import { LoadingSpinner } from '../atoms/LoadingSpinner.tsx';
 import { DateTimeInput } from '../molecules/DateTimeInput';
 import { TagInput } from '../molecules/TagInput';
 import { CreatorConnectionsGraph } from '../molecules/CreatorConnectionsGraph';
 import { CloudProject, cloudStorageService } from '../../services/cloudStorage';
-import type { CreatorConnection, UpdateProfilePayload } from '../../services/authService';
+import type { AuthUser, CreatorConnection, UpdateProfilePayload } from '../../services/authService';
 import { resizeToDataUrl } from '../../utils/avatar';
 import { buildLoadedState, validateImportedState } from '../../utils/projectLoad';
 import { loadGuestSnapshot, saveToLocal } from '../../utils/storage';
@@ -22,8 +23,21 @@ function splitCsv(value?: string | null): string[] {
     : [];
 }
 
+function buildProfileForm(user?: AuthUser | null): UpdateProfilePayload & { creatorConnections: CreatorConnection[] } {
+  return {
+    displayName: user?.displayName ?? '',
+    genreTags: user?.genreTags ?? '',
+    profilePicture: user?.profilePicture ?? null,
+    dob: user?.dob ?? '',
+    aliases: user?.aliases ?? '',
+    bio: user?.bio ?? '',
+    profileColor: user?.profileColor ?? '#4f46e5',
+    creatorConnections: user?.creatorConnections ?? [],
+  };
+}
+
 export const UserProfilePage: React.FC = () => {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, isLoading } = useAuth();
   const { state, dispatch } = useStore();
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -36,60 +50,9 @@ export const UserProfilePage: React.FC = () => {
   const [isLoadingCloud, setIsLoadingCloud] = useState(false);
   const [cloudError, setCloudError] = useState<string | null>(null);
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
-  const [form, setForm] = useState<UpdateProfilePayload & { creatorConnections: CreatorConnection[] }>({
-    displayName: '',
-    genreTags: '',
-    profilePicture: null,
-    dob: '',
-    aliases: '',
-    bio: '',
-    profileColor: '#4f46e5',
-    creatorConnections: [],
-  });
+  const [form, setForm] = useState<UpdateProfilePayload & { creatorConnections: CreatorConnection[] }>(() => buildProfileForm());
 
-  if (!user) {
-    return null;
-  }
-
-  useEffect(() => {
-    setForm({
-      displayName: user.displayName ?? '',
-      genreTags: user.genreTags ?? '',
-      profilePicture: user.profilePicture ?? null,
-      dob: user.dob ?? '',
-      aliases: user.aliases ?? '',
-      bio: user.bio ?? '',
-      profileColor: user.profileColor ?? '#4f46e5',
-      creatorConnections: user.creatorConnections ?? [],
-    });
-  }, [user]);
-
-  useEffect(() => {
-    void refreshCloudProjects();
-  }, []);
-
-  const guestId = cloudStorageService.getGuestId();
-  const name = user.displayName || user.username;
-  const initials = name.charAt(0).toUpperCase();
-  const genreTags = splitCsv(isEditing ? form.genreTags : user.genreTags);
-  const aliases = splitCsv(isEditing ? form.aliases : user.aliases);
-  const projectTitle = state.meta.title || 'Current Project';
-  const profileColor = form.profileColor || user.profileColor || '#4f46e5';
-  const creatorConnections = form.creatorConnections ?? [];
-
-  const groupedConnections = useMemo(() => {
-    return {
-      follow: creatorConnections.filter((connection) => connection.kind === 'follow'),
-      privateRead: creatorConnections.filter((connection) => connection.kind === 'private-read'),
-      collaborator: creatorConnections.filter((connection) => connection.kind === 'collaborator'),
-    };
-  }, [creatorConnections]);
-
-  const handleCopyGuestId = () => {
-    navigator.clipboard.writeText(guestId);
-  };
-
-  const refreshCloudProjects = async () => {
+  const refreshCloudProjects = useCallback(async () => {
     setIsLoadingCloud(true);
     setCloudError(null);
     try {
@@ -101,6 +64,54 @@ export const UserProfilePage: React.FC = () => {
     } finally {
       setIsLoadingCloud(false);
     }
+  }, []);
+
+  useEffect(() => {
+    setForm(buildProfileForm(user));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setCloudProjects([]);
+      return;
+    }
+
+    void refreshCloudProjects();
+  }, [refreshCloudProjects, user]);
+
+  const guestId = cloudStorageService.getGuestId();
+  const name = user?.displayName || user?.username || 'Loading profile';
+  const initials = name.charAt(0).toUpperCase() || 'L';
+  const genreTags = splitCsv(isEditing ? form.genreTags : user?.genreTags);
+  const aliases = splitCsv(isEditing ? form.aliases : user?.aliases);
+  const projectTitle = state.meta.title || 'Current Project';
+  const profileColor = form.profileColor || user?.profileColor || '#4f46e5';
+  const creatorConnections = form.creatorConnections ?? [];
+
+  const groupedConnections = useMemo(() => {
+    return {
+      follow: creatorConnections.filter((connection) => connection.kind === 'follow'),
+      privateRead: creatorConnections.filter((connection) => connection.kind === 'private-read'),
+      collaborator: creatorConnections.filter((connection) => connection.kind === 'collaborator'),
+    };
+  }, [creatorConnections]);
+
+  if (isLoading) {
+    return (
+      <AppPageLayout>
+        <div className={styles.loadingState}>
+          <LoadingSpinner label="Loading profile…" />
+        </div>
+      </AppPageLayout>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const handleCopyGuestId = () => {
+    navigator.clipboard.writeText(guestId);
   };
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,16 +157,7 @@ export const UserProfilePage: React.FC = () => {
     setIsEditing(false);
     setSaveError(null);
     setSaveSuccess(null);
-    setForm({
-      displayName: user.displayName ?? '',
-      genreTags: user.genreTags ?? '',
-      profilePicture: user.profilePicture ?? null,
-      dob: user.dob ?? '',
-      aliases: user.aliases ?? '',
-      bio: user.bio ?? '',
-      profileColor: user.profileColor ?? '#4f46e5',
-      creatorConnections: user.creatorConnections ?? [],
-    });
+    setForm(buildProfileForm(user));
   };
 
   const handleSaveProfile = async () => {

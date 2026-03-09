@@ -24,15 +24,23 @@ export const AppPageLayout: React.FC<AppPageLayoutProps> = ({
   contentClassName,
   flushContent = false,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  const authenticatedNavItems: NavItem[] = [
+    { label: 'Editor', to: '/editor' },
+    { label: 'Statistics', to: '/statistics' },
+    { label: 'Profile', to: '/profile' },
+  ];
+
+  if (user?.role === 'ADMIN') {
+    authenticatedNavItems.push({ label: 'Admin', to: '/admin' });
+  }
 
   const navItems: NavItem[] = isAuthenticated
-    ? [
-        { label: 'Editor', to: '/editor' },
-        { label: 'Profile', to: '/profile' },
-      ]
+    ? authenticatedNavItems
     : [
         { label: 'Editor', to: '/editor' },
+        { label: 'Statistics', to: '/statistics' },
         { label: 'Sign In', to: '/login' },
         { label: 'Register', to: '/register' },
       ];
