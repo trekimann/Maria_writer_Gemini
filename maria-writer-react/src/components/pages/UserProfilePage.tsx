@@ -110,8 +110,14 @@ export const UserProfilePage: React.FC = () => {
     return null;
   }
 
-  const handleCopyGuestId = () => {
-    navigator.clipboard.writeText(guestId);
+  const handleCopyGuestId = async () => {
+    setSaveError(null);
+
+    try {
+      await navigator.clipboard.writeText(guestId);
+    } catch {
+      setSaveError('Could not copy Guest ID. Please copy it manually.');
+    }
   };
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
