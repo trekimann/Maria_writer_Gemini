@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, RefreshCw, Cloud, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, initialState } from '../../context/StoreContext';
+import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../molecules/Modal';
 import { Button } from '../atoms/Button';
 import { cloudStorageService, CloudProject } from '../../services/cloudStorage';
-import { AppState } from '../../types';
 import { APP_VERSION } from '../../constants/version';
 import { getBreakingMigrationWarning } from '../../constants/versionCompatibility';
 import { buildLoadedState, validateImportedState } from '../../utils/projectLoad';
