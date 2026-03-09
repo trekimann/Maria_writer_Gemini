@@ -18,6 +18,7 @@ const mockAuthService = {
   refreshTokens:  jest.fn(),
   logout:         jest.fn(),
   getUser:        jest.fn(),
+  updateProfile:  jest.fn(),
 };
 
 jest.mock('../../src/services/authService', () => ({
@@ -61,6 +62,7 @@ const noop = jest.fn() as unknown as import('express').NextFunction;
 const FAKE_USER = {
   id: 'user-1', email: 'test@example.com', username: 'tester',
   displayName: 'Tester', role: 'USER', tier: 'DEFAULT',
+  genreTags: null, profilePicture: null, dob: null, aliases: null, bio: null, profileColor: '#4f46e5', creatorConnections: [],
 };
 const FAKE_TOKENS = {
   accessToken:  'at-jwt-string',
@@ -263,5 +265,35 @@ describe('AuthController.me()', () => {
 
     expect(mockAuthService.getUser).toHaveBeenCalledWith(FAKE_USER.id);
     expect(res.json).toHaveBeenCalledWith({ user: FAKE_USER });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateProfile()
+// ---------------------------------------------------------------------------
+
+describe('AuthController.updateProfile()', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('returns 401 via next() when req.user is not set', async () => {
+    const req = makeReq({ body: { displayName: 'Updated' } });
+    const res = makeRes();
+    const next = jest.fn() as unknown as import('express').NextFunction;
+
+    await authController.updateProfile(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401 }));
+  });
+
+  it('returns the updated user on success', async () => {
+    mockAuthService.updateProfile.mockResolvedValue({ ...FAKE_USER, displayName: 'Updated' });
+
+    const req = { body: { displayName: 'Updated' }, cookies: {}, user: { id: FAKE_USER.id } } as unknown as import('express').Request;
+    const res = makeRes();
+
+    await authController.updateProfile(req, res, noop);
+
+    expect(mockAuthService.updateProfile).toHaveBeenCalledWith(FAKE_USER.id, { displayName: 'Updated' });
+    expect(res.json).toHaveBeenCalledWith({ user: expect.objectContaining({ displayName: 'Updated' }) });
   });
 });

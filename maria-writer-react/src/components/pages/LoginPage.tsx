@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../atoms/Button';
+import { AuthPageCard } from '../atoms/AuthPageCard';
+import { AppPageLayout } from '../templates/AppPageLayout';
 import { saveGuestSnapshot } from '../../utils/storage';
 import styles from './LoginPage.module.scss';
 
@@ -24,7 +26,7 @@ export const LoginPage: React.FC = () => {
     try {
       saveGuestSnapshot();
       await login({ email, password, rememberMe });
-      navigate(returnTo || '/', { replace: true });
+      navigate(returnTo || '/editor', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -33,11 +35,28 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Maria Writer</h1>
-        <p className={styles.subtitle}>Sign in to your account</p>
-
+    <AppPageLayout>
+      <AuthPageCard
+        title="Maria Writer"
+        subtitle="Sign in to your account"
+        footer={
+          <div className={styles.links}>
+            <p>
+              Don't have an account?{' '}
+              <Link to="/register" className={styles.link}>Create a free account →</Link>
+            </p>
+            <p>
+              <button
+                type="button"
+                className={styles.guestLink}
+                onClick={() => navigate('/editor')}
+              >
+                Continue as Guest (no cloud save)
+              </button>
+            </p>
+          </div>
+        }
+      >
         {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
@@ -104,25 +123,7 @@ export const LoginPage: React.FC = () => {
             {isSubmitting ? 'Signing in…' : 'Sign In'}
           </Button>
         </form>
-
-        <div className={styles.divider} />
-
-        <div className={styles.links}>
-          <p>
-            Don't have an account?{' '}
-            <Link to="/register" className={styles.link}>Create a free account →</Link>
-          </p>
-          <p>
-            <button
-              type="button"
-              className={styles.guestLink}
-              onClick={() => navigate('/')}
-            >
-              Continue as Guest (no cloud save)
-            </button>
-          </p>
-        </div>
-      </div>
-    </div>
+      </AuthPageCard>
+    </AppPageLayout>
   );
 };

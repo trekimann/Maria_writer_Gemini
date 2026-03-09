@@ -28,3 +28,6 @@ build/
 logs/
 *.log
 
+# Test reports
+coverage/
+

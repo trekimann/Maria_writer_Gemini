@@ -3,7 +3,7 @@ import { authController } from '../controllers/authController';
 import { validate } from '../middleware/validator';
 import { requireAuth, requireAuthenticated } from '../middleware/auth';
 import { loginLimiter, registerLimiter, refreshLimiter } from '../middleware/rateLimit';
-import { RegisterSchema, LoginSchema } from '../utils/validation';
+import { RegisterSchema, LoginSchema, UpdateProfileSchema } from '../utils/validation';
 
 const router = Router();
 
@@ -21,5 +21,8 @@ router.post('/logout', authController.logout);
 
 // GET /api/auth/me  — requires valid access token
 router.get('/me', requireAuth, requireAuthenticated, authController.me);
+
+// PATCH /api/auth/profile — update current user profile
+router.patch('/profile', requireAuth, requireAuthenticated, validate(UpdateProfileSchema), authController.updateProfile);
 
 export default router;

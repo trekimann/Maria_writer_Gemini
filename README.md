@@ -1,12 +1,16 @@
 # Maria Writer with Cloud Storage 🚀
 
-A powerful novel writing application with cloud persistence, built with React, TypeScript, Node.js, and MariaDB.
+A powerful novel writing application with cloud persistence, routed account pages, and JWT authentication, built with React, TypeScript, Node.js, and MariaDB.
 
 ## Overview
 
-Maria Writer is a comprehensive novel writing tool designed specifically for managing novels and their associated information. It includes features for commenting, chapter management, character bios, event tracking, relationship mapping, and much more.
+Maria Writer is a comprehensive novel writing tool designed specifically for managing novels and their associated information. It includes features for commenting, chapter management, character bios, event tracking, relationship mapping, routed account pages, and much more.
 
-**NEW in v1.0:** Cloud storage with MariaDB backend! Your work is now saved to a persistent database with flexible auto-save options.
+**Current shipped milestones:**
+- Cloud storage with MariaDB backend
+- JWT auth with login/register flows
+- Shared routed page shell for editor and account pages
+- Full protected profile page with inline editing and cloud quick-load
 
 ### Philosophy
 
@@ -50,6 +54,14 @@ See **[SETUP_GUIDE.md](SETUP_GUIDE.md)** for detailed instructions.
 - 🆔 **Guest IDs** - Simple access without creating accounts
 - 📦 **Export/Import** - Backup as `.maria` files
 
+### Authentication & Account Pages (Phase 2 - Core Shipped)
+- 🔐 **JWT Authentication** - Login, register, refresh, logout, and protected routes
+- 👤 **Full Profile Page** - Protected `/profile` route with inline editing
+- 🎨 **Profile Customization** - Avatar, display name, genre tags, aliases, DOB, bio, and profile colour
+- ☁️ **Profile Cloud Quick-Load** - Load cloud projects directly from the profile page
+- 🧭 **Shared Routed Layout** - Consistent header/navigation across auth and account pages
+- 🪄 **Profile → Character Shortcut** - Create a character in the current project from your profile
+
 ### Core Writing Features
 - 📝 **Multiple Editor Modes** - Write, Source, and Preview modes
 - 📚 **Chapter Management** - Drag-and-drop reordering, metadata
@@ -66,6 +78,7 @@ See **[SETUP_GUIDE.md](SETUP_GUIDE.md)** for detailed instructions.
 - **[FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md](FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md)** - Multi-user roadmap (auth, encryption, admin)
 - **[maria-writer-backend/README.md](maria-writer-backend/README.md)** - Backend API docs
 - **[LLM_REFERENCE/](LLM_REFERENCE/)** - Developer guides
+- **[LLM_REFERENCE/LLM_INSTRUCTION-ADDING_NEW_PAGE.md](LLM_REFERENCE/LLM_INSTRUCTION-ADDING_NEW_PAGE.md)** - How to add a new routed page using the shared auth/layout structure
 - **[docker-compose.unraid.yml](docker-compose.unraid.yml)** - Unraid deployment compose file
 - **[build-and-push.sh](build-and-push.sh)** - Build & push images to private registry
 
@@ -82,11 +95,41 @@ See **[SETUP_GUIDE.md](SETUP_GUIDE.md)** for detailed instructions.
 ## 📋 Roadmap
 
 - ✅ **Phase 1: Cloud Storage** (Current) - MariaDB backend, auto-save
-- 📅 **Phase 2: Authentication** - User accounts, JWT auth
+- 🚧 **Phase 2: Authentication** - Core auth, routing, and profile work shipped; E2E/docs/admin polish remains
 - 📅 **Phase 3: Collaboration** - Share projects, permissions
 - 📅 **Phase 4: Real-Time Sync** - WebSockets, live collaboration
 
 See [MULTI_USER_IMPLEMENTATION_PLAN.md](FUTURE_FEATURES/MULTI_USER_IMPLEMENTATION_PLAN.md) for details.
+
+## 🧭 Routing
+
+Current application routes:
+
+- `/` → redirects to `/editor`
+- `/editor` → main writing workspace
+- `/login` → sign-in page
+- `/register` → account creation page
+- `/profile` → protected user profile page
+
+Unknown routes currently redirect back to `/editor`.
+
+## 🧱 Page Layout & Auth Structure
+
+The frontend now uses a shared routed-page structure:
+
+- `AuthFrame` - auth loading gate, protected-route redirect, and return-to handling
+- `AppPageLayout` - shared header/navigation shell for routed pages
+- `AuthPageCard` - reusable auth form card for login/register
+- `MainLayout` - editor-specific workspace mounted inside `AppPageLayout`
+
+This keeps routed pages visually consistent while letting the editor keep its own tools, sidebar, and modal stack.
+
+## 🔐 Auth Notes
+
+- Guests can still use the editor locally at `/editor`
+- Login and register are full routed pages
+- Protected routes such as `/profile` send unauthenticated users to `/login`
+- After login, protected navigation can return the user to the page they originally requested
 
 ## 🎯 Usage
 

@@ -19,7 +19,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #f3f4f6;
+  background-color: var(--color-surface);
 }
 
 .headerTitle {
@@ -57,7 +57,7 @@
   transition: all 0.2s;
 
   &:hover {
-    background-color: #f3f4f6;
+    background-color: var(--color-surface);
     border-color: var(--color-primary);
     color: var(--color-primary);
   }
@@ -66,7 +66,7 @@
 .nav {
   margin-top: auto;
   border-top: 1px solid var(--color-border);
-  background-color: white;
+  background-color: var(--color-surface);
 }
 
 .navItem {
@@ -78,14 +78,14 @@
   transition: background-color 0.2s;
   font-weight: 500;
   color: var(--color-text-muted);
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border);
 
   &:hover {
-    background-color: #f9fafb;
+    background-color: var(--color-surface);
   }
 
   &.active {
-    background-color: #f3f4f6;
+    background-color: var(--color-primary-light);
     color: var(--color-primary);
     
     svg {
@@ -96,7 +96,7 @@
 
 .sortableGhost {
   opacity: 0.5;
-  background-color: #e5e7eb;
+  background-color: var(--color-border);
 }
 
 // ── Manuscript nav ⋮ dropdown ─────────────────────────────────
@@ -123,7 +123,7 @@
   }
 
   &:hover {
-    background-color: rgba(0,0,0,0.08);
+    background-color: var(--color-bg-secondary);
     opacity: 1;
   }
 
@@ -138,7 +138,7 @@
   bottom: calc(100%);
   left: 0;
   z-index: 50;
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
@@ -156,13 +156,13 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text);
   cursor: pointer;
   text-align: left;
   transition: background-color 0.15s;
 
   &:hover {
-    background-color: #f3f4f6;
+    background-color: var(--color-bg-secondary);
     color: var(--color-primary);
 
     svg {
@@ -176,7 +176,7 @@
   top: 0.75rem;
   right: 0.5rem;
   z-index: 10;
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 0.25rem;
@@ -187,7 +187,7 @@
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #f3f4f6;
+    background-color: var(--color-bg-secondary);
   }
 
   svg {

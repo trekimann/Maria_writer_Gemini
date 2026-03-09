@@ -2,7 +2,10 @@ import React, { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Camera, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { AuthPageCard } from '../atoms/AuthPageCard';
 import { Button } from '../atoms/Button';
+import { AppPageLayout } from '../templates/AppPageLayout';
+import { resizeToDataUrl } from '../../utils/avatar';
 import { saveGuestSnapshot } from '../../utils/storage';
 import styles from './RegisterPage.module.scss';
 
@@ -31,33 +34,6 @@ function getPasswordStrength(pwd: string): PasswordStrength {
     { score: 4, label: 'Strong', color: '#22c55e' },
   ];
   return map[score];
-}
-
-// ---------------------------------------------------------------------------
-// Avatar helper — resize to 256×256 JPEG via canvas
-// ---------------------------------------------------------------------------
-
-function resizeToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const SIZE = 256;
-      const canvas = document.createElement('canvas');
-      canvas.width = SIZE;
-      canvas.height = SIZE;
-      const ctx = canvas.getContext('2d')!;
-      // Crop to square from center
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
-    img.src = url;
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +88,7 @@ export const RegisterPage: React.FC = () => {
         genreTags: genreTags || undefined,
         profilePicture: profilePicture ?? undefined,
       });
-      navigate(returnTo || '/', { replace: true });
+      navigate(returnTo || '/editor', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -121,11 +97,23 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Maria Writer</h1>
-        <p className={styles.subtitle}>Create a free account</p>
-
+    <AppPageLayout>
+      <AuthPageCard
+        title="Maria Writer"
+        subtitle="Create a free account"
+        footer={
+          <div className={styles.links}>
+            <p>Already have an account?{' '}
+              <Link to="/login" className={styles.link}>Sign in ?</Link>
+            </p>
+            <p>
+              <button type="button" className={styles.guestLink} onClick={() => navigate('/editor')}>
+                Continue as Guest (no cloud save)
+              </button>
+            </p>
+          </div>
+        }
+      >
         {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
@@ -301,20 +289,7 @@ export const RegisterPage: React.FC = () => {
             {isSubmitting ? 'Creating account…' : 'Create Account'}
           </Button>
         </form>
-
-        <div className={styles.divider} />
-
-        <div className={styles.links}>
-          <p>Already have an account?{' '}
-            <Link to="/login" className={styles.link}>Sign in ?</Link>
-          </p>
-          <p>
-            <button type="button" className={styles.guestLink} onClick={() => navigate('/')}>
-              Continue as Guest (no cloud save)
-            </button>
-          </p>
-        </div>
-      </div>
-    </div>
+      </AuthPageCard>
+    </AppPageLayout>
   );
 };

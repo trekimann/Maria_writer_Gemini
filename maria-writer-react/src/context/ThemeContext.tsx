@@ -92,9 +92,34 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const getStoredThemeMode = (): 'light' | 'dark' | 'system' => {
+  if (typeof window === 'undefined') return 'light';
+
+  const saved = localStorage.getItem('maria_theme_mode');
+  if (saved === 'light' || saved === 'dark' || saved === 'system') {
+    return saved;
+  }
+
+  return 'light';
+};
+
+const getStoredCustomColors = (): Partial<ThemeColors> => {
+  if (typeof window === 'undefined') return {};
+
+  const savedColors = localStorage.getItem('maria_custom_colors');
+  if (!savedColors) return {};
+
+  try {
+    return JSON.parse(savedColors);
+  } catch (e) {
+    console.error('Failed to load custom colors', e);
+    return {};
+  }
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeMode, setThemeMode] = React.useState<'light' | 'dark' | 'system'>('light');
-  const [customColors, setCustomColors] = React.useState<Partial<ThemeColors>>({});
+  const [themeMode, setThemeMode] = React.useState<'light' | 'dark' | 'system'>(getStoredThemeMode);
+  const [customColors, setCustomColors] = React.useState<Partial<ThemeColors>>(getStoredCustomColors);
 
   const getSystemTheme = useCallback((): 'light' | 'dark' => {
     if (typeof window !== 'undefined' && window.matchMedia) {
@@ -106,24 +131,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isDark = themeMode === 'dark' || (themeMode === 'system' && getSystemTheme() === 'dark');
   const baseColors = isDark ? darkTheme : lightTheme;
   const colors = { ...baseColors, ...customColors };
-
-  // Load theme preference from localStorage
-  React.useEffect(() => {
-    const saved = localStorage.getItem('maria_theme_mode');
-    const savedColors = localStorage.getItem('maria_custom_colors');
-
-    if (saved) {
-      setThemeMode(saved as 'light' | 'dark' | 'system');
-    }
-
-    if (savedColors) {
-      try {
-        setCustomColors(JSON.parse(savedColors));
-      } catch (e) {
-        console.error('Failed to load custom colors', e);
-      }
-    }
-  }, []);
 
   // Apply theme to DOM
   useEffect(() => {
@@ -148,6 +155,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('maria_theme_mode', themeMode);
     if (Object.keys(customColors).length > 0) {
       localStorage.setItem('maria_custom_colors', JSON.stringify(customColors));
+    } else {
+      localStorage.removeItem('maria_custom_colors');
     }
   }, [isDark, themeMode, customColors]);
 

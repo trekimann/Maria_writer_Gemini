@@ -1,88 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, RefreshCw, Cloud, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, initialState } from '../../context/StoreContext';
+import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../molecules/Modal';
 import { Button } from '../atoms/Button';
 import { cloudStorageService, CloudProject } from '../../services/cloudStorage';
-import { AppState } from '../../types';
 import { APP_VERSION } from '../../constants/version';
 import { getBreakingMigrationWarning } from '../../constants/versionCompatibility';
+import { buildLoadedState, validateImportedState } from '../../utils/projectLoad';
 import { saveToLocal } from '../../utils/storage';
 import styles from './LoadProjectModal.module.scss';
 
 type LoadTab = 'local' | 'cloud';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-
-function validateImportedState(value: any): string | null {
-  if (!value || typeof value !== 'object') return 'File does not contain a valid project object.';
-
-  if (!value.meta || typeof value.meta !== 'object') return 'Missing metadata section.';
-  if (typeof value.meta.title !== 'string') return 'Invalid metadata: title is required.';
-  if (typeof value.meta.author !== 'string') return 'Invalid metadata: author is required.';
-  if (typeof value.meta.description !== 'string') return 'Invalid metadata: description is required.';
-  if (!Array.isArray(value.meta.tags)) return 'Invalid metadata: tags must be an array.';
-
-  if (!Array.isArray(value.chapters)) return 'Invalid data: chapters must be an array.';
-  if (!Array.isArray(value.characters)) return 'Invalid data: characters must be an array.';
-  if (!Array.isArray(value.events)) return 'Invalid data: events must be an array.';
-  if (!Array.isArray(value.relationships)) return 'Invalid data: relationships must be an array.';
-
-  if (!value.comments || typeof value.comments !== 'object' || Array.isArray(value.comments)) {
-    return 'Invalid data: comments must be an object.';
-  }
-
-  if (!value.timeline || typeof value.timeline !== 'object' || Array.isArray(value.timeline)) {
-    return 'Invalid data: timeline must be an object.';
-  }
-
-  return null;
-}
-
-function buildLoadedState(raw: any, currentState: AppState, cloudProjectId?: string): AppState {
-  const guestId = currentState.cloudSync?.guestId || cloudStorageService.getGuestId();
-
-  const merged = {
-    ...initialState,
-    ...raw,
-    meta: {
-      ...initialState.meta,
-      ...(raw.meta || {}),
-      bookVersion: raw.meta?.bookVersion || raw.meta?.version || initialState.meta.bookVersion,
-      bookRevision: raw.meta?.bookRevision || initialState.meta.bookRevision,
-      appVersion: raw.meta?.appVersion || APP_VERSION,
-    },
-    saveSettings: {
-      ...initialState.saveSettings,
-      ...currentState.saveSettings,
-      ...(raw.saveSettings || {}),
-      saveToLocal: true,
-    },
-    cloudSync: {
-      ...initialState.cloudSync,
-      ...currentState.cloudSync,
-      ...(raw.cloudSync || {}),
-      guestId,
-      ...(cloudProjectId
-        ? {
-            projectId: cloudProjectId,
-            lastSyncedAt: new Date().toISOString(),
-            syncError: null,
-          }
-        : {}),
-    },
-    activeModal: 'none',
-    editingItemId: null,
-  } as AppState;
-
-  if (!merged.activeChapterId && merged.chapters.length > 0) {
-    merged.activeChapterId = merged.chapters[0].id;
-  }
-
-  return merged;
-}
 
 export const LoadProjectModal: React.FC = () => {
   const { state, dispatch } = useStore();

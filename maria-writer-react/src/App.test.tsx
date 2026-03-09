@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { StoreProvider } from './context/StoreContext';
 import { HelpProvider } from './context/HelpContext';
+import { AppThemeProvider } from './components/providers/AppThemeProvider';
 import { MainLayout } from './components/templates/MainLayout';
 
 // Mock vis-network
@@ -55,25 +57,34 @@ vi.mock('sortablejs', () => ({
 describe('App Integration', () => {
   it('renders the TopBar and Sidebar', () => {
     render(
-      <StoreProvider>
-        <HelpProvider>
-          <MainLayout />
-        </HelpProvider>
-      </StoreProvider>
+      <MemoryRouter>
+        <StoreProvider>
+          <AppThemeProvider>
+            <HelpProvider>
+              <MainLayout />
+            </HelpProvider>
+          </AppThemeProvider>
+        </StoreProvider>
+      </MemoryRouter>
     );
 
     expect(screen.getByText('Maria Writer')).toBeInTheDocument();
     expect(screen.getByText('Chapters')).toBeInTheDocument();
     expect(screen.getByText('Manuscript')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Editor' })).toHaveAttribute('href', '/editor');
   });
 
   it('switches to Codex view', () => {
     render(
-      <StoreProvider>
-        <HelpProvider>
-          <MainLayout />
-        </HelpProvider>
-      </StoreProvider>
+      <MemoryRouter>
+        <StoreProvider>
+          <AppThemeProvider>
+            <HelpProvider>
+              <MainLayout />
+            </HelpProvider>
+          </AppThemeProvider>
+        </StoreProvider>
+      </MemoryRouter>
     );
 
     const codexBtn = screen.getByText('Codex');
@@ -87,11 +98,15 @@ describe('App Integration', () => {
 
   it('opens Metadata modal', () => {
     render(
-      <StoreProvider>
-        <HelpProvider>
-          <MainLayout />
-        </HelpProvider>
-      </StoreProvider>
+      <MemoryRouter>
+        <StoreProvider>
+          <AppThemeProvider>
+            <HelpProvider>
+              <MainLayout />
+            </HelpProvider>
+          </AppThemeProvider>
+        </StoreProvider>
+      </MemoryRouter>
     );
 
     // Find the Info button in TopBar. It has title="Info"

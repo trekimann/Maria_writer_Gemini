@@ -7,6 +7,13 @@
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
+export interface CreatorConnection {
+  id: string;
+  name: string;
+  kind: 'follow' | 'private-read' | 'collaborator';
+  note?: string;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -16,6 +23,11 @@ export interface AuthUser {
   tier: 'DEFAULT';
   genreTags: string | null;
   profilePicture: string | null;
+  dob?: string | null;
+  aliases?: string | null;
+  bio?: string | null;
+  profileColor?: string | null;
+  creatorConnections?: CreatorConnection[] | null;
 }
 
 export interface LoginPayload {
@@ -31,6 +43,17 @@ export interface RegisterPayload {
   displayName?: string;
   genreTags?: string;
   profilePicture?: string;
+}
+
+export interface UpdateProfilePayload {
+  displayName?: string | null;
+  genreTags?: string | null;
+  profilePicture?: string | null;
+  dob?: string | null;
+  aliases?: string | null;
+  bio?: string | null;
+  profileColor?: string | null;
+  creatorConnections?: CreatorConnection[] | null;
 }
 
 class AuthApiService {
@@ -106,6 +129,22 @@ class AuthApiService {
       credentials: 'include',
     });
     if (!res.ok) return null;
+    const data = await res.json();
+    return data.user;
+  }
+
+  async updateProfile(payload: UpdateProfilePayload): Promise<AuthUser> {
+    const res = await this.fetchWithAuth(`${API_URL}/api/auth/profile`, {
+      method: 'PATCH',
+      headers: this.authHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update profile');
+    }
+
     const data = await res.json();
     return data.user;
   }

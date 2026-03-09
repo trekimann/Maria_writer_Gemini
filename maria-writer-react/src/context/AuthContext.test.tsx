@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from './AuthContext';
 const mockRefresh   = vi.fn();
 const mockLogin     = vi.fn();
 const mockRegister  = vi.fn();
+const mockUpdateProfile = vi.fn();
 const mockLogout    = vi.fn();
 const mockSetToken  = vi.fn();
 
@@ -24,6 +25,7 @@ vi.mock('../services/authService', () => ({
     refresh:        (...args: unknown[]) => mockRefresh(...args),
     login:          (...args: unknown[]) => mockLogin(...args),
     register:       (...args: unknown[]) => mockRegister(...args),
+    updateProfile:  (...args: unknown[]) => mockUpdateProfile(...args),
     logout:         (...args: unknown[]) => mockLogout(...args),
     setAccessToken: (...args: unknown[]) => mockSetToken(...args),
     getAccessToken: () => null,
@@ -265,6 +267,27 @@ describe('AuthProvider – logout()', () => {
     await act(async () => { await result.current.logout(); });
     expect(result.current.hasPendingMigration).toBe(false);
     expect(result.current.pendingMigrationGuestId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateProfile()
+// ---------------------------------------------------------------------------
+
+describe('AuthProvider – updateProfile()', () => {
+  it('updates the current user after a successful save', async () => {
+    const at = fakeJwt();
+    mockRefresh.mockResolvedValueOnce({ user: MOCK_USER, accessToken: at });
+    mockUpdateProfile.mockResolvedValueOnce({ ...MOCK_USER, displayName: 'Updated User', profileColor: '#ff00aa' });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    await act(async () => {
+      await result.current.updateProfile({ displayName: 'Updated User', profileColor: '#ff00aa' });
+    });
+
+    expect(result.current.user).toEqual(expect.objectContaining({ displayName: 'Updated User', profileColor: '#ff00aa' }));
   });
 });
 

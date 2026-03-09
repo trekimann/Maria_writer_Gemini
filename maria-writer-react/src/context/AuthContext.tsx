@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { authApiService, AuthUser, LoginPayload, RegisterPayload } from '../services/authService';
+import { authApiService, AuthUser, LoginPayload, RegisterPayload, UpdateProfilePayload } from '../services/authService';
 import { cloudStorageService } from '../services/cloudStorage';
 
 // ---------------------------------------------------------------------------
@@ -31,6 +31,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<{ isNewUser: boolean }>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
   logout: () => Promise<void>;
   setReturnTo: (destination: string | null) => void;
   clearMigration: () => void;
@@ -158,6 +159,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { isNewUser: true };
   }, [scheduleRefresh]);
 
+  const updateProfile = useCallback(async (payload: UpdateProfilePayload) => {
+    const user = await authApiService.updateProfile(payload);
+    setState((prev) => ({ ...prev, user }));
+  }, []);
+
   const logout = useCallback(async () => {
     await authApiService.logout();
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -184,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, setReturnTo, clearMigration }}>
+    <AuthContext.Provider value={{ ...state, login, register, updateProfile, logout, setReturnTo, clearMigration }}>
       {children}
     </AuthContext.Provider>
   );
