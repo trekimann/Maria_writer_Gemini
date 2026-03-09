@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { projectController } from '../controllers/projectController';
 import { collaborationController } from '../controllers/collaborationController';
 import { validate, validateParams, validateQuery } from '../middleware/validator';
-import { CollaboratorParamsSchema, CreateProjectInvitationSchema, CreateProjectSchema, ProjectIdParamsSchema, UpdateProjectCollaboratorSchema, UpdateProjectSchema, ProjectQuerySchema, ClaimProjectsSchema, ClaimPreviewQuerySchema } from '../utils/validation';
+import { CollaboratorParamsSchema, CreateProjectInvitationSchema, CreateProjectSchema, CreateReviewCommentSchema, ProjectIdParamsSchema, ReviewCommentParamsSchema, UpdateProjectCollaboratorSchema, UpdateProjectSchema, ProjectQuerySchema, ClaimProjectsSchema, ClaimPreviewQuerySchema } from '../utils/validation';
 import { apiLimiter, inviteLimiter, writeLimiter } from '../middleware/rateLimit';
 import { requireAuth, requireAuthenticated } from '../middleware/auth';
+import { requireProjectAccess } from '../middleware/projectAccess';
 
 const router = Router();
 
@@ -51,6 +52,35 @@ router.post(
 	validateParams(ProjectIdParamsSchema),
 	validate(CreateProjectInvitationSchema),
 	collaborationController.createInvitation,
+);
+
+// GET /api/projects/:id/review-comments — list review comments for owners/collaborators
+router.get(
+	'/:id/review-comments',
+	requireAuthenticated,
+	validateParams(ProjectIdParamsSchema),
+	requireProjectAccess('READ'),
+	collaborationController.listReviewComments,
+);
+
+// POST /api/projects/:id/review-comments — create review comment/suggestion
+router.post(
+	'/:id/review-comments',
+	requireAuthenticated,
+	writeLimiter,
+	validateParams(ProjectIdParamsSchema),
+	requireProjectAccess('COMMENT'),
+	validate(CreateReviewCommentSchema),
+	collaborationController.createReviewComment,
+);
+
+// POST /api/projects/:id/review-comments/:commentId/apply — owner-only apply suggestion
+router.post(
+	'/:id/review-comments/:commentId/apply',
+	requireAuthenticated,
+	writeLimiter,
+	validateParams(ReviewCommentParamsSchema),
+	collaborationController.applyReviewSuggestion,
 );
 
 // GET /api/projects?guestId={uuid} - List all projects for a guest

@@ -44,6 +44,14 @@ vi.mock('./components/pages/ProjectStatisticsPage', () => ({
   ProjectStatisticsPage: () => <div>Statistics route</div>,
 }));
 
+vi.mock('./components/pages/ReadPage', () => ({
+  ReadPage: () => <div>Read route</div>,
+}));
+
+vi.mock('./components/pages/InvitationsPage', () => ({
+  InvitationsPage: () => <div>Invitations route</div>,
+}));
+
 vi.mock('./components/pages/UserProfilePage', () => ({
   UserProfilePage: () => <div>Profile route</div>,
 }));
@@ -83,6 +91,23 @@ describe('App routes', () => {
     render(<App />);
 
     expect(await screen.findByText('Statistics route')).toBeInTheDocument();
+  });
+
+  it('renders the read route for authenticated users', async () => {
+    mockAuthState.isAuthenticated = true;
+    window.history.pushState({}, '', '/read');
+    render(<App />);
+
+    expect(await screen.findByText('Read route')).toBeInTheDocument();
+    expect(screen.getByText('Help modal')).toBeInTheDocument();
+  });
+
+  it('renders the invitations route for authenticated users', async () => {
+    mockAuthState.isAuthenticated = true;
+    window.history.pushState({}, '', '/invitations');
+    render(<App />);
+
+    expect(await screen.findByText('Invitations route')).toBeInTheDocument();
   });
 
   it('redirects unauthenticated profile visits to login and stores returnTo', async () => {

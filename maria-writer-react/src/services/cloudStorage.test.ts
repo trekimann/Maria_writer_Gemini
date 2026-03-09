@@ -159,6 +159,31 @@ describe('CloudStorageService', () => {
     });
   });
 
+  describe('loadProjectRecord', () => {
+    it('returns the full project payload including access metadata', async () => {
+      mockGetAccessToken.mockReturnValue('mock-token');
+      const service = await getService();
+      const project = {
+        id: 'proj-auth-3',
+        title: 'Shared Book',
+        version: '2.3.0',
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-02',
+        data: { meta: { title: 'Shared Book' }, chapters: [] },
+        access: { isOwner: false, role: 'READ', canRead: true, canComment: false, canEditProject: false },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ project }),
+      });
+
+      const result = await service.loadProjectRecord('proj-auth-3');
+
+      expect(result).toEqual(project);
+    });
+  });
+
   describe('deleteFromCloud', () => {
     it('sends DELETE request and returns true', async () => {
       localStorage.setItem('maria_guest_id', 'guest-del');

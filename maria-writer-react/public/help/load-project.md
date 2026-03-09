@@ -26,6 +26,8 @@ If the file has no app version metadata (older exports), it will be assigned the
 
 Load a project previously saved to the cloud.
 
+> **Shared reading projects:** invites from other creators appear in **Reader Library** after you accept them from **Invitations**. They are not loaded through this dialog.
+
 > **Guest or signed-in — both work.** If you are using the app as a guest, your projects are identified by your **Guest ID**. If you are signed in to an account, your projects are linked to your profile. Either way, click **Refresh List** to see what's saved.
 
 1. Click **Refresh List** to fetch your saved cloud projects.

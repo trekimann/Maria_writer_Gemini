@@ -1,0 +1,120 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.introCard,
+.formCard,
+.successCard,
+.pendingCard,
+.noticeCard {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary, #4f46e5);
+}
+
+.introCard h4,
+.pendingHeader h4 {
+  margin: 0;
+  color: var(--color-text, #111827);
+}
+
+.introCard p,
+.noticeCard p,
+.helpText,
+.pendingItem span,
+.successCard p {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.55;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field + .field {
+  margin-top: 0.9rem;
+}
+
+.field span {
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+
+.field input,
+.field select,
+.linkRow input {
+  width: 100%;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  background: var(--color-bg, #f8fafc);
+  color: var(--color-text, #111827);
+}
+
+.inlineActions,
+.linkRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.linkRow input {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.pendingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pendingHeader span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 0.9rem;
+}
+
+.pendingList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.pendingItem {
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.85rem;
+  background: var(--color-bg, #f8fafc);
+  border: 1px solid var(--color-border, #dbe2ea);
+}
+
+.pendingItem strong,
+.successCard strong {
+  color: var(--color-text, #111827);
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
+  font-weight: 600;
+}

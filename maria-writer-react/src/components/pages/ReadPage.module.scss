@@ -1,0 +1,608 @@
+.layoutShell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg, #f8fafc);
+}
+
+.eyebrow,
+.chapterEyebrow,
+.sectionTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary, #4f46e5);
+}
+
+.menuBarInner {
+  min-height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1rem;
+  background: var(--color-surface, #ffffff);
+}
+
+.menuBarLeft,
+.menuBarCenter,
+.menuBarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.menuBarCenter {
+  flex: 1;
+  justify-content: center;
+}
+
+.menuBarRight {
+  margin-left: auto;
+}
+
+.fontSizeControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 9999px;
+  background: var(--color-bg, #f8fafc);
+}
+
+.fontSizeButtonActive {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #4f46e5) 28%, transparent);
+}
+
+.menuDivider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--color-border, #dbe2ea);
+}
+
+.menuProjectMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.menuProjectMeta strong {
+  color: var(--color-text, #111827);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menuProjectMeta span,
+.readerMeta,
+.sectionEmpty,
+.emptyState,
+.info,
+.reviewHint,
+.readerStats,
+.projectButton span,
+.chapterButton span,
+.reviewHeader span,
+.field span,
+.selectionLabel,
+.reviewOriginalLabel,
+.readerEmptyState {
+  color: var(--color-text-muted, #64748b);
+}
+
+.menuProjectMeta span {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menuChapterMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.menuChapterMeta strong {
+  color: var(--color-text, #111827);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menuChapterEyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary, #4f46e5);
+}
+
+.readerLayout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 20rem;
+  background: var(--color-surface, #ffffff);
+  border-right: 1px solid var(--color-border, #dbe2ea);
+  padding: 0.75rem;
+  overflow-y: auto;
+  transition: width 0.2s ease, padding 0.2s ease;
+}
+
+.sidebarCollapsed {
+  width: 0;
+  padding: 0;
+  border-right: 0;
+  overflow: hidden;
+}
+
+.sidebarToggleRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.sidebarSection + .sidebarSection {
+  margin-top: 1.25rem;
+}
+
+.sidebarActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.sidebarActions button {
+  justify-content: flex-start;
+}
+
+.sectionToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sectionToggle svg {
+  color: var(--color-text-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.projectButton,
+.chapterButton {
+  width: 100%;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 0.75rem;
+  background: transparent;
+  padding: 0.8rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  margin-top: 0.65rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.projectButton:hover,
+.chapterButton:hover {
+  background: var(--color-bg, #f8fafc);
+}
+
+.projectButton strong,
+.chapterButton span:last-child,
+.readerTitle,
+.chapterHeading,
+.reviewHeader strong,
+.reviewDrawerHeader h3,
+.readerEmptyState h2 {
+  color: var(--color-text, #111827);
+}
+
+.projectButtonActive,
+.chapterButtonActive {
+  border-color: color-mix(in srgb, var(--color-primary, #4f46e5) 40%, white);
+  background: color-mix(in srgb, var(--color-primary, #4f46e5) 8%, white);
+}
+
+.ownedBadge,
+.sharedBadge,
+.chapterNumber,
+.reviewBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ownedBadge,
+.reviewBadge {
+  background: color-mix(in srgb, var(--color-primary, #4f46e5) 10%, white);
+  color: var(--color-primary, #4f46e5);
+}
+
+.sharedBadge,
+.chapterNumber {
+  background: var(--color-bg, #f8fafc);
+  color: var(--color-text-muted, #64748b);
+}
+
+.readerStage {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-surface, #ffffff);
+}
+
+.workspaceShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.readerShell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.readerTitle,
+.chapterHeading {
+  margin: 0;
+}
+
+.chapterJump {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.readerViewport {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chapterHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 0 0 auto;
+  padding: 1.25rem 2rem 0.5rem;
+  border-bottom: 1px solid var(--color-border, #dbe2ea);
+}
+
+.readerDocument {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-serif);
+  font-size: var(--reader-font-size, 1.08rem);
+  line-height: 1.9;
+  color: var(--color-text, #111827);
+  display: grid;
+  gap: 1rem;
+}
+
+.readerDocumentPortrait {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.readerDocumentLandscape {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.readerDocumentLandscape .readerPage + .readerPage {
+  border-left: 1px solid var(--color-border, #dbe2ea);
+  padding-left: 1.75rem;
+}
+
+.readerPage {
+  min-width: 0;
+  min-height: 0;
+  padding: 0.85rem 1rem 1.1rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.readerPagePlaceholder {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.readerPageInner {
+  overflow: visible;
+}
+
+.readerPageInner :global(h1) { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: var(--color-text, #111827); }
+.readerPageInner :global(h2) { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: var(--color-text, #111827); }
+.readerPageInner :global(h3) { font-size: 1.25em; font-weight: bold; margin-top: 0.8em; margin-bottom: 0.4em; color: var(--color-text, #111827); }
+.readerPageInner :global(h4) { font-size: 1.1em; font-weight: bold; margin-top: 0.6em; margin-bottom: 0.3em; color: var(--color-text, #111827); }
+.readerPageInner :global(p) { margin-bottom: 1em; color: var(--color-text, #111827); }
+.readerPageInner :global(blockquote) {
+  border-left: 4px solid var(--color-border, #dbe2ea);
+  padding-left: 1em;
+  color: var(--color-text-muted, #64748b);
+  font-style: italic;
+}
+
+.readerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--color-border, #dbe2ea);
+  background: var(--color-surface, #ffffff);
+}
+
+.readerStats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.reviewDrawer {
+  width: 0;
+  min-width: 0;
+  border-left: 0 solid transparent;
+  background: var(--color-surface, #ffffff);
+  overflow: hidden;
+  transition: width 0.2s ease, border-color 0.2s ease, padding 0.2s ease;
+  padding: 0;
+}
+
+.reviewDrawerOpen {
+  width: 22rem;
+  border-left-width: 1px;
+  border-left-color: var(--color-border, #dbe2ea);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.reviewDrawerHeader,
+.reviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.selectionLabel,
+.reviewOriginalLabel {
+  margin: 0 0 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.selectionPreview {
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border-left: 3px solid var(--color-primary, #4f46e5);
+  background: color-mix(in srgb, var(--color-primary, #4f46e5) 6%, white);
+  color: var(--color-text, #111827);
+  border-radius: 0.75rem;
+}
+
+.commentComposer,
+.reviewCard {
+  margin-top: 1rem;
+  padding: 0.95rem;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 0.9rem;
+  background: var(--color-bg, #f8fafc);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+}
+
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #111827);
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+  color: var(--color-text, #111827);
+}
+
+.composerActions,
+.reviewActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.reviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.reviewBadgeResolved {
+  background: color-mix(in srgb, #0f766e 10%, white);
+  color: #0f766e;
+}
+
+.reviewBody {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  color: var(--color-text, #111827);
+}
+
+.reviewBody p,
+.readerEmptyState p {
+  margin: 0;
+}
+
+.suggestionBox {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 0.9rem;
+  background: var(--color-surface, #ffffff);
+}
+
+.readerEmptyState {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.readerEmptyState h2,
+.error {
+  margin: 0;
+}
+
+.error {
+  color: #b91c1c;
+  font-weight: 600;
+  padding: 1rem;
+}
+
+.info {
+  padding: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .menuBarInner,
+  .menuBarCenter,
+  .chapterHeaderRow,
+  .readerFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workspaceShell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reviewDrawer,
+  .reviewDrawerOpen {
+    width: 100%;
+    border-left-width: 0;
+    border-top: 1px solid var(--color-border, #dbe2ea);
+    padding: 1rem;
+    overflow-y: auto;
+  }
+
+  .reviewDrawer {
+    display: none;
+  }
+
+  .reviewDrawerOpen {
+    display: block;
+  }
+}
+
+@media (max-width: 800px) {
+  .readerLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar,
+  .sidebar {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border, #dbe2ea);
+  }
+
+  .sidebarCollapsed {
+    width: 0;
+    padding: 0;
+    border: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .menuBarInner,
+  .menuBarLeft,
+  .menuBarCenter,
+  .menuBarRight,
+  .fontSizeControls,
+  .chapterJump,
+  .readerStats {
+    flex-wrap: wrap;
+  }
+
+  .readerHeader,
+  .chapterHeaderRow,
+  .readerDocument,
+  .readerFooter {
+    padding-inline: 1rem;
+  }
+
+  .readerDocument {
+    padding: 1rem;
+  }
+
+  .readerPage {
+    padding: 0.75rem;
+  }
+
+  .readerDocumentLandscape .readerPage + .readerPage {
+    padding-left: 1rem;
+  }
+}

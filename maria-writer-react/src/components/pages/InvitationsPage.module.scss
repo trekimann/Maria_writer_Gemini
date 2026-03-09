@@ -1,0 +1,125 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary, #4f46e5);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  color: var(--color-text, #111827);
+}
+
+.subtitle,
+.meta,
+.emptyState,
+.featuredCard p,
+.cardHeader p {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.6;
+}
+
+.successBanner,
+.featuredCard,
+.card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 1rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  color: #166534;
+}
+
+.successBanner p,
+.successBanner strong {
+  margin: 0;
+}
+
+.featuredCard,
+.card {
+  padding: 1rem;
+}
+
+.featuredCard h2,
+.cardHeader h2 {
+  margin: 0;
+  color: var(--color-text, #111827);
+}
+
+.list {
+  display: grid;
+  gap: 1rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.35rem 0.7rem;
+  background: color-mix(in srgb, var(--color-primary, #4f46e5) 10%, white);
+  color: var(--color-primary, #4f46e5);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.cardFeatured {
+  border-color: color-mix(in srgb, var(--color-primary, #4f46e5) 45%, white);
+  box-shadow: 0 16px 38px rgba(79, 70, 229, 0.16);
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .hero,
+  .successBanner {
+    flex-direction: column;
+  }
+}

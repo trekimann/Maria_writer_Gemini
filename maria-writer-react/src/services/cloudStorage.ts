@@ -17,6 +17,19 @@ export interface CloudProject {
   updatedAt: string;
 }
 
+export interface CloudProjectAccess {
+  isOwner: boolean;
+  role: 'READ' | 'COMMENT' | 'EDIT' | null;
+  canRead: boolean;
+  canComment: boolean;
+  canEditProject: boolean;
+}
+
+export interface CloudProjectRecord extends CloudProject {
+  data: any;
+  access?: CloudProjectAccess;
+}
+
 class CloudStorageService {
   private guestId: string | null = null;
   private readonly GUEST_ID_KEY = 'maria_guest_id';
@@ -119,7 +132,7 @@ class CloudStorageService {
     return data.projects;
   }
 
-  async loadFromCloud(projectId: string): Promise<any> {
+  async loadProjectRecord(projectId: string): Promise<CloudProjectRecord> {
     const response = await fetch(
       `${API_URL}/api/projects/${projectId}${this.guestParam()}`,
       { headers: this.authHeaders() },
@@ -131,7 +144,12 @@ class CloudStorageService {
     }
 
     const data = await response.json();
-    return data.project.data;
+    return data.project;
+  }
+
+  async loadFromCloud(projectId: string): Promise<any> {
+    const project = await this.loadProjectRecord(projectId);
+    return project.data;
   }
 
   async deleteFromCloud(projectId: string): Promise<boolean> {

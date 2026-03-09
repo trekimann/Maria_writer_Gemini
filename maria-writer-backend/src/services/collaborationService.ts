@@ -1,8 +1,9 @@
 import crypto from 'crypto';
-import { ProjectAccessRole } from '@prisma/client';
+import { ProjectAccessRole, ReviewCommentStatus } from '@prisma/client';
 import { prisma } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { accessService } from './accessService';
+import { projectService } from './projectService';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -14,6 +15,33 @@ function getInvitationBaseUrl(): string {
 
 function buildAcceptUrl(token: string): string {
   return `${getInvitationBaseUrl().replace(/\/$/, '')}/invitations?token=${token}`;
+}
+
+function applySuggestionToChapterContent(
+  chapterContent: string,
+  originalText: string,
+  replacementText: string,
+  startOffset?: number | null,
+  endOffset?: number | null,
+): string {
+  if (
+    startOffset !== undefined
+    && startOffset !== null
+    && endOffset !== undefined
+    && endOffset !== null
+    && startOffset >= 0
+    && endOffset >= startOffset
+    && chapterContent.slice(startOffset, endOffset) === originalText
+  ) {
+    return `${chapterContent.slice(0, startOffset)}${replacementText}${chapterContent.slice(endOffset)}`;
+  }
+
+  const rawIndex = chapterContent.indexOf(originalText);
+  if (rawIndex === -1) {
+    throw new AppError('Could not locate the original text to apply this suggestion', 409);
+  }
+
+  return `${chapterContent.slice(0, rawIndex)}${replacementText}${chapterContent.slice(rawIndex + originalText.length)}`;
 }
 
 class CollaborationService {
@@ -357,6 +385,180 @@ class CollaborationService {
     });
 
     return { success: true };
+  }
+
+  async listReviewComments(projectId: string, requesterId: string) {
+    const access = await accessService.getProjectAccess(projectId, requesterId);
+    if (!access) {
+      throw new AppError('Project not found', 404);
+    }
+
+    return prisma.projectReviewComment.findMany({
+      where: {
+        projectId,
+        status: { not: ReviewCommentStatus.HIDDEN },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        projectId: true,
+        chapterId: true,
+        text: true,
+        isSuggestion: true,
+        replacementText: true,
+        originalText: true,
+        startOffset: true,
+        endOffset: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        author: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            displayName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createReviewComment(
+    projectId: string,
+    requesterId: string,
+    payload: {
+      chapterId: string;
+      text: string;
+      isSuggestion: boolean;
+      replacementText?: string | null;
+      originalText: string;
+      startOffset?: number | null;
+      endOffset?: number | null;
+    },
+  ) {
+    const access = await accessService.getProjectAccess(projectId, requesterId);
+    if (!access) {
+      throw new AppError('Project not found', 404);
+    }
+
+    if (!access.canComment) {
+      throw new AppError('Insufficient project permissions', 403);
+    }
+
+    const chapterId = payload.chapterId.trim();
+    const chapterText = payload.originalText.trim();
+    if (!chapterId || !chapterText) {
+      throw new AppError('chapterId and originalText are required', 400);
+    }
+
+    return prisma.projectReviewComment.create({
+      data: {
+        projectId,
+        chapterId,
+        authorId: requesterId,
+        text: payload.text.trim(),
+        isSuggestion: payload.isSuggestion,
+        replacementText: payload.isSuggestion ? payload.replacementText?.trim() || null : null,
+        originalText: chapterText,
+        startOffset: payload.startOffset ?? null,
+        endOffset: payload.endOffset ?? null,
+      },
+      select: {
+        id: true,
+        projectId: true,
+        chapterId: true,
+        text: true,
+        isSuggestion: true,
+        replacementText: true,
+        originalText: true,
+        startOffset: true,
+        endOffset: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        author: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            displayName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async applyReviewSuggestion(projectId: string, requesterId: string, commentId: string) {
+    await accessService.assertProjectOwner(projectId, requesterId);
+
+    const reviewComment = await prisma.projectReviewComment.findFirst({
+      where: {
+        id: commentId,
+        projectId,
+        status: ReviewCommentStatus.ACTIVE,
+      },
+      select: {
+        id: true,
+        chapterId: true,
+        originalText: true,
+        replacementText: true,
+        isSuggestion: true,
+        startOffset: true,
+        endOffset: true,
+      },
+    });
+
+    if (!reviewComment) {
+      throw new AppError('Review comment not found', 404);
+    }
+
+    if (!reviewComment.isSuggestion || !reviewComment.replacementText) {
+      throw new AppError('Only suggestions can be applied', 400);
+    }
+
+    const project = await projectService.getProjectByUser(projectId, requesterId);
+    if (!project) {
+      throw new AppError('Project not found', 404);
+    }
+
+    const chapters = Array.isArray(project.data?.chapters) ? project.data.chapters : [];
+    const chapter = chapters.find((entry: any) => entry.id === reviewComment.chapterId);
+    if (!chapter) {
+      throw new AppError('Chapter not found for this suggestion', 404);
+    }
+
+    const nextContent = applySuggestionToChapterContent(
+      String(chapter.content || ''),
+      reviewComment.originalText,
+      reviewComment.replacementText,
+      reviewComment.startOffset,
+      reviewComment.endOffset,
+    );
+
+    const nextProjectData = {
+      ...project.data,
+      chapters: chapters.map((entry: any) => (
+        entry.id === reviewComment.chapterId
+          ? { ...entry, content: nextContent }
+          : entry
+      )),
+    };
+
+    await projectService.updateProjectByUser(projectId, requesterId, { data: nextProjectData });
+
+    await prisma.projectReviewComment.update({
+      where: { id: reviewComment.id },
+      data: { status: ReviewCommentStatus.RESOLVED },
+    });
+
+    return {
+      success: true,
+      commentId: reviewComment.id,
+      chapterId: reviewComment.chapterId,
+      content: nextContent,
+      status: ReviewCommentStatus.RESOLVED,
+    };
   }
 }
 

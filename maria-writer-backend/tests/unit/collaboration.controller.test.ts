@@ -7,6 +7,9 @@ const mockCollaborationService = {
   declineInvitation: jest.fn(),
   updateCollaborator: jest.fn(),
   revokeCollaborator: jest.fn(),
+  listReviewComments: jest.fn(),
+  createReviewComment: jest.fn(),
+  applyReviewSuggestion: jest.fn(),
 };
 
 jest.mock('../../src/services/collaborationService', () => ({
@@ -84,5 +87,43 @@ describe('CollaborationController', () => {
     );
 
     expect(next).toHaveBeenCalled();
+  });
+
+  it('lists review comments for a project', async () => {
+    mockCollaborationService.listReviewComments.mockResolvedValue([{ id: 'review-1' }]);
+    const res = makeRes();
+
+    await collaborationController.listReviewComments(makeReq({ params: { id: 'project-1' } }), res, jest.fn() as any);
+    expect(res.json).toHaveBeenCalledWith({ comments: [{ id: 'review-1' }] });
+  });
+
+  it('creates a review comment with 201', async () => {
+    mockCollaborationService.createReviewComment.mockResolvedValue({ id: 'review-1' });
+    const res = makeRes();
+
+    await collaborationController.createReviewComment(
+      makeReq({
+        params: { id: 'project-1' },
+        body: { chapterId: 'chapter-1', text: 'Comment', isSuggestion: false, originalText: 'Text' },
+      }),
+      res,
+      jest.fn() as any,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ comment: { id: 'review-1' } });
+  });
+
+  it('applies a review suggestion', async () => {
+    mockCollaborationService.applyReviewSuggestion.mockResolvedValue({ success: true, commentId: 'review-1' });
+    const res = makeRes();
+
+    await collaborationController.applyReviewSuggestion(
+      makeReq({ params: { id: 'project-1', commentId: 'review-1' } }),
+      res,
+      jest.fn() as any,
+    );
+
+    expect(res.json).toHaveBeenCalledWith({ success: true, commentId: 'review-1' });
   });
 });

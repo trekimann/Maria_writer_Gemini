@@ -130,3 +130,40 @@ export const CollaboratorParamsSchema = z.object({
 export const InvitationTokenParamsSchema = z.object({
   token: z.string().min(20, 'Invitation token is invalid').max(255),
 });
+
+export const CreateReviewCommentSchema = z.object({
+  chapterId: z.string().min(1, 'chapterId is required').max(100),
+  text: z.string().min(1, 'Comment text is required').max(10000),
+  isSuggestion: z.boolean().default(false),
+  replacementText: z.string().max(10000).optional(),
+  originalText: z.string().min(1, 'originalText is required').max(10000),
+  startOffset: z.number().int().min(0).nullable().optional(),
+  endOffset: z.number().int().min(0).nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (value.isSuggestion && !value.replacementText?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['replacementText'],
+      message: 'replacementText is required for suggestions',
+    });
+  }
+
+  if (
+    value.startOffset !== undefined
+    && value.startOffset !== null
+    && value.endOffset !== undefined
+    && value.endOffset !== null
+    && value.endOffset < value.startOffset
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endOffset'],
+      message: 'endOffset must be greater than or equal to startOffset',
+    });
+  }
+});
+
+export const ReviewCommentParamsSchema = z.object({
+  id: z.string().uuid('Project id must be a valid UUID'),
+  commentId: z.string().uuid('Comment id must be a valid UUID'),
+});

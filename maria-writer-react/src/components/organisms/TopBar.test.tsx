@@ -22,6 +22,7 @@ const defaultCloudSync: CloudSyncState = {
 };
 
 let mockState: Partial<AppState>;
+let mockAuthState = { isAuthenticated: false };
 
 vi.mock('../../context/StoreContext', async () => {
   const actual = await vi.importActual('../../context/StoreContext');
@@ -33,6 +34,10 @@ vi.mock('../../context/StoreContext', async () => {
     }),
   };
 });
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => mockAuthState,
+}));
 
 vi.mock('./TopBar.module.scss', () => ({
   default: new Proxy({}, { get: (_target, prop) => String(prop) }),
@@ -57,9 +62,18 @@ vi.mock('./UserProfileModal', () => ({
   ),
 }));
 
+vi.mock('./ShareProjectModal', () => ({
+  ShareProjectModal: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => isOpen ? (
+    <div data-testid="share-project-modal">
+      <button onClick={onClose}>Close Share</button>
+    </div>
+  ) : null,
+}));
+
 describe('TopBar', () => {
   beforeEach(() => {
     mockDispatch.mockClear();
+    mockAuthState = { isAuthenticated: false };
     mockState = {
       viewMode: 'write',
       saveSettings: { ...defaultSaveSettings },
@@ -140,6 +154,19 @@ describe('TopBar', () => {
         type: 'OPEN_MODAL',
         payload: { type: 'theme-config' },
       });
+    });
+
+    it('shows the share button for authenticated users', () => {
+      mockAuthState = { isAuthenticated: true };
+      render(<TopBar />);
+      expect(screen.getByTitle('Share Project')).toBeInTheDocument();
+    });
+
+    it('opens the share modal for authenticated users', () => {
+      mockAuthState = { isAuthenticated: true };
+      render(<TopBar />);
+      fireEvent.click(screen.getByTitle('Share Project'));
+      expect(screen.getByTestId('share-project-modal')).toBeInTheDocument();
     });
   });
 

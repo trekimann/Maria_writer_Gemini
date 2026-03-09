@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
 import { Button } from '../atoms/Button';
 import { ThemeToggle } from '../atoms/ThemeToggle';
-import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette, Cloud, MoreVertical } from 'lucide-react';
+import { Save, FolderOpen, BookOpen, Bold, Italic, Underline, MessageSquarePlus, Eye, PenLine, Feather, Code, Heading1, Heading2, Heading3, Palette, Cloud, MoreVertical, Share2 } from 'lucide-react';
 import { HelpButton } from '../atoms/HelpButton';
 import { UserProfileModal } from './UserProfileModal';
+import { ShareProjectModal } from './ShareProjectModal';
 import styles from './TopBar.module.scss';
 
 interface TopBarProps {
@@ -13,8 +15,10 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ showBrand = true }) => {
   const { state, dispatch } = useStore();
+  const { isAuthenticated } = useAuth();
   const [showHeadingMenu, setShowHeadingMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const headingMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,6 +90,15 @@ export const TopBar: React.FC<TopBarProps> = ({ showBrand = true }) => {
         <Button variant="ghost" size="sm" icon={Save} onClick={handleSave} title="Save" />
         <Button variant="ghost" size="sm" icon={FolderOpen} onClick={handleOpen} title="Open" />
         <Button variant="ghost" size="sm" icon={BookOpen} onClick={handleMetadata} title="Info" />
+        {isAuthenticated && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={Share2}
+            onClick={() => setShowShareModal(true)}
+            title="Share Project"
+          />
+        )}
         
         <div className={styles.divider}></div>
         <ThemeToggle />
@@ -170,6 +183,14 @@ export const TopBar: React.FC<TopBarProps> = ({ showBrand = true }) => {
     {showProfile && (
       <UserProfileModal onClose={() => setShowProfile(false)} />
     )}
+
+    <ShareProjectModal
+      isOpen={showShareModal}
+      onClose={() => setShowShareModal(false)}
+      projectId={state.cloudSync?.projectId}
+      projectTitle={state.meta?.title || 'Untitled Project'}
+      isAuthenticated={isAuthenticated}
+    />
     </>
   );
 };

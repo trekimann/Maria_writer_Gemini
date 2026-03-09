@@ -20,19 +20,39 @@ const mockPrismaProjectInvitation = {
   update: jest.fn(),
 };
 
+const mockPrismaProjectReviewComment = {
+  findMany: jest.fn(),
+  findFirst: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+};
+
 jest.mock('../../src/config/database', () => ({
   prisma: {
     user: mockPrismaUser,
     projectCollaborator: mockPrismaProjectCollaborator,
     projectInvitation: mockPrismaProjectInvitation,
+    projectReviewComment: mockPrismaProjectReviewComment,
   },
 }));
 
 const mockAssertProjectOwner = jest.fn();
+const mockGetProjectAccess = jest.fn();
 
 jest.mock('../../src/services/accessService', () => ({
   accessService: {
     assertProjectOwner: mockAssertProjectOwner,
+    getProjectAccess: mockGetProjectAccess,
+  },
+}));
+
+const mockGetProjectByUser = jest.fn();
+const mockUpdateProjectByUser = jest.fn();
+
+jest.mock('../../src/services/projectService', () => ({
+  projectService: {
+    getProjectByUser: mockGetProjectByUser,
+    updateProjectByUser: mockUpdateProjectByUser,
   },
 }));
 
@@ -191,5 +211,81 @@ describe('CollaborationService', () => {
       where: { id: 'collab-1' },
       data: expect.objectContaining({ revokedAt: expect.any(Date) }),
     }));
+  });
+
+  it('lists review comments for an authorized reader', async () => {
+    mockGetProjectAccess.mockResolvedValue({ projectId: 'project-1', canRead: true });
+    mockPrismaProjectReviewComment.findMany.mockResolvedValue([{ id: 'review-1' }]);
+
+    const { collaborationService } = await import('../../src/services/collaborationService');
+    await expect(collaborationService.listReviewComments('project-1', 'reader-1')).resolves.toEqual([{ id: 'review-1' }]);
+    expect(mockPrismaProjectReviewComment.findMany).toHaveBeenCalled();
+  });
+
+  it('creates a review suggestion for collaborators with comment access', async () => {
+    mockGetProjectAccess.mockResolvedValue({ projectId: 'project-1', canComment: true });
+    mockPrismaProjectReviewComment.create.mockResolvedValue({
+      id: 'review-1',
+      chapterId: 'chapter-1',
+      text: 'Tighter wording',
+      isSuggestion: true,
+      replacementText: 'Better text',
+      originalText: 'Old text',
+      author: { id: 'reader-1', email: 'reader@example.com', username: 'reader', displayName: 'Reader' },
+    });
+
+    const { collaborationService } = await import('../../src/services/collaborationService');
+    const result = await collaborationService.createReviewComment('project-1', 'reader-1', {
+      chapterId: 'chapter-1',
+      text: 'Tighter wording',
+      isSuggestion: true,
+      replacementText: 'Better text',
+      originalText: 'Old text',
+    });
+
+    expect(mockPrismaProjectReviewComment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        projectId: 'project-1',
+        authorId: 'reader-1',
+        isSuggestion: true,
+      }),
+    }));
+    expect(result.id).toBe('review-1');
+  });
+
+  it('applies a review suggestion for the owner and resolves it', async () => {
+    mockAssertProjectOwner.mockResolvedValue({ id: 'project-1' });
+    mockPrismaProjectReviewComment.findFirst.mockResolvedValue({
+      id: 'review-1',
+      chapterId: 'chapter-1',
+      originalText: 'Old text',
+      replacementText: 'New text',
+      isSuggestion: true,
+      startOffset: null,
+      endOffset: null,
+    });
+    mockGetProjectByUser.mockResolvedValue({
+      id: 'project-1',
+      data: {
+        meta: { title: 'Novel', author: 'Owner', description: '', tags: [] },
+        chapters: [{ id: 'chapter-1', content: 'Old text in chapter' }],
+      },
+    });
+    mockUpdateProjectByUser.mockResolvedValue({ id: 'project-1' });
+    mockPrismaProjectReviewComment.update.mockResolvedValue({});
+
+    const { collaborationService } = await import('../../src/services/collaborationService');
+    const result = await collaborationService.applyReviewSuggestion('project-1', 'owner-1', 'review-1');
+
+    expect(mockUpdateProjectByUser).toHaveBeenCalledWith('project-1', 'owner-1', expect.objectContaining({
+      data: expect.objectContaining({
+        chapters: [expect.objectContaining({ content: 'New text in chapter' })],
+      }),
+    }));
+    expect(mockPrismaProjectReviewComment.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'review-1' },
+      data: { status: 'RESOLVED' },
+    }));
+    expect(result.status).toBe('RESOLVED');
   });
 });

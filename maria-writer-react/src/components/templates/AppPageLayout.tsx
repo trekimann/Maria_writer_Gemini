@@ -28,6 +28,7 @@ export const AppPageLayout: React.FC<AppPageLayoutProps> = ({
 
   const authenticatedNavItems: NavItem[] = [
     { label: 'Editor', to: '/editor' },
+    { label: 'Read', to: '/read' },
     { label: 'Statistics', to: '/statistics' },
     { label: 'Profile', to: '/profile' },
   ];

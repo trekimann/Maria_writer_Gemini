@@ -11,6 +11,8 @@ import { RegisterPage } from './components/pages/RegisterPage';
 import { ProjectStatisticsPage } from './components/pages/ProjectStatisticsPage';
 import { UserProfilePage } from './components/pages/UserProfilePage';
 import { AdminPage } from './components/pages/AdminPage';
+import { ReadPage } from './components/pages/ReadPage';
+import { InvitationsPage } from './components/pages/InvitationsPage';
 import { AdminRoute } from './components/atoms/AdminRoute';
 
 function App() {
@@ -28,13 +30,12 @@ function App() {
                   path="/editor"
                   element={
                     <AuthFrame>
-                      <>
-                        <MainLayout />
-                        <HelpModal />
-                      </>
+                      <MainLayout />
                     </AuthFrame>
                   }
                 />
+                <Route path="/read" element={<AuthFrame requireAuth><ReadPage /></AuthFrame>} />
+                <Route path="/invitations" element={<AuthFrame requireAuth><InvitationsPage /></AuthFrame>} />
                 <Route path="/statistics" element={<AuthFrame><ProjectStatisticsPage /></AuthFrame>} />
                 <Route path="/profile" element={<AuthFrame requireAuth><UserProfilePage /></AuthFrame>} />
                 <Route
@@ -50,6 +51,7 @@ function App() {
                 {/* Catch-all: send unknown paths to the editor */}
                 <Route path="*" element={<Navigate to="/editor" replace />} />
               </Routes>
+              <HelpModal />
             </HelpProvider>
           </AppThemeProvider>
         </StoreProvider>

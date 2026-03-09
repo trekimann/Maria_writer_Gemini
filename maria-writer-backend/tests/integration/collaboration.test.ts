@@ -25,8 +25,8 @@ describe('Collaboration API', () => {
 
   const mockAppState = {
     meta: { title: 'Shared Test Novel', author: 'Owner Test', description: '', tags: [] },
-    chapters: [],
-    activeChapterId: null,
+    chapters: [{ id: 'chapter-1', title: 'Chapter 1', content: 'Original paragraph for review.', order: 0 }],
+    activeChapterId: 'chapter-1',
     characters: [],
     events: [],
     relationships: [],
@@ -47,6 +47,7 @@ describe('Collaboration API', () => {
   let projectId: string;
   let invitationToken: string;
   let collaboratorRecordId: string;
+  let reviewCommentId: string;
 
   afterAll(async () => {
     if (projectId) {
@@ -93,7 +94,7 @@ describe('Collaboration API', () => {
     const createInviteResponse = await request(app)
       .post(`/api/projects/${projectId}/invitations`)
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ email: collaborator.email, role: 'READ' })
+      .send({ email: collaborator.email, role: 'COMMENT' })
       .expect(201);
 
     expect(createInviteResponse.body.invitation.email).toBe(collaborator.email);
@@ -113,7 +114,7 @@ describe('Collaboration API', () => {
       .expect(200);
 
     collaboratorRecordId = acceptResponse.body.collaboratorId;
-    expect(acceptResponse.body.role).toBe('READ');
+    expect(acceptResponse.body.role).toBe('COMMENT');
 
     const sharedProjectsResponse = await request(app)
       .get('/api/projects/shared')
@@ -133,8 +134,50 @@ describe('Collaboration API', () => {
 
     expect(loadSharedResponse.body.project).toEqual(expect.objectContaining({
       id: projectId,
-      access: expect.objectContaining({ role: 'READ', canRead: true, canComment: false, canEditProject: false }),
+      access: expect.objectContaining({ role: 'COMMENT', canRead: true, canComment: true, canEditProject: false }),
     }));
+  });
+
+  it('allows collaborators to create review comments and owners to apply suggestions', async () => {
+    const reviewCommentResponse = await request(app)
+      .post(`/api/projects/${projectId}/review-comments`)
+      .set('Authorization', `Bearer ${collaboratorToken}`)
+      .send({
+        chapterId: 'chapter-1',
+        text: 'Tighter wording here',
+        isSuggestion: true,
+        replacementText: 'Updated paragraph',
+        originalText: 'Original paragraph',
+      })
+      .expect(201);
+
+    reviewCommentId = reviewCommentResponse.body.comment.id;
+
+    const listReviewComments = await request(app)
+      .get(`/api/projects/${projectId}/review-comments`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(listReviewComments.body.comments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: reviewCommentId, isSuggestion: true }),
+      ]),
+    );
+
+    const applySuggestionResponse = await request(app)
+      .post(`/api/projects/${projectId}/review-comments/${reviewCommentId}/apply`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(applySuggestionResponse.body).toEqual(
+      expect.objectContaining({
+        success: true,
+        commentId: reviewCommentId,
+        chapterId: 'chapter-1',
+        content: 'Updated paragraph for review.',
+        status: 'RESOLVED',
+      }),
+    );
   });
 
   it('keeps project blob writes owner-only for collaborators', async () => {

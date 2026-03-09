@@ -46,6 +46,7 @@ describe('AppPageLayout', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Editor' })).toHaveAttribute('href', '/editor');
+    expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '/read');
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
     expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Register' })).not.toBeInTheDocument();

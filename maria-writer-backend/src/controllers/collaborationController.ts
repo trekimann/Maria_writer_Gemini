@@ -86,6 +86,45 @@ class CollaborationController {
       next(error);
     }
   }
+
+  async listReviewComments(req: Request, res: Response, next: NextFunction) {
+    try {
+      const comments = await collaborationService.listReviewComments(String(req.params.id), req.user!.id);
+      res.json({ comments });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createReviewComment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const comment = await collaborationService.createReviewComment(String(req.params.id), req.user!.id, {
+        chapterId: req.body.chapterId,
+        text: req.body.text,
+        isSuggestion: Boolean(req.body.isSuggestion),
+        replacementText: req.body.replacementText,
+        originalText: req.body.originalText,
+        startOffset: req.body.startOffset ?? null,
+        endOffset: req.body.endOffset ?? null,
+      });
+      res.status(201).json({ comment });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async applyReviewSuggestion(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await collaborationService.applyReviewSuggestion(
+        String(req.params.id),
+        req.user!.id,
+        String(req.params.commentId),
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const collaborationController = new CollaborationController();
