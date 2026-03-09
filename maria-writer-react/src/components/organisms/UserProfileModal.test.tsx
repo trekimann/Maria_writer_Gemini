@@ -17,6 +17,7 @@ const mockLogout   = vi.fn();
 const mockNavigate = vi.fn();
 const mockOnClose  = vi.fn();
 const mockDispatch = vi.fn();
+const mockAddProfileAsCharacter = vi.fn();
 
 const MOCK_GUEST_SNAPSHOT = {
   meta: { title: 'Guest Novel', author: 'Guest', description: '', tags: [] },
@@ -32,6 +33,8 @@ const MOCK_USER = {
   tier: 'DEFAULT' as const,
   genreTags: 'Fantasy,Sci-Fi',
   profilePicture: null,
+  profileColor: '#4f46e5',
+  creatorConnections: [],
 };
 
 const GUEST_ID = 'guest-uuid-1234';
@@ -63,6 +66,10 @@ vi.mock('../../context/StoreContext', () => ({
 
 vi.mock('../../utils/storage', () => ({
   loadGuestSnapshot: vi.fn(() => MOCK_GUEST_SNAPSHOT),
+}));
+
+vi.mock('@utils/profileCharacter', () => ({
+  addProfileAsCharacter: (...args: unknown[]) => mockAddProfileAsCharacter(...args),
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -103,6 +110,7 @@ function setAuthState(overrides: Partial<ReturnType<typeof useAuth>>) {
     pendingMigrationGuestId: null,
     login: vi.fn(),
     register: vi.fn(),
+    updateProfile: vi.fn(),
     logout: mockLogout,
     setReturnTo: vi.fn(),
     clearMigration: vi.fn(),
@@ -198,6 +206,26 @@ describe('UserProfileModal – authenticated view', () => {
   it('renders Sign Out button', () => {
     render(<UserProfileModal onClose={mockOnClose} />);
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
+  });
+
+  it('renders View Full Profile button', () => {
+    render(<UserProfileModal onClose={mockOnClose} />);
+    expect(screen.getByRole('button', { name: /view full profile/i })).toBeInTheDocument();
+  });
+
+  it('navigates to /profile from the full profile action', () => {
+    render(<UserProfileModal onClose={mockOnClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /view full profile/i }));
+    expect(mockOnClose).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/profile');
+  });
+
+  it('creates a character from the profile and returns to the editor', () => {
+    render(<UserProfileModal onClose={mockOnClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /create character in current project/i }));
+    expect(mockAddProfileAsCharacter).toHaveBeenCalledWith(MOCK_USER, mockDispatch);
+    expect(mockOnClose).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/editor');
   });
 
   it('does NOT render the upsell banner when authenticated', () => {

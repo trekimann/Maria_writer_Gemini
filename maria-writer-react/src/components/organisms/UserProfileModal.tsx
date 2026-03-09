@@ -10,7 +10,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Copy, Check, LogIn, UserPlus, LogOut, User, Shield, Star } from 'lucide-react';
+import { X, Copy, Check, LogIn, UserPlus, LogOut, User, Shield, Star, Sparkles } from 'lucide-react';
+import { addProfileAsCharacter } from '@utils/profileCharacter';
 import { useAuth } from '../../context/AuthContext';
 import { useStore, initialState } from '../../context/StoreContext';
 import { cloudStorageService } from '../../services/cloudStorage';
@@ -71,7 +72,7 @@ export const UserProfileModal: React.FC<Props> = ({ onClose }) => {
     navigate(path);
   };
 
-  const avatarColor = '#4f46e5'; // indigo — placeholder until favourite colour field is added
+  const avatarColor = user?.profileColor || '#4f46e5';
   const initials = user?.displayName
     ? user.displayName.charAt(0).toUpperCase()
     : user?.username?.charAt(0).toUpperCase() ?? '?';
@@ -79,6 +80,13 @@ export const UserProfileModal: React.FC<Props> = ({ onClose }) => {
   const genreTags = user?.genreTags
     ? user.genreTags.split(',').map(t => t.trim()).filter(Boolean)
     : [];
+
+  const handleCreateCharacter = () => {
+    if (!user) return;
+    addProfileAsCharacter(user, dispatch);
+    onClose();
+    navigate('/editor');
+  };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -150,6 +158,19 @@ export const UserProfileModal: React.FC<Props> = ({ onClose }) => {
 
             {/* Actions */}
             <div className={styles.actions}>
+              <Button
+                variant="primary"
+                onClick={() => navigateTo('/profile')}
+              >
+                View Full Profile
+              </Button>
+              <Button
+                variant="secondary"
+                icon={Sparkles}
+                onClick={handleCreateCharacter}
+              >
+                Create Character in Current Project
+              </Button>
               <Button
                 variant="danger"
                 icon={LogOut}

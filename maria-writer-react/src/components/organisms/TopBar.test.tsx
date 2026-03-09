@@ -72,6 +72,12 @@ describe('TopBar', () => {
     expect(screen.getByText('Maria Writer')).toBeInTheDocument();
   });
 
+  it('can hide the logo when rendered inside the shared page layout', () => {
+    render(<TopBar showBrand={false} />);
+    expect(screen.queryByText('Maria Writer')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Open account menu')).toBeInTheDocument();
+  });
+
   describe('save status', () => {
     it('shows "Saved locally" by default', () => {
       render(<TopBar />);

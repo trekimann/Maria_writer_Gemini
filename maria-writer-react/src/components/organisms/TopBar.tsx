@@ -7,7 +7,11 @@ import { HelpButton } from '../atoms/HelpButton';
 import { UserProfileModal } from './UserProfileModal';
 import styles from './TopBar.module.scss';
 
-export const TopBar: React.FC = () => {
+interface TopBarProps {
+  showBrand?: boolean;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ showBrand = true }) => {
   const { state, dispatch } = useStore();
   const [showHeadingMenu, setShowHeadingMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -53,23 +57,31 @@ export const TopBar: React.FC = () => {
     window.dispatchEvent(new CustomEvent('maria-editor-format', { detail: { format } }));
   };
 
+  const profileButton = (
+    <button
+      className={styles.profileMenuBtn}
+      onClick={() => setShowProfile(v => !v)}
+      title="Account"
+      aria-label="Open account menu"
+    >
+      <MoreVertical size={16} />
+    </button>
+  );
+
   return (
     <>
     <header className={styles.topbar}>
       <div className={styles.left}>
-        <div className={styles.logo}>
-          <Feather className={styles.logoIcon} />
-          <span>Maria Writer</span>
-          <button
-            className={styles.profileMenuBtn}
-            onClick={() => setShowProfile(v => !v)}
-            title="Account"
-            aria-label="Open account menu"
-          >
-            <MoreVertical size={16} />
-          </button>
-        </div>
-        <div className={styles.divider}></div>
+        {showBrand && (
+          <>
+            <div className={styles.logo}>
+              <Feather className={styles.logoIcon} />
+              <span>Maria Writer</span>
+              {profileButton}
+            </div>
+            <div className={styles.divider}></div>
+          </>
+        )}
         
         <Button variant="ghost" size="sm" icon={Save} onClick={handleSave} title="Save" />
         <Button variant="ghost" size="sm" icon={FolderOpen} onClick={handleOpen} title="Open" />
@@ -151,6 +163,7 @@ export const TopBar: React.FC = () => {
         <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center' }}>
           <HelpButton helpId="manuscript-editor" />
         </div>
+        {!showBrand && profileButton}
       </div>
     </header>
 

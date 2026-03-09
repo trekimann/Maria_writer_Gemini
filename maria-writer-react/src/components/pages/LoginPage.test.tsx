@@ -30,6 +30,19 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('../templates/AppPageLayout', () => ({
+  AppPageLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('../atoms/AuthPageCard', () => ({
+  AuthPageCard: ({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) => (
+    <div>
+      <div>{children}</div>
+      <div>{footer}</div>
+    </div>
+  ),
+}));
+
 vi.mock('./LoginPage.module.scss', () => ({
   default: new Proxy({}, { get: (_t, p) => String(p) }),
 }));
@@ -133,7 +146,7 @@ describe('LoginPage – form submission', () => {
       password: 'Secret1!',
       rememberMe: false,
     }));
-    expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/editor', { replace: true });
   });
 
   it('shows error alert on login failure', async () => {
@@ -185,9 +198,9 @@ describe('LoginPage – form submission', () => {
 // ---------------------------------------------------------------------------
 
 describe('LoginPage – guest button', () => {
-  it('navigates to / when continuing as guest', () => {
+  it('navigates to /editor when continuing as guest', () => {
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /continue as guest/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/editor');
   });
 });

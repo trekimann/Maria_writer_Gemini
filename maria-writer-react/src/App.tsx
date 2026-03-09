@@ -2,10 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { StoreProvider } from './context/StoreContext';
 import { HelpProvider } from './context/HelpContext';
 import { AuthProvider } from './context/AuthContext';
+import { AuthFrame } from './components/atoms/AuthFrame';
 import { HelpModal } from './components/molecules/HelpModal';
 import { MainLayout } from './components/templates/MainLayout';
 import { LoginPage } from './components/pages/LoginPage';
 import { RegisterPage } from './components/pages/RegisterPage';
+import { UserProfilePage } from './components/pages/UserProfilePage';
 
 function App() {
   return (
@@ -14,19 +16,23 @@ function App() {
         <StoreProvider>
           <HelpProvider>
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={<AuthFrame><LoginPage /></AuthFrame>} />
+              <Route path="/register" element={<AuthFrame><RegisterPage /></AuthFrame>} />
+              <Route path="/" element={<Navigate to="/editor" replace />} />
               <Route
-                path="/"
+                path="/editor"
                 element={
-                  <>
-                    <MainLayout />
-                    <HelpModal />
-                  </>
+                  <AuthFrame>
+                    <>
+                      <MainLayout />
+                      <HelpModal />
+                    </>
+                  </AuthFrame>
                 }
               />
+              <Route path="/profile" element={<AuthFrame requireAuth><UserProfilePage /></AuthFrame>} />
               {/* Catch-all: send unknown paths to the editor */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/editor" replace />} />
             </Routes>
           </HelpProvider>
         </StoreProvider>

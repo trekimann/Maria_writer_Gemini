@@ -35,7 +35,12 @@ model User {
   role           UserRole  @default(USER)
   tier           UserTier  @default(DEFAULT)
   genreTags      String?   @map("genre_tags") @db.VarChar(1000)
+  aliases        String?   @db.VarChar(1000)
+  bio            String?   @db.Text
+  creatorConnections Json? @map("creator_connections")
+  dob            String?   @db.VarChar(50)
   profilePicture String?   @map("profile_picture") @db.LongText
+  profileColor   String?   @map("profile_color") @db.VarChar(20)
   createdAt      DateTime  @default(now()) @map("created_at")
   lastLogin      DateTime? @map("last_login")
 

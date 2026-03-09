@@ -32,6 +32,22 @@ export interface AuthUser {
   tier: UserTier;
   genreTags: string | null;
   profilePicture: string | null;
+  dob: string | null;
+  aliases: string | null;
+  bio: string | null;
+  profileColor: string | null;
+  creatorConnections: unknown;
+}
+
+export interface UpdateProfileInput {
+  displayName?: string | null;
+  genreTags?: string | null;
+  profilePicture?: string | null;
+  dob?: string | null;
+  aliases?: string | null;
+  bio?: string | null;
+  profileColor?: string | null;
+  creatorConnections?: unknown;
 }
 
 interface AccessTokenPayload {
@@ -109,6 +125,11 @@ function toAuthUser(user: {
   tier: UserTier;
   genreTags: string | null;
   profilePicture: string | null;
+  dob?: string | null;
+  aliases?: string | null;
+  bio?: string | null;
+  profileColor?: string | null;
+  creatorConnections?: unknown;
 }): AuthUser {
   return {
     id: user.id,
@@ -119,6 +140,11 @@ function toAuthUser(user: {
     tier: user.tier,
     genreTags: user.genreTags,
     profilePicture: user.profilePicture,
+    dob: user.dob ?? null,
+    aliases: user.aliases ?? null,
+    bio: user.bio ?? null,
+    profileColor: user.profileColor ?? null,
+    creatorConnections: user.creatorConnections ?? null,
   };
 }
 
@@ -289,9 +315,41 @@ class AuthService {
   async getUser(userId: string): Promise<AuthUser | null> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, username: true, displayName: true, role: true, tier: true, genreTags: true, profilePicture: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        role: true,
+        tier: true,
+        genreTags: true,
+        profilePicture: true,
+        dob: true,
+        aliases: true,
+        bio: true,
+        profileColor: true,
+        creatorConnections: true,
+      } as any,
     });
-    return user ?? null;
+    return user ? toAuthUser(user as any) : null;
+  }
+
+  async updateProfile(userId: string, payload: UpdateProfileInput): Promise<AuthUser> {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        displayName: payload.displayName === undefined ? undefined : payload.displayName,
+        genreTags: payload.genreTags === undefined ? undefined : payload.genreTags,
+        profilePicture: payload.profilePicture === undefined ? undefined : payload.profilePicture,
+        dob: payload.dob === undefined ? undefined : payload.dob,
+        aliases: payload.aliases === undefined ? undefined : payload.aliases,
+        bio: payload.bio === undefined ? undefined : payload.bio,
+        profileColor: payload.profileColor === undefined ? undefined : payload.profileColor,
+        creatorConnections: payload.creatorConnections === undefined ? undefined : payload.creatorConnections,
+      } as any,
+    });
+
+    return toAuthUser(user as any);
   }
 
   /**
@@ -328,13 +386,29 @@ class AuthService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, email: true, username: true, displayName: true, role: true, tier: true, genreTags: true, profilePicture: true, createdAt: true, lastLogin: true },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          displayName: true,
+          role: true,
+          tier: true,
+          genreTags: true,
+          profilePicture: true,
+          dob: true,
+          aliases: true,
+          bio: true,
+          profileColor: true,
+          creatorConnections: true,
+          createdAt: true,
+          lastLogin: true,
+        } as any,
       }),
       prisma.user.count({ where }),
     ]);
 
     return {
-      users: users.map(toAuthUser),
+      users: users.map((user) => toAuthUser(user as any)),
       total,
       totalPages: Math.ceil(total / limit),
     };

@@ -30,6 +30,24 @@ export const LoginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+const CreatorConnectionSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().min(1).max(255),
+  kind: z.enum(['follow', 'private-read', 'collaborator']),
+  note: z.string().max(500).optional(),
+});
+
+export const UpdateProfileSchema = z.object({
+  displayName: z.string().max(255).nullable().optional(),
+  genreTags: z.string().max(1000).nullable().optional(),
+  profilePicture: z.string().nullable().optional(),
+  dob: z.string().max(50).nullable().optional(),
+  aliases: z.string().max(1000).nullable().optional(),
+  bio: z.string().max(5000).nullable().optional(),
+  profileColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'profileColor must be a valid hex color').nullable().optional(),
+  creatorConnections: z.array(CreatorConnectionSchema).max(100).nullable().optional(),
+});
+
 export const ResetPasswordSchema = z.object({
   newPassword: passwordSchema,
 });

@@ -65,7 +65,12 @@ const DB_USER = {
   role:           UserRole.USER,
   tier:           UserTier.DEFAULT,
   genreTags:      'fantasy',
+  aliases:        'Tess',
+  bio:            'Bio text',
+  creatorConnections: [],
+  dob:            '01/01/2000 00:00:00',
   profilePicture: null,
+  profileColor:   '#4f46e5',
   createdAt:      new Date('2026-01-01'),
   lastLogin:      null,
 };
@@ -284,6 +289,39 @@ describe('AuthService.logout()', () => {
     // Should not throw
     await expect(authService.logout(expiredToken)).resolves.toBeUndefined();
     expect(mockPrismaRefreshToken.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateProfile()
+// ---------------------------------------------------------------------------
+
+describe('AuthService.updateProfile()', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('updates and returns the safe user profile fields', async () => {
+    mockPrismaUser.update.mockResolvedValue({
+      ...DB_USER,
+      displayName: 'Updated Name',
+      profileColor: '#ff00aa',
+      creatorConnections: [{ id: 'c1', name: 'Alice', kind: 'follow' }],
+    });
+
+    const result = await authService.updateProfile(DB_USER.id, {
+      displayName: 'Updated Name',
+      profileColor: '#ff00aa',
+      creatorConnections: [{ id: 'c1', name: 'Alice', kind: 'follow' }],
+    });
+
+    expect(mockPrismaUser.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: DB_USER.id },
+      data: expect.objectContaining({ displayName: 'Updated Name', profileColor: '#ff00aa' }),
+    }));
+    expect(result).toEqual(expect.objectContaining({
+      displayName: 'Updated Name',
+      profileColor: '#ff00aa',
+      creatorConnections: [{ id: 'c1', name: 'Alice', kind: 'follow' }],
+    }));
   });
 });
 

@@ -1,7 +1,7 @@
 ﻿# Multi-User Implementation Plan for Maria Writer
 
-**Status:** Phase 2 In Progress (Steps 1–11 Complete; next: Step 12 E2E manual testing)  
-**Last Updated:** March 2, 2026  
+**Status:** Phase 2 In Progress (Steps 1–11 Complete; routed auth/profile shell and full profile page shipped; next: Step 12 E2E manual testing)  
+**Last Updated:** March 9, 2026  
 **Decision:** JWT Authentication + WebSockets + MariaDB
 
 ---
@@ -448,7 +448,7 @@ Before writing any code, note what's already in place:
 | Guest → User migration | P0 | One-click claim of existing guestId projects |
 | Password reset flow | P1 | Requires email transport (can defer) |
 | Email verification | P2 | Optional — can ship without |
-| User profile editing | P2 | Display name, avatar — cosmetic |
+| User profile editing | P2 | **Partially implemented beyond original scope** — full `/profile` route, inline editing, cloud quick-load, aliases, DOB, profile image, genre tags, profile colour, and creator connection graph UI |
 
 ---
 
@@ -677,13 +677,22 @@ enum UserRole {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  displayName  String?   @map("display_name") @db.VarChar(255)
-  role         UserRole  @default(USER)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  lastLogin    DateTime? @map("last_login")
+  id                 String    @id @default(uuid())
+  email              String    @unique @db.VarChar(255)
+  username           String    @unique @db.VarChar(64)
+  passwordHash       String    @map("password_hash") @db.VarChar(255)
+  displayName        String?   @map("display_name") @db.VarChar(255)
+  role               UserRole  @default(USER)
+  tier               UserTier  @default(DEFAULT)
+  genreTags          String?   @map("genre_tags") @db.VarChar(1000)
+  aliases            String?   @db.VarChar(1000)
+  bio                String?   @db.Text
+  creatorConnections Json?     @map("creator_connections")
+  dob                String?   @db.VarChar(50)
+  profilePicture     String?   @map("profile_picture") @db.LongText
+  profileColor       String?   @map("profile_color") @db.VarChar(20)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  lastLogin          DateTime? @map("last_login")
 
   projects      Project[]
   refreshTokens RefreshToken[]
@@ -854,12 +863,67 @@ Response 200:
   "user": {
     "id": "uuid",
     "email": "user@example.com",
+    "username": "jane-doe",
     "displayName": "Jane Doe",
+    "role": "USER",
+    "tier": "DEFAULT",
+    "genreTags": "Fantasy,Sci-Fi",
+    "aliases": "J.D.,Writer Prime",
+    "bio": "An author with a dramatic streak.",
+    "dob": "04/05/1990 00:00:00",
+    "profilePicture": "data:image/jpeg;base64,...",
+    "profileColor": "#4f46e5",
+    "creatorConnections": [
+      { "id": "conn-1", "name": "Alice", "kind": "follow", "note": "Reads every draft" }
+    ],
     "createdAt": "2026-02-28T...",
     "lastLogin": "2026-02-28T..."
   }
 }
 ```
+
+#### 2.5.6 Update Current User Profile
+
+```
+PATCH /api/auth/profile
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "displayName": "Jane Doe",
+  "genreTags": "Fantasy,Sci-Fi",
+  "profilePicture": "data:image/jpeg;base64,...",
+  "dob": "04/05/1990 00:00:00",
+  "aliases": "J.D.,Writer Prime",
+  "bio": "An author with a dramatic streak.",
+  "profileColor": "#4f46e5",
+  "creatorConnections": [
+    { "id": "conn-1", "name": "Alice", "kind": "follow", "note": "Reads every draft" },
+    { "id": "conn-2", "name": "Bob", "kind": "collaborator", "note": "Shared anthology work" }
+  ]
+}
+
+Response 200:
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "jane-doe",
+    "displayName": "Jane Doe",
+    "profileColor": "#4f46e5",
+    "creatorConnections": [
+      { "id": "conn-1", "name": "Alice", "kind": "follow", "note": "Reads every draft" }
+    ]
+  }
+}
+```
+
+**Current scope already shipped:**
+- Full routed profile page at `/profile`
+- Inline save/cancel profile editing
+- Quick-load of cloud projects from the profile page
+- Reuse of profile data for “Create Character in Current Project”
+- Compact `UserProfileModal` still exists as the quick-access account surface
 
 ---
 
@@ -903,12 +967,17 @@ src/
 ├── context/
 │   └── AuthContext.tsx              # Auth state + token management
 ├── components/
+│   ├── atoms/
+│   │   ├── AuthFrame.tsx            # Shared auth gate / return-to handling
+│   │   └── AuthPageCard.tsx         # Shared auth page shell
 │   ├── pages/
 │   │   ├── LoginPage.tsx            # Login form
 │   │   ├── RegisterPage.tsx         # Registration form
-│   │   └── ClaimProjectsPage.tsx    # Guest → User migration
-│   └── atoms/
-│       └── ProtectedRoute.tsx       # Redirects to login if not authed
+│   │   └── UserProfilePage.tsx      # Full routed profile page
+│   ├── organisms/
+│   │   └── ClaimProjectsModal.tsx   # Guest → User migration (auto-opens in editor shell)
+│   └── templates/
+│       └── AppPageLayout.tsx        # Shared routed page shell
 ├── services/
 │   └── authService.ts              # API calls to /api/auth/*
 └── hooks/
@@ -919,7 +988,21 @@ src/
 
 ```typescript
 interface AuthState {
-  user: { id: string; email: string; displayName: string } | null;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    displayName: string | null;
+    role: 'USER' | 'EDITOR' | 'ADMIN';
+    tier: 'DEFAULT';
+    genreTags?: string | null;
+    aliases?: string | null;
+    bio?: string | null;
+    dob?: string | null;
+    profilePicture?: string | null;
+    profileColor?: string | null;
+    creatorConnections?: Array<{ id: string; name: string; kind: 'follow' | 'private-read' | 'collaborator'; note?: string | null }> | null;
+  } | null;
   accessToken: string | null;
   isLoading: boolean;       // true while checking refresh on mount
   isAuthenticated: boolean;
@@ -930,6 +1013,8 @@ interface AuthContextType extends AuthState {
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<string | null>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
+  setReturnTo: (path: string | null) => void;
 }
 ```
 
@@ -1044,7 +1129,7 @@ App mounts
 - Password strength meter (visual bar, not a hard requirement beyond minimum rules)
 - Confirm password must match before submit enabled
 - On success → auto-login → check for existing guestId projects → offer migration
-- After success, if `localStorage` has `maria_guest_id` → redirect to Claim Projects page
+- After success, if `localStorage` has `maria_guest_id` → redirect to `/editor` and open `ClaimProjectsModal` automatically
 
 #### 2.7.5 Login Prompts in Save & Load Modals
 
@@ -1090,7 +1175,7 @@ cloud save/load controls.
 - After login the user returns to the same modal context (store the intended
   destination in `AuthContext` so post-login redirect reopens the right modal)
 
-#### 2.7.6 Claim Projects Page (Guest → User Migration)
+#### 2.7.6 Claim Projects Modal (Guest → User Migration)
 
 ```
 ┌──────────────────────────────────────────┐
@@ -1120,13 +1205,14 @@ cloud save/load controls.
 ```
 
 **Server logic for claim:**
-1. `GET /api/projects?guestId=<old-guest-id>` → list unclaimed projects
-2. For each selected project:
+1. `GET /api/projects/claim-preview` → list claimable guest projects for the current user session
+2. `POST /api/projects/claim` with selected project IDs
+3. For each selected project:
    - Decrypt if encrypted (shouldn't be yet in Phase 1 data)
    - Re-encrypt with user's derived key
    - Set `ownerId = user.id`
    - Optionally clear `guestId`
-3. Remove `maria_guest_id` from localStorage
+4. Remove `maria_guest_id` from localStorage
 
 ---
 
@@ -1135,36 +1221,39 @@ cloud save/load controls.
 #### 2.8.1 Route Structure
 
 ```
-/login           → LoginPage        (public)
-/register        → RegisterPage     (public)
-/claim-projects  → ClaimProjectsPage (authenticated, one-time)
-/                → MainLayout       (authenticated OR guest)
+/login           → LoginPage         (public)
+/register        → RegisterPage      (public)
+/                → redirect to /editor
+/editor          → MainLayout        (guest or authenticated)
+/profile         → UserProfilePage   (authenticated)
+*                → redirect to /editor
 ```
 
-**Implementation approach — no React Router needed yet:**
-
-Since Maria Writer is a single-page editor, we don't need a full router. Instead:
+**Implementation approach — now shipped with React Router:**
 
 ```typescript
 // In App.tsx
 function App() {
-  const { isAuthenticated, isLoading, isGuest } = useAuth();
-
-  if (isLoading) return <LoadingSpinner />;
-
-  // If not authed and not guest → show login
-  if (!isAuthenticated && !isGuest) return <LoginPage />;
-
-  // If authed and has unclaimed projects → show claim page
-  if (isAuthenticated && hasUnclaimedProjects) return <ClaimProjectsPage />;
-
-  // Otherwise → main editor
-  return <MainLayout />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<AuthFrame><LoginPage /></AuthFrame>} />
+        <Route path="/register" element={<AuthFrame><RegisterPage /></AuthFrame>} />
+        <Route path="/" element={<Navigate to="/editor" replace />} />
+        <Route path="/editor" element={<AuthFrame><MainLayout /></AuthFrame>} />
+        <Route path="/profile" element={<AuthFrame requireAuth><UserProfilePage /></AuthFrame>} />
+        <Route path="*" element={<Navigate to="/editor" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 ```
 
-No URL routing needed — state-driven page switching. We can add React Router
-later for Phase 3 (collaboration invite links need URLs like `/invite/:token`).
+**Additional shipped behaviour:**
+- The editor now lives on its own `/editor` route
+- Visiting `/` redirects to `/editor`
+- `ClaimProjectsModal` is modal-driven inside the editor shell rather than a dedicated route
+- `AuthFrame` stores a `returnTo` path so protected routes like `/profile` can send the user back after login
 
 ---
 
@@ -1172,25 +1261,30 @@ later for Phase 3 (collaboration invite links need URLs like `/invite/:token`).
 
 #### 2.9.1 Frontend `cloudStorage.ts` Changes
 
-All existing cloud API calls currently pass `guestId` as a query parameter.
-After Phase 2, they switch to using the access token in the `Authorization` header:
+Cloud API calls now run in **dual mode** during the migration window:
+- guests still use `guestId`
+- authenticated users use the access token in the `Authorization` header
 
 ```
 BEFORE (Phase 1 — current):
   GET /api/projects?guestId=abc-123
   Authorization: (none)
 
-AFTER (Phase 2):
+AUTHENTICATED (current):
   GET /api/projects
   Authorization: Bearer eyJ...
   (server extracts userId from token — no guestId needed)
+
+GUEST (current):
+  GET /api/projects?guestId=abc-123
+  Authorization: (none)
 ```
 
-The `cloudStorage.ts` service will be updated to:
-1. Accept an `accessToken` parameter (or read from AuthContext)
-2. Set `Authorization: Bearer ${token}` on all requests
-3. Remove `guestId` from query strings
-4. Handle 401 → trigger token refresh → retry
+The `cloudStorage.ts` service now:
+1. Reads auth state from the auth API service/context path
+2. Sets `Authorization: Bearer ${token}` on authenticated requests
+3. Keeps `guestId` query support for guest-mode requests during migration
+4. Handles 401 → trigger token refresh → retry
 
 #### 2.9.2 Backend Controller Changes
 
@@ -1230,7 +1324,7 @@ Update `.env.example` and `docker-compose.yml` with these new variables.
 - Guest flow works exactly as before
 
 **Phase 2b (encourage migration):**
-- After login/register, Claim Projects page migrates guestId projects
+- After login/register, Claim Projects modal migrates guestId projects
 - Backend: `UPDATE projects SET owner_id = :userId WHERE guest_id = :guestId`
 - Encrypt data column during migration
 - Add banner for guest users: "Create an account to enable cloud sync"
@@ -1260,7 +1354,8 @@ Update `.env.example` and `docker-compose.yml` with these new variables.
 | `AuthContext.test.tsx` | Login/logout state transitions, silent refresh on mount, token expiry handling |
 | `LoginPage.test.tsx` | Form validation, error display, submit flow, "Continue as Guest" |
 | `RegisterPage.test.tsx` | Form validation, password strength, confirm match, success → redirect |
-| `ClaimProjectsPage.test.tsx` | Project list display, selective claim, skip flow |
+| `ClaimProjectsModal.test.tsx` | Project list display, selective claim, skip flow |
+| `UserProfilePage.test.tsx` | Routed profile rendering, edit/save flow, cloud quick-load, creator connections, create-character shortcut |
 | `authService.test.ts` | API calls, cookie handling, 401 retry logic |
 
 #### Security Tests
@@ -1349,6 +1444,13 @@ Step 11: Frontend tests                                                     ~ 1.
          - New tests: storage.test.ts (7), cloudStorage.test.ts (4),
            AuthContext.test.tsx (migration fields + clearMigration),
            UserProfileModal.test.tsx (snapshot restore), ClaimProjectsModal.test.tsx (15)
+Post-Step-11 follow-up: Routed auth/profile shell + full profile page        ~ 2-3 days ✅ DONE (Mar 9, 2026)
+         - Shared routed auth/layout primitives added: AuthFrame, AuthPageCard, AppPageLayout
+         - Editor moved to `/editor`; `/` now redirects to `/editor`
+         - Full `/profile` page added with inline editing, colour picker, aliases, DOB, bio, genre tags,
+           profile image upload, creator connection graph/editor, and cloud project quick-load
+         - Backend `PATCH /api/auth/profile` added with validation + persistence for profile fields
+         - `UserProfileModal` now links to the full profile page and can create a character in the current project
 Step 12: End-to-end manual testing in Docker                                ~ 1 day    ⬜ TODO
 Step 13: Update SETUP_GUIDE.md + README                                     ~ 0.5 day  ⬜ TODO
                                                                     Total: ~14 days
@@ -1365,7 +1467,7 @@ Step 13: Update SETUP_GUIDE.md + README                                     ~ 0.
 | 3 | Data encryption key management? | **Per-user derived key** (Option B) | HKDF from master `DATA_ENCRYPTION_KEY` + userId. Good security/complexity balance. |
 | 4 | Guest mode after auth ships? | **Guest = local-only** (Option B) | Guest users can use the app with localStorage only. Login required for: cloud save/load, viewing other users' books in read-only/comment/write modes. Cloud sync button hidden for guests. |
 | 5 | Cookie name? | **`maria_rt`** | Namespaced to avoid collisions with other apps on same domain. |
-| 6 | Add React Router now? | **Yes — add router in Phase 2** (Option A) | Add `react-router-dom` now. Routes: `/login`, `/register`, `/claim-projects`, `/admin/users` (admin only), `/` (editor). Needed for admin panel and future invite links. |
+| 6 | Add React Router now? | **Yes — add router in Phase 2** (Option A) | Shipped. Current routes: `/login`, `/register`, `/editor`, `/profile`, and `/` → `/editor`. Claim flow is modal-based inside the editor shell; future admin panel can still live at `/admin/users`. |
 
 ---
 
@@ -2925,7 +3027,7 @@ POST   /api/auth/refresh           # Get new access token
 POST   /api/auth/forgot-password   # Request password reset
 POST   /api/auth/reset-password    # Reset password with token
 GET    /api/auth/me                # Get current user info
-PUT    /api/auth/profile           # Update user profile
+PATCH  /api/auth/profile           # Update user profile
 DELETE /api/auth/account           # Delete user account
 ```
 
@@ -3292,14 +3394,14 @@ For questions about this implementation plan, refer to:
 |-------|--------|------------|----------|-------|
 | Planning | ✅ Complete | Feb 1, 2026 | Feb 1, 2026 | This document |
 | Phase 1 | ✅ Complete | Feb 2026 | Mar 2, 2026 | Backend + frontend fully shipped; encryption, help system, guest ID recovery all live |
-| Phase 2 | 🚧 In Progress | Feb 28, 2026 | - | Steps 1–9 complete. Step 9: cloudStorage.ts now auth-aware (Bearer token when logged in, guestId when guest); rotateGuestId on logout; delete UI in LoadProjectModal. Next: Step 10 (ClaimProjectsPage). |
+| Phase 2 | 🚧 In Progress | Feb 28, 2026 | - | Steps 1–11 complete. Post-Step-11 routed account work also shipped: `/editor` route, `/profile` route, shared auth/page shells, backend `PATCH /api/auth/profile`, and a richer full profile page with inline editing + cloud quick-load. Next: Step 12 manual E2E + docs. |
 | Phase 2.5 | 📋 Detailed plan ready | - | - | Image storage & media management — move images out of JSON blob |
 | Phase 3 | 📋 Planned | - | - | Collaboration |
 | Phase 4 | 📋 Planned | - | - | Real-time sync |
 
 ---
 
-**Last Updated:** March 2, 2026  
+**Last Updated:** March 9, 2026  
 **Document Version:** 2.3  
 **Author:** Development Team  
-**Next Review:** After completing Phase 2 Step 10 (ClaimProjectsPage) — validate guest-to-user project migration flow
+**Next Review:** After completing Phase 2 Step 12 manual testing and Step 13 docs refresh

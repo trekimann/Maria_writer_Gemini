@@ -52,6 +52,19 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('../templates/AppPageLayout', () => ({
+  AppPageLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('../atoms/AuthPageCard', () => ({
+  AuthPageCard: ({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) => (
+    <div>
+      <div>{children}</div>
+      <div>{footer}</div>
+    </div>
+  ),
+}));
+
 vi.mock('./RegisterPage.module.scss', () => ({
   default: new Proxy({}, { get: (_t, p) => String(p) }),
 }));
@@ -180,7 +193,7 @@ describe('RegisterPage – form submission', () => {
         password: 'Secret1!',
       })
     ));
-    expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/editor', { replace: true });
   });
 
   it('does not call register() when passwords mismatch', async () => {
@@ -264,9 +277,9 @@ describe('RegisterPage – password visibility toggles', () => {
 // ---------------------------------------------------------------------------
 
 describe('RegisterPage – guest button', () => {
-  it('navigates to / when clicking Continue as Guest', () => {
+  it('navigates to /editor when clicking Continue as Guest', () => {
     render(<RegisterPage />);
     fireEvent.click(screen.getByRole('button', { name: /continue as guest/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/editor');
   });
 });

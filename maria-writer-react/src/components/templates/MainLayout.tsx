@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../../context/StoreContext';
 import { ThemeProvider } from '../../context/ThemeContext';
+import { AppPageLayout } from './AppPageLayout';
 import { TopBar } from '../organisms/TopBar';
 import { Sidebar } from '../organisms/Sidebar';
 import { Editor } from '../organisms/Editor';
@@ -23,8 +24,7 @@ export const MainLayout: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <div className={styles.layout}>
-        <TopBar />
+      <AppPageLayout menuBar={<TopBar showBrand={false} />} contentClassName={styles.layout} flushContent>
         <div className={styles.body}>
           <Sidebar />
           <main className={styles.main}>
@@ -45,7 +45,7 @@ export const MainLayout: React.FC = () => {
         <ThemeConfigModal />
         <NewBookModal />
         <ClaimProjectsModal />
-      </div>
+      </AppPageLayout>
     </ThemeProvider>
   );
 };
