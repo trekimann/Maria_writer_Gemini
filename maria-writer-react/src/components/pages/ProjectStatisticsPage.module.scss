@@ -57,9 +57,13 @@
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.heroIntro {
+  max-width: 56rem;
 }
 
 .eyebrow,
@@ -96,16 +100,28 @@
 }
 
 .controlsCard {
-  padding: 1rem;
+  padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
+}
+
+.controlsGrid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, 0.65fr) minmax(20rem, 1.6fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
 }
 
 .controlRow {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  min-width: 0;
+}
+
+.controlRowWide {
+  min-width: 0;
 }
 
 .controlLabel {
@@ -126,7 +142,7 @@
 
 .numberInput {
   width: 100%;
-  max-width: 8rem;
+  max-width: 100%;
   border: 1px solid var(--color-border, #dbe2ea);
   border-radius: 0.75rem;
   padding: 0.75rem 0.9rem;
@@ -177,6 +193,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-border, #dbe2ea);
   font-size: 0.92rem;
   color: var(--color-text-muted, #64748b);
 }
@@ -584,7 +602,6 @@
 }
 
 @media (max-width: 1100px) {
-  .hero,
   .sectionHeader,
   .controlMeta,
   .summaryHeader,
@@ -592,6 +609,14 @@
   .detailHero {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .controlsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .controlRowWide {
+    grid-column: 1 / -1;
   }
 
   .chapterToggle,
@@ -627,6 +652,10 @@
   .statGrid,
   .detailStatsGrid,
   .screenTabs {
+    grid-template-columns: 1fr;
+  }
+
+  .controlsGrid {
     grid-template-columns: 1fr;
   }
 

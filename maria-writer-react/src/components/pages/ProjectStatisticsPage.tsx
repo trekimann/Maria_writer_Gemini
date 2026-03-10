@@ -307,7 +307,7 @@ export const ProjectStatisticsPage: React.FC = () => {
     >
       <div className={styles.page}>
         <section className={styles.hero}>
-          <div>
+          <div className={styles.heroIntro}>
             <p className={styles.eyebrow}>Project statistics</p>
             <h1 className={styles.title}>Statistics by chapter</h1>
             <p className={styles.subtitle}>
@@ -316,56 +316,58 @@ export const ProjectStatisticsPage: React.FC = () => {
           </div>
 
           <div className={styles.controlsCard}>
-            <div className={styles.controlRow}>
-              <label htmlFor="statistics-project-source" className={styles.controlLabel}>Project source</label>
-              <select
-                id="statistics-project-source"
-                className={styles.select}
-                value={selectedSource}
-                onChange={handleSourceChange}
-              >
-                <option value={CURRENT_SOURCE}>Current project — {currentProjectStatistics.title || 'Untitled Project'}</option>
-                {cloudProjects.map((project) => (
-                  <option key={project.id} value={`cloud:${project.id}`}>
-                    Cloud — {project.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.controlRow}>
-              <label htmlFor="statistics-top-word-count" className={styles.controlLabel}>Most used words shown</label>
-              <input
-                id="statistics-top-word-count"
-                className={styles.numberInput}
-                type="number"
-                min={TOP_WORD_MIN}
-                max={TOP_WORD_MAX}
-                value={topWordCount}
-                onChange={handleTopWordCountChange}
-              />
-              <p className={styles.controlHint}>Choose how many of the most frequent words to show for the current project and chapter.</p>
-            </div>
-
-            <div className={styles.controlRow}>
-              <div className={styles.controlSplit}>
-                <div>
-                  <label className={styles.controlLabel}>Ignored words</label>
-                  <p className={styles.controlHint}>
-                    {ignoredWords.length} ignored by default. Common filler words are removed from frequency counts.
-                  </p>
-                </div>
-                <Button variant="secondary" size="sm" onClick={handleOpenIgnoredWordsModal}>
-                  Edit ignored words
-                </Button>
+            <div className={styles.controlsGrid}>
+              <div className={styles.controlRow}>
+                <label htmlFor="statistics-project-source" className={styles.controlLabel}>Project source</label>
+                <select
+                  id="statistics-project-source"
+                  className={styles.select}
+                  value={selectedSource}
+                  onChange={handleSourceChange}
+                >
+                  <option value={CURRENT_SOURCE}>Current project — {currentProjectStatistics.title || 'Untitled Project'}</option>
+                  {cloudProjects.map((project) => (
+                    <option key={project.id} value={`cloud:${project.id}`}>
+                      Cloud — {project.title}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className={styles.ignoredWordsPreview}>
-                {ignoredWords.slice(0, 10).map((word) => (
-                  <span key={word} className={styles.ignoredWordChip}>{word}</span>
-                ))}
-                {ignoredWords.length > 10 && (
-                  <span className={styles.ignoredWordMore}>+{ignoredWords.length - 10} more</span>
-                )}
+
+              <div className={styles.controlRow}>
+                <label htmlFor="statistics-top-word-count" className={styles.controlLabel}>Most used words shown</label>
+                <input
+                  id="statistics-top-word-count"
+                  className={styles.numberInput}
+                  type="number"
+                  min={TOP_WORD_MIN}
+                  max={TOP_WORD_MAX}
+                  value={topWordCount}
+                  onChange={handleTopWordCountChange}
+                />
+                <p className={styles.controlHint}>Choose how many of the most frequent words to show for the current project and chapter.</p>
+              </div>
+
+              <div className={`${styles.controlRow} ${styles.controlRowWide}`}>
+                <div className={styles.controlSplit}>
+                  <div>
+                    <label className={styles.controlLabel}>Ignored words</label>
+                    <p className={styles.controlHint}>
+                      {ignoredWords.length} ignored by default. Common filler words are removed from frequency counts.
+                    </p>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={handleOpenIgnoredWordsModal}>
+                    Edit ignored words
+                  </Button>
+                </div>
+                <div className={styles.ignoredWordsPreview}>
+                  {ignoredWords.slice(0, 10).map((word) => (
+                    <span key={word} className={styles.ignoredWordChip}>{word}</span>
+                  ))}
+                  {ignoredWords.length > 10 && (
+                    <span className={styles.ignoredWordMore}>+{ignoredWords.length - 10} more</span>
+                  )}
+                </div>
               </div>
             </div>
 
