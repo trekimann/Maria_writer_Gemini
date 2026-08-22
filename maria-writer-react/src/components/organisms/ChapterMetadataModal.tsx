@@ -16,6 +16,8 @@ export const ChapterMetadataModal: React.FC = () => {
 
   const isOpen = state.activeModal === 'chapter-metadata';
   const activeChapter = state.chapters.find(c => c.id === state.editingItemId);
+  const isLore = (activeChapter?.chapterType ?? 'chapter') === 'lore';
+  const itemLabel = isLore ? 'Lore Entry' : 'Chapter';
 
   useEffect(() => {
     if (isOpen && activeChapter) {
@@ -81,9 +83,9 @@ export const ChapterMetadataModal: React.FC = () => {
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Chapter Metadata"
+      title={`${itemLabel} Metadata`}
       headerColor="indigo"
-      helpId="chapter-metadata"
+      helpId={isLore ? 'lore-entry-metadata' : 'chapter-metadata'}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>Cancel</Button>
@@ -92,15 +94,15 @@ export const ChapterMetadataModal: React.FC = () => {
       }
     >
       <div className={styles.field}>
-        <label>Chapter Title</label>
+        <label>{itemLabel} Title</label>
         <input 
           type="text" 
           value={title} 
           onChange={(e) => setTitle(e.target.value)} 
           className={styles.input}
-          placeholder="Enter chapter title..."
+          placeholder={`Enter ${itemLabel.toLowerCase()} title...`}
         />
-        <span className={styles.hint}>Updating the title will also update the H1 heading in the chapter content.</span>
+        <span className={styles.hint}>Updating the title will also update the H1 heading in the {itemLabel.toLowerCase()} content.</span>
       </div>
 
       <div className={styles.field}>

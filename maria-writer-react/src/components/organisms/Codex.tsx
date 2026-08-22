@@ -6,6 +6,7 @@ import { EventList } from './EventList';
 import { EventDetail } from './EventDetail';
 import { TimelineView } from './TimelineView';
 import { RelationshipView } from './RelationshipView';
+import { LoreList } from './LoreList';
 import styles from './Codex.module.scss';
 
 export const Codex: React.FC = () => {
@@ -15,7 +16,8 @@ export const Codex: React.FC = () => {
     { id: 'timeline', label: 'Timeline' },
     { id: 'characters', label: 'Characters' },
     { id: 'events', label: 'Events' },
-    { id: 'relationships', label: 'Relationships' }
+    { id: 'relationships', label: 'Relationships' },
+    { id: 'lore', label: 'Lore' }
   ] as const;
 
   return (
@@ -44,6 +46,9 @@ export const Codex: React.FC = () => {
         )}
         {state.activeCodexTab === 'relationships' && (
           <RelationshipView />
+        )}
+        {state.activeCodexTab === 'lore' && (
+          <LoreList />
         )}
       </div>
     </div>

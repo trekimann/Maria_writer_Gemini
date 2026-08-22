@@ -88,6 +88,39 @@ describe('StoreContext Reducer', () => {
     expect(newState.activeChapterId).toBe('2');
   });
 
+  it('should handle ADD_LORE_ENTRY', () => {
+    const newState = reducer(initialState, { type: 'ADD_LORE_ENTRY' });
+    const loreEntries = newState.chapters.filter(c => c.chapterType === 'lore');
+    expect(loreEntries.length).toBe(1);
+    expect(loreEntries[0].title).toBe('New Lore Entry');
+    expect(loreEntries[0].chapterType).toBe('lore');
+    expect(newState.activeChapterId).toBe(loreEntries[0].id);
+    expect(newState.context).toBe('writer');
+  });
+
+  it('should not delete the last chapter but allow deleting lore entries', () => {
+    // Can't delete last chapter
+    const singleChapterState = {
+      ...initialState,
+      chapters: [{ id: '1', title: 'C1', content: '', order: 0, chapterType: 'chapter' as const }],
+      activeChapterId: '1'
+    };
+    const unchanged = reducer(singleChapterState, { type: 'DELETE_CHAPTER', payload: '1' });
+    expect(unchanged.chapters.length).toBe(1);
+
+    // Can delete a lore entry even if it's the only one
+    const withLore = {
+      ...singleChapterState,
+      chapters: [
+        { id: '1', title: 'C1', content: '', order: 0, chapterType: 'chapter' as const },
+        { id: 'L1', title: 'Lore 1', content: '', order: 0, chapterType: 'lore' as const }
+      ]
+    };
+    const afterLoreDelete = reducer(withLore, { type: 'DELETE_CHAPTER', payload: 'L1' });
+    expect(afterLoreDelete.chapters.filter(c => c.chapterType === 'lore').length).toBe(0);
+    expect(afterLoreDelete.chapters.filter(c => (c.chapterType ?? 'chapter') === 'chapter').length).toBe(1);
+  });
+
   it('auto-creates Born/Died events on ADD_CHARACTER when dob/deathDate present', () => {
     uuidSeq.reset();
     const char = {

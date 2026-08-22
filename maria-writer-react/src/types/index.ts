@@ -14,6 +14,7 @@ export interface Chapter {
   title: string;
   content: string;
   order: number;
+  chapterType?: 'chapter' | 'lore'; // Defaults to 'chapter' when undefined
   commentIds?: string[]; // Track comments for this chapter
   relatedEvents?: string[]; // Array of event IDs
   mentionedCharacters?: string[]; // Array of character IDs
@@ -105,7 +106,7 @@ export interface Relationship {
 
 export type ViewMode = 'write' | 'source' | 'preview';
 export type ContextMode = 'writer' | 'codex';
-export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships';
+export type CodexTab = 'timeline' | 'characters' | 'events' | 'relationships' | 'lore';
 export type ModalType = 'none' | 'save' | 'metadata' | 'chapter-metadata' | 'character' | 'event' | 'relationship' | 'theme-config' | 'save-settings' | 'load-project' | 'new-book';
 
 export interface ThemeCustomization {
