@@ -8,14 +8,25 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/authService';
 import { AppError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 // Cookie name (per plan §2.14 Decision #5)
 const COOKIE_NAME = 'maria_rt';
 
+function parseBooleanEnv(value: string | undefined): boolean | null {
+  if (value === undefined) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+  return null;
+}
+
+const cookieSecure = parseBooleanEnv(process.env.COOKIE_SECURE) ?? process.env.NODE_ENV === 'production';
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: 'strict' as const,
-  secure: process.env.NODE_ENV === 'production',
+  secure: cookieSecure,
   path: '/api/auth',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
@@ -24,6 +35,15 @@ const REMEMBER_ME_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 };
+
+logger.info('Auth refresh cookie config', {
+  cookieName: COOKIE_NAME,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: COOKIE_OPTIONS.sameSite,
+  path: COOKIE_OPTIONS.path,
+  maxAge: COOKIE_OPTIONS.maxAge,
+  rememberMeMaxAge: REMEMBER_ME_COOKIE_OPTIONS.maxAge,
+});
 
 class AuthController {
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {

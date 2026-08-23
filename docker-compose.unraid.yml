@@ -20,10 +20,11 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
       - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
       - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -42,7 +43,7 @@ services:
     volumes:
       - /mnt/user/appdata/maria-writer/db:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
       interval: 10s
       timeout: 5s
       retries: 5

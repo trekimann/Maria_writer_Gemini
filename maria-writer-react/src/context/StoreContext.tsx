@@ -64,6 +64,7 @@ type Action =
   | { type: 'LOAD_STATE'; payload: AppState }
   | { type: 'SET_META'; payload: Partial<BookMetadata> }
   | { type: 'ADD_CHAPTER' }
+  | { type: 'ADD_LORE_ENTRY' }
   | { type: 'DELETE_CHAPTER'; payload: string }
   | { type: 'UPDATE_CHAPTER'; payload: { id: string; updates: Partial<Chapter> } }
   | { type: 'SET_ACTIVE_CHAPTER'; payload: string }
@@ -111,6 +112,7 @@ export const reducer = (state: AppState, action: Action): AppState => {
         title: "New Chapter",
         content: "",
         order: state.chapters.length,
+        chapterType: 'chapter',
         relatedEvents: [],
         mentionedCharacters: [],
         date: ""
@@ -120,14 +122,42 @@ export const reducer = (state: AppState, action: Action): AppState => {
         chapters: [...state.chapters, newChapter],
         activeChapterId: newChapter.id
       };
-    case 'DELETE_CHAPTER':
-      if (state.chapters.length <= 1) return state;
-      const newChapters = state.chapters.filter(c => c.id !== action.payload);
+    case 'ADD_LORE_ENTRY': {
+      const newLore: Chapter = {
+        id: uuidv4(),
+        title: "New Lore Entry",
+        content: "",
+        order: state.chapters.filter(c => (c.chapterType ?? 'chapter') === 'lore').length,
+        chapterType: 'lore',
+        relatedEvents: [],
+        mentionedCharacters: [],
+        date: ""
+      };
       return {
         ...state,
-        chapters: newChapters,
-        activeChapterId: state.activeChapterId === action.payload ? newChapters[0].id : state.activeChapterId
+        chapters: [...state.chapters, newLore],
+        activeChapterId: newLore.id,
+        context: 'writer'
       };
+    }
+    case 'DELETE_CHAPTER': {
+      const toDelete = state.chapters.find(c => c.id === action.payload);
+      const type = toDelete?.chapterType ?? 'chapter';
+      const sameType = state.chapters.filter(c => (c.chapterType ?? 'chapter') === type);
+      // Don't allow deleting the last chapter (but lore entries can all be deleted)
+      if (type === 'chapter' && sameType.length <= 1) return state;
+      const remaining = state.chapters.filter(c => c.id !== action.payload);
+      const sameTypeRemaining = remaining.filter(c => (c.chapterType ?? 'chapter') === type);
+      let newActiveId = state.activeChapterId;
+      if (state.activeChapterId === action.payload) {
+        newActiveId = sameTypeRemaining.length > 0 ? sameTypeRemaining[0].id : (remaining.length > 0 ? remaining[0].id : null);
+      }
+      return {
+        ...state,
+        chapters: remaining,
+        activeChapterId: newActiveId
+      };
+    }
     case 'UPDATE_CHAPTER':
       return {
         ...state,
@@ -332,6 +362,7 @@ export const reducer = (state: AppState, action: Action): AppState => {
             title: 'Chapter 1',
             content: '# Chapter 1\n\nIt was a dark and stormy night...',
             order: 0,
+            chapterType: 'chapter',
             relatedEvents: [],
             mentionedCharacters: [],
             date: '',

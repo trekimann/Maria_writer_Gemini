@@ -174,7 +174,12 @@ export const TopBar: React.FC<TopBarProps> = ({ showBrand = true }) => {
           />
         </div>
         <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center' }}>
-          <HelpButton helpId="manuscript-editor" />
+          <HelpButton helpId={
+            (() => {
+              const active = state.chapters?.find(c => c.id === state.activeChapterId);
+              return (active?.chapterType ?? 'chapter') === 'lore' ? 'lore-editor' : 'manuscript-editor';
+            })()
+          } />
         </div>
         {!showBrand && profileButton}
       </div>
