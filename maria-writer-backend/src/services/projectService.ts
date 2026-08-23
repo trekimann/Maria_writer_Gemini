@@ -81,7 +81,7 @@ export interface AppState {
   timeline: any;
   viewMode: 'write' | 'source' | 'preview';
   context: 'writer' | 'codex';
-  activeCodexTab: 'timeline' | 'characters' | 'events' | 'relationships';
+  activeCodexTab: 'timeline' | 'characters' | 'events' | 'relationships' | 'lore';
   activeModal: string;
   editingItemId: string | null;
   viewingItemId: string | null;

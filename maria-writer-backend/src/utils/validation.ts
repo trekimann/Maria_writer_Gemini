@@ -73,7 +73,7 @@ export const AppStateSchema = z.object({
   timeline: z.any(),
   viewMode: z.enum(['write', 'source', 'preview']),
   context: z.enum(['writer', 'codex']),
-  activeCodexTab: z.enum(['timeline', 'characters', 'events', 'relationships']),
+  activeCodexTab: z.enum(['timeline', 'characters', 'events', 'relationships', 'lore']),
   activeModal: z.string(),
   editingItemId: z.string().nullable(),
   viewingItemId: z.string().nullable(),
